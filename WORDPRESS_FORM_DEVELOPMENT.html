@@ -1,0 +1,405 @@
+<!-- 
+  ============================================
+  FORMULAIRE WORDPRESS/ELEMENTOR POUR CRM
+  VERSION DÉVELOPPEMENT (localhost)
+  ============================================
+  
+  Instructions :
+  1. Copiez ce code dans un widget HTML d'Elementor
+  2. Cette version utilise localhost:3000 pour le développement
+  3. Pour la production, utilisez WORDPRESS_FORM_SIMPLE.html et changez l'URL
+  
+  ============================================
+-->
+
+<style>
+  /* Styles selon la charte graphique (bleu et blanc) */
+  .crm-form-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  
+  .crm-form-title {
+    color: #1e40af;
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  
+  .crm-form-subtitle {
+    color: #3b82f6;
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .crm-form-group {
+    margin-bottom: 20px;
+  }
+  
+  .crm-form-label {
+    display: block;
+    color: #1e40af;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  
+  .crm-form-label .required {
+    color: #ef4444;
+  }
+  
+  .crm-form-input,
+  .crm-form-select,
+  .crm-form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #dbeafe;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+  
+  .crm-form-input:focus,
+  .crm-form-select:focus,
+  .crm-form-textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  .crm-form-textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+  
+  .crm-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+  
+  @media (max-width: 768px) {
+    .crm-form-row {
+      grid-template-columns: 1fr;
+    }
+    .crm-form-container {
+      padding: 20px;
+    }
+  }
+  
+  .crm-form-submit {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+  }
+  
+  .crm-form-submit:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+  
+  .crm-form-submit:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .crm-form-message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  
+  .crm-form-message.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #10b981;
+    display: block;
+  }
+  
+  .crm-form-message.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #ef4444;
+    display: block;
+  }
+  
+  .crm-form-loading {
+    display: none;
+    text-align: center;
+    color: #3b82f6;
+    margin-top: 10px;
+  }
+  
+  .crm-form-loading.active {
+    display: block;
+  }
+</style>
+
+<div class="crm-form-container">
+  <h2 class="crm-form-title">Demandez un devis</h2>
+  <p class="crm-form-subtitle">Remplissez le formulaire et nous vous contacterons rapidement</p>
+  
+  <div id="crm-form-message" class="crm-form-message"></div>
+  
+  <form id="crm-contact-form">
+    <div class="crm-form-group">
+      <label class="crm-form-label">
+        Nom complet <span class="required">*</span>
+      </label>
+      <input
+        type="text"
+        name="name"
+        class="crm-form-input"
+        required
+        placeholder="Votre nom complet"
+      />
+    </div>
+    
+    <div class="crm-form-row">
+      <div class="crm-form-group">
+        <label class="crm-form-label">
+          Téléphone <span class="required">*</span>
+        </label>
+        <input
+          type="tel"
+          name="phone"
+          class="crm-form-input"
+          required
+          placeholder="06 12 34 56 78"
+        />
+      </div>
+      
+      <div class="crm-form-group">
+        <label class="crm-form-label">Email</label>
+        <input
+          type="email"
+          name="email"
+          class="crm-form-input"
+          placeholder="votre@email.com"
+        />
+      </div>
+    </div>
+    
+    <div class="crm-form-group">
+      <label class="crm-form-label">Type de client</label>
+      <select name="clientType" class="crm-form-select">
+        <option value="particulier">Particulier</option>
+        <option value="professionnel">Professionnel</option>
+      </select>
+    </div>
+    
+    <div id="professional-fields" style="display: none;">
+      <div class="crm-form-group">
+        <label class="crm-form-label">Nom de l'entreprise</label>
+        <input
+          type="text"
+          name="companyName"
+          class="crm-form-input"
+          placeholder="Nom de votre entreprise"
+        />
+      </div>
+      
+      <div class="crm-form-group">
+        <label class="crm-form-label">ICE</label>
+        <input
+          type="text"
+          name="ice"
+          class="crm-form-input"
+          placeholder="ICE de l'entreprise"
+        />
+      </div>
+    </div>
+    
+    <div class="crm-form-group">
+      <label class="crm-form-label">Adresse</label>
+      <input
+        type="text"
+        name="address"
+        class="crm-form-input"
+        placeholder="Votre adresse"
+      />
+    </div>
+    
+    <div class="crm-form-row">
+      <div class="crm-form-group">
+        <label class="crm-form-label">Ville</label>
+        <input
+          type="text"
+          name="city"
+          class="crm-form-input"
+          placeholder="Casablanca"
+        />
+      </div>
+      
+      <div class="crm-form-group">
+        <label class="crm-form-label">Code postal</label>
+        <input
+          type="text"
+          name="postalCode"
+          class="crm-form-input"
+          placeholder="20000"
+        />
+      </div>
+    </div>
+    
+    <div class="crm-form-group">
+      <label class="crm-form-label">Message / Description de votre besoin</label>
+      <textarea
+        name="message"
+        class="crm-form-textarea"
+        placeholder="Décrivez votre demande (type d'intervention, urgence, etc.)"
+      ></textarea>
+    </div>
+    
+    <button type="submit" class="crm-form-submit" id="crm-submit-btn">
+      Envoyer la demande
+    </button>
+    
+    <div class="crm-form-loading" id="crm-loading">
+      Envoi en cours...
+    </div>
+  </form>
+</div>
+
+<script>
+(function() {
+  // ⚠️ CONFIGURATION : URL d'API pour le développement local
+  const API_URL = 'http://localhost:3000/api/webhook/client';
+  
+  // Optionnel : ajoutez votre clé API si vous l'avez configurée dans .env.local
+  const API_KEY = '';
+  
+  const form = document.getElementById('crm-contact-form');
+  const messageDiv = document.getElementById('crm-form-message');
+  const submitBtn = document.getElementById('crm-submit-btn');
+  const loadingDiv = document.getElementById('crm-loading');
+  const clientTypeSelect = form.querySelector('[name="clientType"]');
+  const professionalFields = document.getElementById('professional-fields');
+  
+  // Afficher/masquer les champs professionnels
+  clientTypeSelect.addEventListener('change', function() {
+    if (this.value === 'professionnel') {
+      professionalFields.style.display = 'block';
+    } else {
+      professionalFields.style.display = 'none';
+    }
+  });
+  
+  function showMessage(text, type) {
+    messageDiv.textContent = text;
+    messageDiv.className = 'crm-form-message ' + type;
+    messageDiv.style.display = 'block';
+    
+    // Scroll to message
+    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Hide after 5 seconds for success
+    if (type === 'success') {
+      setTimeout(() => {
+        messageDiv.style.display = 'none';
+      }, 5000);
+    }
+  }
+  
+  function setLoading(loading) {
+    submitBtn.disabled = loading;
+    if (loading) {
+      submitBtn.textContent = 'Envoi en cours...';
+      loadingDiv.classList.add('active');
+    } else {
+      submitBtn.textContent = 'Envoyer la demande';
+      loadingDiv.classList.remove('active');
+    }
+  }
+  
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Collect form data
+    const formData = new FormData(form);
+    const data = {
+      name: formData.get('name'),
+      phone: formData.get('phone'),
+      email: formData.get('email') || '',
+      address: formData.get('address') || '',
+      city: formData.get('city') || '',
+      postalCode: formData.get('postalCode') || '',
+      clientType: formData.get('clientType') || 'particulier',
+      companyName: formData.get('companyName') || '',
+      ice: formData.get('ice') || '',
+      message: formData.get('message') || '',
+    };
+    
+    // Validation
+    if (!data.name || !data.phone) {
+      showMessage('Veuillez remplir tous les champs obligatoires (*)', 'error');
+      return;
+    }
+    
+    setLoading(true);
+    messageDiv.style.display = 'none';
+    
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (API_KEY) {
+        headers['x-api-key'] = API_KEY;
+      }
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(data),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        showMessage(
+          result.isNew 
+            ? '✅ Votre demande a été envoyée avec succès ! Nous vous contacterons bientôt.'
+            : '✅ Votre demande a été enregistrée. Nous vous contacterons bientôt.',
+          'success'
+        );
+        form.reset();
+        professionalFields.style.display = 'none';
+      } else {
+        showMessage(
+          '❌ Erreur : ' + (result.error || 'Une erreur est survenue. Veuillez réessayer.'),
+          'error'
+        );
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showMessage(
+        '❌ Erreur de connexion. Veuillez vérifier votre connexion internet et réessayer.',
+        'error'
+      );
+    } finally {
+      setLoading(false);
+    }
+  });
+})();
+</script>
