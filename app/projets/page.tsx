@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Client, User } from '@/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatCurrency } from '@/lib/utils';
 import { Plus, Edit, Trash2, Users as UsersIcon, Calendar, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
@@ -168,6 +168,8 @@ export default function ProjetsPage() {
       progress: 0,
       progressStatus: 'non_commence',
       address: '',
+      amount: '',
+      hasInvoice: false,
     });
   };
 

@@ -16,7 +16,7 @@ function drawStampText(
   // Dessiner le rectangle avec bordure en pointillés bleue
   pdf.setDrawColor(0, 102, 204); // Bleu
   pdf.setLineWidth(1.5);
-  pdf.setLineDash([3, 3], 0);
+  // Note: jsPDF doesn't support setLineDash directly, using solid line instead
   
   // Dessiner le rectangle
   pdf.rect(x, y, width, height, 'D');
@@ -34,7 +34,6 @@ function drawStampText(
   pdf.text(stamp.city, x + 3, y + 17);
   
   // Restaurer les paramètres
-  pdf.setLineDash([], 0);
   pdf.setTextColor(0, 0, 0); // Remettre en noir
 }
 
@@ -250,7 +249,7 @@ export function generatePDFFromData(
     // Tampon par défaut si pas de stamp configuré
     pdf.setDrawColor(0, 102, 204);
     pdf.setLineWidth(0.5);
-    pdf.setLineDash([2, 2], 0);
+    // Note: jsPDF doesn't support setLineDash directly, using solid line instead
     const stampX = pageWidth - margin - 50;
     const stampY = yPos - 8;
     pdf.rect(stampX, stampY, 50, 20, 'D');
@@ -263,7 +262,7 @@ export function generatePDFFromData(
       pdf.setFontSize(7);
       pdf.text(addressLines[0], stampX + 2, stampY + 10);
     }
-    pdf.setLineDash([], 0);
+    // Note: jsPDF doesn't support setLineDash, removed
   }
 
   yPos += 20;
@@ -293,9 +292,9 @@ export function generatePDFFromData(
   
   yPos = 270;
   pdf.setDrawColor(200, 200, 200);
-  pdf.setLineDash([2, 2], 0);
+  // Note: jsPDF doesn't support setLineDash, using solid line instead
   pdf.line(margin, yPos, pageWidth - margin, yPos);
-  pdf.setLineDash([], 0);
+  // Note: jsPDF doesn't support setLineDash, removed
   
   yPos += 5;
   pdf.setFontSize(8);
