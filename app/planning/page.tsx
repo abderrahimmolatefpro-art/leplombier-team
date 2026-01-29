@@ -803,7 +803,7 @@ export default function PlanningPage() {
                   {conflicts.map((conflict, idx) => (
                     <li key={idx}>
                       {getPlombierName(conflict.plombierId)} - {formatDate(conflict.date)} : chevauchement
-                      d'horaires
+                      d&apos;horaires
                     </li>
                   ))}
                 </ul>
@@ -866,7 +866,7 @@ export default function PlanningPage() {
                     onClick={navigateToday}
                     className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                   >
-                    Aujourd'hui
+                    Aujourd&apos;hui
                   </button>
                   <button
                     onClick={navigateNext}

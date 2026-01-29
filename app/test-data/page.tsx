@@ -338,7 +338,7 @@ export default function TestDataPage() {
             <div>
               <h3 className="font-semibold text-gray-900">Créer toutes les données de test</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Crée d'abord les plombiers, puis les clients avec assignation automatique
+                Crée d&apos;abord les plombiers, puis les clients avec assignation automatique
               </p>
             </div>
             <button

@@ -123,19 +123,19 @@ export default function ClientDetailPage() {
         const projectIds = projectsData.map(p => p.id);
         const planningQuery = query(collection(db, 'planning'));
         const planningSnapshot = await getDocs(planningQuery);
-        appointmentsData = planningSnapshot.docs
+        appointmentsData = (planningSnapshot.docs
           .map((doc) => ({
             id: doc.id,
             ...doc.data(),
             date: doc.data().date?.toDate() || new Date(),
             createdAt: doc.data().createdAt?.toDate() || new Date(),
-          }))
-          .filter((entry: PlanningEntry) => {
+          })) as PlanningEntry[])
+          .filter((entry) => {
             return entry.plombierId === clientData.assignedPlombierId &&
                    entry.projectId &&
                    projectIds.includes(entry.projectId) &&
                    entry.type === 'project';
-          }) as PlanningEntry[];
+          });
       }
       setAppointments(appointmentsData);
 
@@ -784,7 +784,7 @@ function RevenueModal({
                 className="rounded"
               />
               <label htmlFor="isBlackRevenue" className="text-sm text-gray-700">
-                Revenu "en noir" (sans facture)
+                Revenu &quot;en noir&quot; (sans facture)
               </label>
             </div>
 

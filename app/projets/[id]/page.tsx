@@ -173,7 +173,7 @@ export default function ProjectDetailPage() {
             </div>
 
             <div className="card">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Suivi d'avancement</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Suivi d&apos;avancement</h2>
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -308,7 +308,7 @@ export default function ProjectDetailPage() {
               <div className="space-y-4">
                 {teamLeader && (
                   <div>
-                    <span className="text-sm font-medium text-gray-700">Chef d'équipe</span>
+                    <span className="text-sm font-medium text-gray-700">Chef d&apos;équipe</span>
                     <p className="text-sm text-gray-900 mt-1">{teamLeader.name}</p>
                     {teamLeader.phone && (
                       <p className="text-xs text-gray-600">{teamLeader.phone}</p>

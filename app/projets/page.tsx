@@ -536,7 +536,7 @@ export default function ProjetsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Chef d'équipe *
+                        Chef d&apos;équipe *
                       </label>
                       <select
                         required
@@ -544,7 +544,7 @@ export default function ProjetsPage() {
                         onChange={(e) => setFormData({ ...formData, teamLeaderId: e.target.value })}
                         className="input"
                       >
-                        <option value="">Sélectionner un chef d'équipe</option>
+                        <option value="">Sélectionner un chef d&apos;équipe</option>
                         {plombiers.map((plombier) => (
                           <option key={plombier.id} value={plombier.id}>
                             {plombier.name}

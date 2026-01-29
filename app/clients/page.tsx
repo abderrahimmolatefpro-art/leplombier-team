@@ -863,7 +863,7 @@ export default function ClientsPage() {
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nom de l'entreprise
+                          Nom de l&apos;entreprise
                         </label>
                         <input
                           type="text"
@@ -927,7 +927,7 @@ export default function ClientsPage() {
                         
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Type d'intervention
+                            Type d&apos;intervention
                           </label>
                           <select
                             value={actionType}

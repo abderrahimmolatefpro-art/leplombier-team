@@ -522,7 +522,7 @@ export default function DocumentsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Date d'échéance
+                        Date d&apos;échéance
                       </label>
                       <input
                         type="date"
