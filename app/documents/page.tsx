@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
@@ -21,7 +21,7 @@ import { formatDate, formatCurrency } from '@/lib/utils';
 import { Plus, Edit, Trash2, FileText, Download, Mail, Eye } from 'lucide-react';
 import Link from 'next/link';
 
-export default function DocumentsPage() {
+function DocumentsContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -848,5 +848,19 @@ export default function DocumentsPage() {
         )}
       </div>
     </Layout>
+  );
+}
+
+export default function DocumentsPage() {
+  return (
+    <Suspense fallback={
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </Layout>
+    }>
+      <DocumentsContent />
+    </Suspense>
   );
 }
