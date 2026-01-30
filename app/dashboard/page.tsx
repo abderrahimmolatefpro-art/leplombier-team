@@ -22,7 +22,8 @@ import {
   BarChart3,
   PieChart,
   ChevronDown,
-  X
+  X,
+  Edit
 } from 'lucide-react';
 import {
   LineChart,
@@ -39,6 +40,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import Link from 'next/link';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -261,29 +263,31 @@ export default function DashboardPage() {
   );
 
   // Données filtrées par période (réutilisables)
+  // Données filtrées selon la période et les clients existants
   const filteredData = useMemo(() => {
     const { start, end } = getDateRange;
+    const existingClientIds = new Set(clients.map(c => c.id));
     
-    // Factures payées dans la période
+    // Factures payées dans la période ET client existant
     const filteredInvoices = paidInvoices.filter(d => {
       const invoiceDate = d.date;
-      return invoiceDate >= start && invoiceDate <= end;
+      return invoiceDate >= start && invoiceDate <= end && existingClientIds.has(d.clientId);
     });
     
-    // Projets dans la période
+    // Projets dans la période ET client existant
     const filteredProjects = projects.filter(p => {
       const projectDate = p.createdAt || p.startDate;
-      return projectDate >= start && projectDate <= end;
+      return projectDate >= start && projectDate <= end && existingClientIds.has(p.clientId);
     });
     
-    // Revenus manuels dans la période
+    // Revenus manuels dans la période ET client existant
     const filteredManualRevenues = manualRevenues.filter(r => {
       const revenueDate = r.date;
-      return revenueDate >= start && revenueDate <= end;
+      return revenueDate >= start && revenueDate <= end && existingClientIds.has(r.clientId);
     });
     
     return { filteredInvoices, filteredProjects, filteredManualRevenues };
-  }, [paidInvoices, projects, manualRevenues, getDateRange]);
+  }, [paidInvoices, projects, manualRevenues, clients, getDateRange]);
 
   // Calcul des KPI avec filtres de date
   const kpis = useMemo(() => {
@@ -299,20 +303,21 @@ export default function DashboardPage() {
     const manualRevenue = filteredManualRevenues.reduce((sum, r) => sum + r.amount, 0);
     const totalRevenue = invoiceRevenue + projectRevenue + manualRevenue;
     
-    // Calcul de la comparaison
+    // Calcul de la comparaison (uniquement clients existants)
     let comparisonRevenue = 0;
     if (comparisonRange) {
+      const existingClientIds = new Set(clients.map(c => c.id));
       const compInvoices = paidInvoices.filter(d => {
         const invoiceDate = d.date;
-        return invoiceDate >= comparisonRange.start && invoiceDate <= comparisonRange.end;
+        return invoiceDate >= comparisonRange.start && invoiceDate <= comparisonRange.end && existingClientIds.has(d.clientId);
       });
       const compProjects = projects.filter(p => {
         const projectDate = p.createdAt || p.startDate;
-        return projectDate >= comparisonRange.start && projectDate <= comparisonRange.end;
+        return projectDate >= comparisonRange.start && projectDate <= comparisonRange.end && existingClientIds.has(p.clientId);
       });
       const compManual = manualRevenues.filter(r => {
         const revenueDate = r.date;
-        return revenueDate >= comparisonRange.start && revenueDate <= comparisonRange.end;
+        return revenueDate >= comparisonRange.start && revenueDate <= comparisonRange.end && existingClientIds.has(r.clientId);
       });
       
       comparisonRevenue = 
@@ -330,10 +335,11 @@ export default function DashboardPage() {
     const completedProjects = filteredProjects.filter(p => p.status === 'termine');
     const pendingProjects = filteredProjects.filter(p => p.status === 'en_attente');
     
-    // Factures
+    // Factures (uniquement clients existants)
+    const existingClientIds = new Set(clients.map(c => c.id));
     const filteredDocuments = documents.filter(d => {
       const docDate = d.date;
-      return docDate >= start && docDate <= end;
+      return docDate >= start && docDate <= end && existingClientIds.has(d.clientId);
     });
     
     const totalInvoices = filteredDocuments.filter(d => d.type === 'facture');
@@ -396,9 +402,10 @@ export default function DashboardPage() {
       current.setMonth(current.getMonth() + 1);
     }
     
-    // Factures payées dans la période
+    // Factures payées dans la période (uniquement clients existants)
+    const existingClientIds = new Set(clients.map(c => c.id));
     paidInvoices.forEach(doc => {
-      if (doc.date >= start && doc.date <= end) {
+      if (doc.date >= start && doc.date <= end && existingClientIds.has(doc.clientId)) {
         const date = doc.date;
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         if (months[monthKey] !== undefined) {
@@ -407,9 +414,9 @@ export default function DashboardPage() {
       }
     });
     
-    // Projets dans la période
+    // Projets dans la période (uniquement clients existants)
     projects.forEach(project => {
-      if (project.amount && project.amount > 0) {
+      if (project.amount && project.amount > 0 && existingClientIds.has(project.clientId)) {
         const projectDate = project.createdAt || project.startDate;
         if (projectDate >= start && projectDate <= end) {
           const monthKey = `${projectDate.getFullYear()}-${String(projectDate.getMonth() + 1).padStart(2, '0')}`;
@@ -420,9 +427,9 @@ export default function DashboardPage() {
       }
     });
     
-    // Revenus manuels dans la période
+    // Revenus manuels dans la période (uniquement clients existants)
     manualRevenues.forEach(revenue => {
-      if (revenue.date >= start && revenue.date <= end) {
+      if (revenue.date >= start && revenue.date <= end && existingClientIds.has(revenue.clientId)) {
         const date = revenue.date;
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         if (months[monthKey] !== undefined) {
@@ -439,15 +446,16 @@ export default function DashboardPage() {
         revenus: Math.round(revenue),
       };
     });
-  }, [projects, documents, manualRevenues, paidInvoices, getDateRange]);
+  }, [projects, documents, manualRevenues, paidInvoices, clients, getDateRange]);
 
-  // Données pour graphique revenus par type de projet (dans la période)
+  // Données pour graphique revenus par type de projet (dans la période) - uniquement clients existants
   const revenueByProjectType = useMemo(() => {
     const { start, end } = getDateRange;
+    const existingClientIds = new Set(clients.map(c => c.id));
     const typeMap: { [key: string]: number } = {};
     
     projects.forEach(project => {
-      if (project.amount && project.amount > 0) {
+      if (project.amount && project.amount > 0 && existingClientIds.has(project.clientId)) {
         const projectDate = project.createdAt || project.startDate;
         if (projectDate >= start && projectDate <= end) {
           const typeName = 
@@ -464,33 +472,31 @@ export default function DashboardPage() {
       name,
       value: Math.round(value),
     }));
-  }, [projects, getDateRange]);
+  }, [projects, clients, getDateRange]);
 
-  // Top clients par revenus (dans la période)
+  // Top clients par revenus (dans la période) - uniquement clients existants
   const topClients = useMemo(() => {
-    const { start, end } = getDateRange;
+    const existingClientIds = new Set(clients.map(c => c.id));
+    const { filteredInvoices, filteredProjects, filteredManualRevenues } = filteredData;
     const clientRevenue: { [key: string]: number } = {};
     
-    // Factures dans la période
-    paidInvoices.forEach(doc => {
-      if (doc.clientId && doc.date >= start && doc.date <= end) {
+    // Factures dans la période (déjà filtrées par client existant)
+    filteredInvoices.forEach(doc => {
+      if (existingClientIds.has(doc.clientId)) {
         clientRevenue[doc.clientId] = (clientRevenue[doc.clientId] || 0) + (doc.total || 0);
       }
     });
     
-    // Projets dans la période
-    projects.forEach(project => {
-      if (project.clientId && project.amount && project.amount > 0) {
-        const projectDate = project.createdAt || project.startDate;
-        if (projectDate >= start && projectDate <= end) {
-          clientRevenue[project.clientId] = (clientRevenue[project.clientId] || 0) + project.amount;
-        }
+    // Projets dans la période (déjà filtrés par client existant)
+    filteredProjects.forEach(project => {
+      if (project.amount && project.amount > 0 && existingClientIds.has(project.clientId)) {
+        clientRevenue[project.clientId] = (clientRevenue[project.clientId] || 0) + project.amount;
       }
     });
     
-    // Revenus manuels dans la période
-    manualRevenues.forEach(revenue => {
-      if (revenue.clientId && revenue.date >= start && revenue.date <= end) {
+    // Revenus manuels dans la période (déjà filtrés par client existant)
+    filteredManualRevenues.forEach(revenue => {
+      if (existingClientIds.has(revenue.clientId)) {
         clientRevenue[revenue.clientId] = (clientRevenue[revenue.clientId] || 0) + revenue.amount;
       }
     });
@@ -499,13 +505,14 @@ export default function DashboardPage() {
       .map(([clientId, revenue]) => {
         const client = clients.find(c => c.id === clientId);
         return {
-          name: client?.name || 'Client inconnu',
+          name: client?.name || 'Client supprimé',
           revenue: Math.round(revenue),
         };
       })
+      .filter(item => item.name !== 'Client supprimé') // Exclure les clients supprimés
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
-  }, [projects, documents, manualRevenues, clients, paidInvoices, getDateRange]);
+  }, [filteredData, clients]);
 
   // Revenus par plombier (dans la période)
   const revenueByPlombier = useMemo(() => {
@@ -535,17 +542,20 @@ export default function DashboardPage() {
       }
     });
     
-    // Revenus des factures (60% pour le plombier assigné au client)
+    // Revenus des factures (60% pour le plombier assigné au client) - uniquement clients existants
+    const existingClientIds = new Set(clients.map(c => c.id));
     filteredInvoices.forEach(invoice => {
-      const client = clients.find(c => c.id === invoice.clientId);
-      if (client?.assignedPlombierId && plombierRevenue[client.assignedPlombierId]) {
-        plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * 0.6;
+      if (existingClientIds.has(invoice.clientId)) {
+        const client = clients.find(c => c.id === invoice.clientId);
+        if (client?.assignedPlombierId && plombierRevenue[client.assignedPlombierId]) {
+          plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * 0.6;
+        }
       }
     });
     
-    // Revenus manuels (60% pour le plombier spécifié)
+    // Revenus manuels (60% pour le plombier spécifié) - uniquement clients existants
     filteredManualRevenues.forEach(revenue => {
-      if (revenue.plombierId && plombierRevenue[revenue.plombierId]) {
+      if (existingClientIds.has(revenue.clientId) && revenue.plombierId && plombierRevenue[revenue.plombierId]) {
         plombierRevenue[revenue.plombierId].revenue += revenue.amount * 0.6;
       }
     });
@@ -1026,6 +1036,7 @@ export default function DashboardPage() {
                     const percentage = kpis.plombierRevenue > 0 
                       ? (plombier.revenue / kpis.plombierRevenue) * 100 
                       : 0;
+                    const plombierUser = plombiers.find(p => p.name === plombier.name);
                     return (
                       <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-3 px-4">
@@ -1036,6 +1047,15 @@ export default function DashboardPage() {
                               </span>
                             </div>
                             <span className="font-medium text-gray-900">{plombier.name}</span>
+                            {plombierUser && (
+                              <Link
+                                href={`/plombiers/${plombierUser.id}`}
+                                className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded"
+                                title="Modifier"
+                              >
+                                <Edit size={14} />
+                              </Link>
+                            )}
                           </div>
                         </td>
                         <td className="py-3 px-4 text-right">

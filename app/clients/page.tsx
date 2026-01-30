@@ -130,13 +130,13 @@ export default function ClientsPage() {
               .filter(p => p.amount && p.amount > 0)
               .reduce((sum, p) => sum + (p.amount || 0), 0);
 
-            // Revenus manuels
-            const manualRevenue = revenuesSnapshot.docs
+            // Dépannages
+            const depannageRevenue = revenuesSnapshot.docs
               .map(d => d.data())
               .reduce((sum, r) => sum + (r.amount || 0), 0);
             
-            // Total = factures + projets + revenus manuels
-            const totalRevenue = invoiceRevenue + projectRevenue + manualRevenue;
+            // Total = factures + projets + dépannages
+            const totalRevenue = invoiceRevenue + projectRevenue + depannageRevenue;
 
             return {
               ...clientData,
@@ -216,7 +216,7 @@ export default function ClientsPage() {
           // #region agent log
           fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:192',message:'Creating depannage revenue',data:{amount:actionData.amount,description:actionData.description},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
           // #endregion
-          // Créer un revenu manuel (dépannage/urgence)
+          // Créer un dépannage (revenu sans facture)
           const revenueRef = await addDoc(collection(db, 'manualRevenues'), {
             clientId,
             amount: parseFloat(actionData.amount) || 0,
@@ -935,7 +935,7 @@ export default function ClientsPage() {
                             className="input"
                           >
                             <option value="none">Aucune action</option>
-                            <option value="depannage">Dépannage / Urgence (Revenu manuel)</option>
+                            <option value="depannage">Dépannage / Urgence</option>
                             <option value="projet">Projet</option>
                           </select>
                         </div>

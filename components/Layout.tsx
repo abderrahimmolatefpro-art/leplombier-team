@@ -13,8 +13,7 @@ import {
   FileText, 
   LogOut,
   Menu,
-  X,
-  FlaskConical
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +35,7 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/projets', label: 'Projets', icon: FolderKanban },
     { href: '/planning', label: 'Planning', icon: Calendar },
     { href: '/documents', label: 'Documents', icon: FileText },
+    { href: '/plombiers', label: 'Prestations plombiers', icon: Users },
   ];
 
   const handleLogout = async () => {
@@ -108,22 +108,6 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 );
               })}
-              
-              {isAdmin && (
-                <Link
-                  href="/test-data"
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
-                    pathname === '/test-data'
-                      ? 'bg-yellow-50 text-yellow-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  )}
-                >
-                  <FlaskConical size={20} />
-                  <span>Données de test</span>
-                </Link>
-              )}
             </nav>
 
             <div className="p-4 border-t border-gray-200">

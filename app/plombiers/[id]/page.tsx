@@ -1,0 +1,222 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import Layout from '@/components/Layout';
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { User } from '@/types';
+import { ArrowLeft, Save, Users } from 'lucide-react';
+import Link from 'next/link';
+
+export default function PlombierDetailPage() {
+  const { user: currentUser, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const params = useParams();
+  const plombierId = params.id as string;
+  
+  const [plombier, setPlombier] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+  });
+
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      router.push('/login');
+      return;
+    }
+
+    if (currentUser && currentUser.role !== 'admin') {
+      router.push('/dashboard');
+      return;
+    }
+
+    if (plombierId) {
+      loadPlombier();
+    }
+  }, [currentUser, authLoading, router, plombierId]);
+
+  const loadPlombier = async () => {
+    try {
+      const plombierDoc = await getDoc(doc(db, 'users', plombierId));
+      if (!plombierDoc.exists()) {
+        router.push('/plombiers');
+        return;
+      }
+      
+      const plombierData = {
+        id: plombierDoc.id,
+        ...plombierDoc.data(),
+        createdAt: plombierDoc.data().createdAt?.toDate() || new Date(),
+        updatedAt: plombierDoc.data().updatedAt?.toDate() || new Date(),
+      } as User;
+
+      if (plombierData.role !== 'plombier') {
+        router.push('/plombiers');
+        return;
+      }
+
+      setPlombier(plombierData);
+      setFormData({
+        name: plombierData.name || '',
+        email: plombierData.email || '',
+        phone: plombierData.phone || '',
+      });
+    } catch (error) {
+      console.error('Error loading plombier:', error);
+      router.push('/plombiers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!plombier) return;
+
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'users', plombier.id), {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || null,
+        updatedAt: Timestamp.now(),
+      });
+
+      alert('Plombier mis à jour avec succès !');
+      router.push('/plombiers');
+    } catch (error: any) {
+      console.error('Error updating plombier:', error);
+      if (error.code === 'permission-denied') {
+        alert('Erreur de permissions. Vous devez être admin pour modifier un plombier.');
+      } else {
+        alert(`Erreur lors de la mise à jour: ${error.message || 'Erreur inconnue'}`);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!plombier) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="card text-center py-12">
+            <p className="text-gray-600">Plombier introuvable</p>
+            <Link href="/plombiers" className="btn btn-primary mt-4">
+              Retour à la liste
+            </Link>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link 
+            href="/plombiers" 
+            className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <ArrowLeft size={20} />
+            <span>Retour aux prestations plombiers</span>
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-900">Fiche plombier</h1>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center space-x-4 mb-6">
+            <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
+              <Users className="text-primary-600" size={32} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">{plombier.name}</h2>
+              <p className="text-sm text-gray-600">{plombier.email}</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nom complet *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="input"
+                placeholder="Nom du plombier"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email *
+              </label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="input"
+                placeholder="email@example.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Téléphone
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="input"
+                placeholder="+212 6XX XXX XXX"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div className="text-sm text-gray-600">
+                <p>Rôle: <span className="font-medium text-primary-700">Plombier</span></p>
+                <p className="mt-1">Créé le: {new Date(plombier.createdAt).toLocaleDateString('fr-FR')}</p>
+              </div>
+              <div className="flex space-x-4">
+                <Link href="/plombiers" className="btn btn-secondary">
+                  Annuler
+                </Link>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary flex items-center space-x-2"
+                  disabled={saving}
+                >
+                  <Save size={18} />
+                  <span>{saving ? 'Enregistrement...' : 'Enregistrer'}</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Layout>
+  );
+}

@@ -40,6 +40,27 @@ export default function ClientDetailPage() {
   const [allPlombiers, setAllPlombiers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRevenueModal, setShowRevenueModal] = useState(false);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [documentType, setDocumentType] = useState<'facture' | 'devis' | 'bon_commande'>('devis');
+  const [documentFormData, setDocumentFormData] = useState({
+    type: 'devis' as Document['type'],
+    projectId: '',
+    manualRevenueId: '',
+    number: '',
+    date: new Date().toISOString().split('T')[0],
+    dueDate: '',
+    items: [] as DocumentItem[],
+    subtotal: 0,
+    tax: 0,
+    total: 0,
+    status: 'brouillon' as Document['status'],
+    notes: '',
+  });
+  const [currentDocumentItem, setCurrentDocumentItem] = useState({
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -178,11 +199,11 @@ export default function ClientDetailPage() {
       .filter(p => p.amount && p.amount > 0)
       .reduce((sum, p) => sum + (p.amount || 0), 0);
     
-    // Revenus manuels (sans facture, "en noir")
-    const manualRevenue = manualRevenues.reduce((sum, r) => sum + r.amount, 0);
+    // Dépannages (revenus sans facture)
+    const depannageRevenue = manualRevenues.reduce((sum, r) => sum + r.amount, 0);
     
-    // Total = factures + projets + revenus manuels
-    const totalRevenue = invoiceRevenue + projectRevenue + manualRevenue;
+    // Total = factures + projets + dépannages
+    const totalRevenue = invoiceRevenue + projectRevenue + depannageRevenue;
     const plombierRevenue = totalRevenue * 0.6; // 60%
     const companyRevenue = totalRevenue * 0.4; // 40%
 
@@ -507,9 +528,18 @@ export default function ClientDetailPage() {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Documents</h2>
-                <Link href="/documents" className="text-sm text-primary-600 hover:underline">
-                  Voir tout
-                </Link>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setShowDocumentModal(true)}
+                    className="btn btn-primary btn-sm flex items-center space-x-1"
+                  >
+                    <Plus size={16} />
+                    <span>Créer</span>
+                  </button>
+                  <Link href="/documents" className="text-sm text-primary-600 hover:underline">
+                    Voir tout
+                  </Link>
+                </div>
               </div>
               <div className="space-y-3">
                 {documents.slice(0, 5).map((document) => (
@@ -554,16 +584,16 @@ export default function ClientDetailPage() {
               </div>
             </div>
 
-            {/* Revenus manuels */}
+            {/* Dépannages */}
             <div className="card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Revenus manuels</h2>
+                <h2 className="text-xl font-bold text-gray-900">Dépannages</h2>
                 <button
                   onClick={() => setShowRevenueModal(true)}
                   className="btn btn-primary flex items-center space-x-2"
                 >
                   <Plus size={20} />
-                  <span>Ajouter un revenu</span>
+                  <span>Ajouter un dépannage</span>
                 </button>
               </div>
               <div className="space-y-3">
@@ -594,7 +624,7 @@ export default function ClientDetailPage() {
                       </div>
                       <button
                         onClick={async () => {
-                          if (confirm('Supprimer ce revenu ?')) {
+                          if (confirm('Supprimer ce dépannage ?')) {
                             try {
                               await deleteDoc(doc(db, 'manualRevenues', revenue.id));
                               loadClientData();
@@ -613,7 +643,7 @@ export default function ClientDetailPage() {
                 ))}
                 {manualRevenues.length === 0 && (
                   <p className="text-sm text-gray-500 text-center py-4">
-                    Aucun revenu manuel enregistré
+                    Aucun dépannage enregistré
                   </p>
                 )}
               </div>
@@ -622,7 +652,7 @@ export default function ClientDetailPage() {
         </div>
       </div>
 
-      {/* Modal pour ajouter un revenu manuel */}
+      {/* Modal pour ajouter un dépannage */}
       {showRevenueModal && (
         <RevenueModal
           clientId={clientId}
@@ -632,11 +662,59 @@ export default function ClientDetailPage() {
           onSave={loadClientData}
         />
       )}
+
+      {/* Modal pour créer un document */}
+      {showDocumentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Créer un document</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Type de document *
+                  </label>
+                  <select
+                    value={documentType}
+                    onChange={(e) => setDocumentType(e.target.value as 'facture' | 'devis' | 'bon_commande')}
+                    className="input"
+                  >
+                    <option value="devis">Devis</option>
+                    <option value="facture">Facture</option>
+                    <option value="bon_commande">Bon de commande</option>
+                  </select>
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowDocumentModal(false)}
+                    className="btn btn-secondary"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      router.push(`/documents?clientId=${clientId}&type=${documentType}`);
+                      setShowDocumentModal(false);
+                    }}
+                    className="btn btn-primary"
+                  >
+                    Créer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
 
-// Composant modal pour ajouter un revenu manuel
+// Composant modal pour ajouter un dépannage
 function RevenueModal({
   clientId,
   projects,
@@ -680,7 +758,7 @@ function RevenueModal({
     } catch (error: any) {
       console.error('Error saving revenue:', error);
       if (error.code === 'permission-denied') {
-        alert('Erreur de permissions. Veuillez vérifier que les règles Firestore incluent la collection "manualRevenues". Consultez FIRESTORE_RULES_COMPLETE.md');
+        alert('Erreur de permissions. Veuillez vérifier que les règles Firestore incluent la collection "manualRevenues" (dépannages). Consultez FIRESTORE_RULES_COMPLETE.md');
       } else {
         alert(`Erreur lors de la sauvegarde: ${error.message || 'Erreur inconnue'}`);
       }
@@ -691,7 +769,7 @@ function RevenueModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Ajouter un revenu manuel</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Ajouter un dépannage</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

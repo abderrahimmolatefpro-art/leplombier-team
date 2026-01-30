@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import {
@@ -16,7 +16,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Document, Client, Project, DocumentItem } from '@/types';
+import { Document, Client, Project, DocumentItem, ManualRevenue } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { Plus, Edit, Trash2, FileText, Download, Mail, Eye } from 'lucide-react';
 import Link from 'next/link';
@@ -24,9 +24,11 @@ import Link from 'next/link';
 export default function DocumentsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [manualRevenues, setManualRevenues] = useState<ManualRevenue[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
@@ -34,6 +36,7 @@ export default function DocumentsPage() {
   const [formData, setFormData] = useState({
     type: 'devis' as Document['type'],
     projectId: '',
+    manualRevenueId: '',
     clientId: '',
     number: '',
     date: '',
@@ -59,8 +62,34 @@ export default function DocumentsPage() {
 
     if (user) {
       loadData();
+      
+      // Si des paramètres sont présents dans l'URL, ouvrir le modal automatiquement
+      const clientIdFromUrl = searchParams?.get('clientId');
+      const typeFromUrl = searchParams?.get('type');
+      if (clientIdFromUrl || typeFromUrl) {
+        setEditingDocument(null);
+        resetForm();
+        setFormData({ 
+          type: (typeFromUrl as Document['type']) || 'devis',
+          projectId: '',
+          manualRevenueId: '',
+          clientId: clientIdFromUrl || '',
+          number: '',
+          date: new Date().toISOString().split('T')[0],
+          dueDate: '',
+          items: [],
+          subtotal: 0,
+          tax: 0,
+          total: 0,
+          status: 'brouillon',
+          notes: '',
+        });
+        setShowModal(true);
+        // Nettoyer l'URL après utilisation
+        router.replace('/documents');
+      }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, searchParams]);
 
   const loadData = async () => {
     try {
@@ -98,6 +127,30 @@ export default function DocumentsPage() {
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
       setProjects(projectsData);
+
+      // Load manual revenues
+      const revenuesQuery = query(collection(db, 'manualRevenues'));
+      const revenuesSnapshot = await getDocs(revenuesQuery);
+      const revenuesData = revenuesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        date: doc.data().date?.toDate() || new Date(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      })) as ManualRevenue[];
+      setManualRevenues(revenuesData);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'documents/page.tsx:loadData',message:'Data loaded',data:{projectsCount:projectsData.length,revenuesCount:revenuesData.length,clientsCount:clientsData.length,projects:projectsData.map(p=>({id:p.id,title:p.title,clientId:p.clientId})),revenues:revenuesData.map(r=>({id:r.id,clientId:r.clientId,amount:r.amount}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      console.log('📊 Données chargées:', {
+        projets: projectsData.length,
+        revenus: revenuesData.length,
+        clients: clientsData.length,
+        projets_détails: projectsData.map(p => ({ id: p.id, title: p.title, clientId: p.clientId })),
+        revenus_détails: revenuesData.map(r => ({ id: r.id, clientId: r.clientId, amount: r.amount }))
+      });
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -162,9 +215,18 @@ export default function DocumentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation : pour une facture, il faut un projet OU un dépannage
+    if (formData.type === 'facture' && !formData.projectId && !formData.manualRevenueId) {
+      alert('Une facture doit être liée à un projet ou à un dépannage');
+      return;
+    }
+    
     try {
       const documentData = {
         ...formData,
+        projectId: formData.projectId || null,
+        manualRevenueId: formData.manualRevenueId || null,
         number: formData.number || generateDocumentNumber(formData.type),
         date: Timestamp.fromDate(new Date(formData.date || new Date())),
         dueDate: formData.dueDate ? Timestamp.fromDate(new Date(formData.dueDate)) : null,
@@ -193,6 +255,7 @@ export default function DocumentsPage() {
     setFormData({
       type: document.type,
       projectId: document.projectId || '',
+      manualRevenueId: document.manualRevenueId || '',
       clientId: document.clientId,
       number: document.number,
       date: formatDate(document.date).split('/').reverse().join('-'),
@@ -223,6 +286,7 @@ export default function DocumentsPage() {
     setFormData({
       type: 'devis',
       projectId: '',
+      manualRevenueId: '',
       clientId: '',
       number: '',
       date: '',
@@ -473,7 +537,13 @@ export default function DocumentsPage() {
                       <select
                         required
                         value={formData.clientId}
-                        onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                        onChange={(e) => {
+                          const selectedClientId = e.target.value;
+                          // #region agent log
+                          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'documents/page.tsx:clientSelect',message:'Client selected',data:{clientId:selectedClientId,projectsForClient:projects.filter(p=>p.clientId===selectedClientId).length,revenuesForClient:manualRevenues.filter(r=>r.clientId===selectedClientId).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                          // #endregion
+                          setFormData({ ...formData, clientId: selectedClientId });
+                        }}
                         className="input"
                       >
                         <option value="">Sélectionner un client</option>
@@ -487,12 +557,19 @@ export default function DocumentsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Projet (optionnel)
+                        Projet {formData.type === 'facture' ? '*' : '(optionnel)'}
                       </label>
                       <select
                         value={formData.projectId}
-                        onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ 
+                            ...formData, 
+                            projectId: e.target.value,
+                            manualRevenueId: e.target.value ? '' : formData.manualRevenueId // Réinitialiser dépannage si projet sélectionné
+                          });
+                        }}
                         className="input"
+                        required={formData.type === 'facture' && !formData.manualRevenueId}
                       >
                         <option value="">Aucun projet</option>
                         {projects
@@ -503,8 +580,53 @@ export default function DocumentsPage() {
                             </option>
                           ))}
                       </select>
+                      {formData.clientId && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {projects.filter((p) => p.clientId === formData.clientId).length} projet(s) disponible(s) pour ce client
+                        </p>
+                      )}
                     </div>
                   </div>
+
+                  {/* Dépannage - uniquement pour les factures */}
+                  {formData.type === 'facture' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dépannage {!formData.projectId ? '*' : '(optionnel)'}
+                      </label>
+                      <select
+                        value={formData.manualRevenueId}
+                        onChange={(e) => {
+                          setFormData({ 
+                            ...formData, 
+                            manualRevenueId: e.target.value,
+                            projectId: e.target.value ? '' : formData.projectId // Réinitialiser projet si dépannage sélectionné
+                          });
+                        }}
+                        className="input"
+                        required={formData.type === 'facture' && !formData.projectId}
+                      >
+                        <option value="">Aucun dépannage</option>
+                        {manualRevenues
+                          .filter((r) => r.clientId === formData.clientId)
+                          .map((revenue) => (
+                            <option key={revenue.id} value={revenue.id}>
+                              {formatDate(revenue.date)} - {formatCurrency(revenue.amount)} - {revenue.description}
+                            </option>
+                          ))}
+                      </select>
+                      {formData.clientId && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {manualRevenues.filter((r) => r.clientId === formData.clientId).length} dépannage(s) disponible(s) pour ce client
+                        </p>
+                      )}
+                      {formData.type === 'facture' && !formData.projectId && !formData.manualRevenueId && (
+                        <p className="text-xs text-red-600 mt-1">
+                          ⚠️ Une facture doit être liée à un projet ou à un dépannage
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>

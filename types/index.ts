@@ -98,7 +98,8 @@ export interface PlanningEntry {
 export interface Document {
   id: string;
   type: 'facture' | 'devis' | 'bon_commande';
-  projectId?: string;
+  projectId?: string; // Obligatoire si type === 'facture' et manualRevenueId non défini
+  manualRevenueId?: string; // Obligatoire si type === 'facture' et projectId non défini
   clientId: string;
   number: string;
   date: Date;
