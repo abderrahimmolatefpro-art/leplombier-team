@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Client, Project, Document, User, PlanningEntry, ClientStats, ManualRevenue } from '@/types';
+import { Client, Project, Document, DocumentItem, User, PlanningEntry, ClientStats, ManualRevenue } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { 
   ArrowLeft, 
