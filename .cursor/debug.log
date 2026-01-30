@@ -40,3 +40,10 @@
 {"location":"api/webhook/client/route.ts:POST","message":"Request body received","data":{"hasName":true,"hasPhone":true,"hasEmail":true},"timestamp":1769699795423,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
 {"location":"api/webhook/client/route.ts:POST","message":"New client created","data":{"clientId":"ggiVJBe7B8uB4YeDNqV5","name":"Ahmed Benali"},"timestamp":1769699795738,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
 {"location":"api/webhook/client/route.ts:POST","message":"Email notification sent","data":{"emailSent":false},"timestamp":1769699796042,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"api/webhook/client/route.ts:POST","message":"Webhook called","data":{"timestamp":1769716156793},"timestamp":1769716156793,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"api/webhook/client/route.ts:POST","message":"Request body received","data":{"hasName":true,"hasPhone":true,"hasEmail":false},"timestamp":1769716156801,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"api/webhook/client/route.ts:POST","message":"Existing client found","data":{"clientId":"IwvNIOSepUWY18Kdd6DY"},"timestamp":1769716157329,"sessionId":"debug-session","runId":"run1","hypothesisId":"B"}
+{"location":"clients/page.tsx:163","message":"handleSubmit called","data":{"actionType":"none","isEditing":false,"hasPlombier":false},"timestamp":1769771113741,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"clients/page.tsx:180","message":"Creating new client","data":{"clientName":"Said EL FAOUZ"},"timestamp":1769771113741,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"clients/page.tsx:183","message":"Client created successfully","data":{"clientId":"UQetQskMeSqLO3rYMIbv"},"timestamp":1769771114159,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"clients/page.tsx:253","message":"handleSubmit completed successfully","data":{"clientId":"UQetQskMeSqLO3rYMIbv"},"timestamp":1769771114160,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}

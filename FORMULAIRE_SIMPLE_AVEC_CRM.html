@@ -1,16 +1,7 @@
 <!-- 
-  ============================================
   FORMULAIRE WORDPRESS/ELEMENTOR POUR CRM
-  ============================================
-  
-  Instructions :
-  1. Copiez ce code dans un widget HTML d'Elementor
-  2. IMPORTANT : Remplacez API_URL ci-dessous (ligne ~279) par votre URL d'API :
-     - Développement : http://localhost:3000/api/webhook/client
-     - Production : https://votre-domaine.vercel.app/api/webhook/client
-  3. Si vous avez configuré WEBHOOK_API_KEY, ajoutez-la dans API_KEY (ligne ~280)
-  
-  ============================================
+  Instructions : Copiez ce code dans un widget HTML d'Elementor
+  IMPORTANT : URL de production configurée pour dash.leplombier.ma
 -->
 
 <style>
@@ -300,15 +291,10 @@
 <script>
 (function() {
   // ⚠️ CONFIGURATION : URL de production configurée
-  // Options :
-  // - Développement local : 'http://localhost:3000/api/webhook/client'
-  // - Avec ngrok (pour tester) : 'https://votre-url.ngrok.io/api/webhook/client'
-  // - Production : 'https://dash.leplombier.ma/api/webhook/client'
   const API_URL = 'https://dash.leplombier.ma/api/webhook/client';
-  
-  // Optionnel : ajoutez votre clé API si vous l'avez configurée dans .env.local
-  // Si vous n'utilisez pas de clé API, laissez vide
-  const API_KEY = '';
+  // Pour développement local : 'http://localhost:3000/api/webhook/client'
+  // Optionnel : ajoutez votre clé API si vous l'avez configurée
+  const API_KEY = ''; // Laissez vide si vous n'utilisez pas de clé API
   
   const form = document.getElementById('crm-contact-form');
   const messageDiv = document.getElementById('crm-form-message');

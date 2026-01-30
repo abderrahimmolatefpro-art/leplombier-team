@@ -1,0 +1,1195 @@
+<!-- 
+  ============================================
+  FORMULAIRE COMPLET AVEC INTÉGRATION CRM
+  ============================================
+  
+  Instructions :
+  1. Copiez TOUT ce code dans un widget HTML d'Elementor
+  2. IMPORTANT : Remplacez CRM_API_URL ci-dessous (ligne ~280) par votre URL d'API :
+     - Développement : http://localhost:3000/api/webhook/client
+     - Production : https://votre-domaine.vercel.app/api/webhook/client
+     - Avec ngrok : https://votre-url.ngrok.io/api/webhook/client
+  3. Si vous avez configuré WEBHOOK_API_KEY, ajoutez-la dans CRM_API_KEY
+  
+  ============================================
+-->
+
+<div class="address-selector-container">
+  <h2>Où intervenir ?</h2>
+  
+  <!-- Indicateur de progression -->
+  <div class="progress-bar">
+    <div class="progress-step active" data-step="step-address">1. Adresse</div>
+    <div class="progress-step" data-step="step-service-need">2. Service</div>
+    <div class="progress-step" data-step="step-service-details">3. Détails</div>
+    <div class="progress-step" data-step="step-contact-details">4. Contact</div>
+  </div>
+  
+  <div class="counselor-status">
+    <div class="counselor-status-item">
+      <span class="counselor-status-label">Conseillers en ligne:</span>
+      <span class="counselor-status-value online-count">--</span>
+    </div>
+    <div class="counselor-status-item">
+      <span class="counselor-status-label">Conseillers occupés:</span>
+      <span class="counselor-status-value busy-count">--</span>
+    </div>
+  </div>
+  
+  <!-- Étape 1: Saisie de l'adresse -->
+  <div id="step-address" class="form-step active">
+    <div class="address-input-container">
+      <span class="address-icon"><i class="fas fa-map-marker-alt"></i></span>
+      <input type="text" id="address-input" placeholder="Quelle est votre adresse ?">
+      <button id="use-location" class="location-button">
+        <i class="fas fa-crosshairs"></i> Utiliser ma position
+      </button>
+    </div>
+    
+    <!-- Message d'aide pour la localisation -->
+    <div id="location-help" class="location-help" style="display:none;">
+      <i class="fas fa-info-circle"></i>
+      <span id="location-help-text"></span>
+    </div>
+    
+    <!-- Conteneur pour la carte -->
+    <div id="map-container" style="height: 300px; margin: 20px 0; display: none;"></div>
+    <div id="map-instructions" style="margin-bottom: 10px; display: none;">
+      <i class="fas fa-hand-pointer"></i> Déplacez le marqueur pour préciser votre position exacte
+    </div>
+    
+    <!-- Adresse sélectionnée -->
+    <div id="selected-address-display" style="margin: 15px 0; font-weight: bold; color: #e74c3c; display: none;"></div>
+    
+    <div class="navigation-buttons">
+      <button id="continue-to-service-need" class="next-button" style="display: none;">Continuer</button>
+    </div>
+  </div>
+  
+  <!-- Étape 2: Que souhaitez-vous ? -->
+  <div id="step-service-need" class="form-step">
+    <h3>Que souhaitez-vous ?</h3>
+    <div class="need-options">
+      <div class="need-option" data-need="fuite">
+        <i class="fas fa-tint"></i>
+        <span>Problème de fuite</span>
+      </div>
+      <div class="need-option" data-need="installation">
+        <i class="fas fa-tools"></i>
+        <span>Installer un nouvel équipement</span>
+      </div>
+      <div class="need-option" data-need="reparation">
+        <i class="fas fa-wrench"></i>
+        <span>Réparer un équipement en panne</span>
+      </div>
+      <div class="need-option" data-need="entretien">
+        <i class="fas fa-shield-alt"></i>
+        <span>Entretenir mon installation</span>
+      </div>
+      <div class="need-option" data-need="visite">
+        <i class="fas fa-user-hard-hat"></i>
+        <span>Visite d'un expert plombier</span>
+      </div>
+    </div>
+    <div class="navigation-buttons">
+      <button class="back-button" data-prev="step-address">Retour</button>
+    </div>
+  </div>
+  
+  <!-- Étape 3: Préciser votre besoin -->
+  <div id="step-service-details" class="form-step">
+    <h3>Préciser votre besoin</h3>
+    <div id="service-details-container" class="detail-options"></div>
+    <div class="navigation-buttons">
+      <button class="back-button" data-prev="step-service-need">Retour</button>
+    </div>
+  </div>
+  
+  <!-- Étape 4: Détails de contact -->
+  <div id="step-contact-details" class="form-step">
+    <h3>Vos coordonnées</h3>
+    <div class="form-group">
+      <label for="client-name">Votre nom complet</label>
+      <input type="text" id="client-name" class="form-control" placeholder="Nom et prénom" required>
+    </div>
+    <div class="form-group">
+      <label for="client-phone">Votre numéro de téléphone</label>
+      <input type="tel" id="client-phone" class="form-control" placeholder="Ex: 06 12 34 56 78" required>
+    </div>
+    <div class="service-summary">
+      <div class="service-info">
+        <span id="service-type-display">Service sélectionné</span>
+      </div>
+      <div id="visit-required-notice" style="display: none; color: #e74c3c; font-weight: bold; margin-top: 10px;">
+        Ce service nécessite une visite préalable
+      </div>
+      <p>Un conseiller client vous répond en <span id="response-time">1-15</span> minutes pour confirmer votre demande.</p>
+    </div>
+    <div class="navigation-buttons">
+      <button class="back-button" data-prev="step-service-details">Retour</button>
+      <button id="submit-service-request" class="submit-button">Envoyer ma demande</button>
+    </div>
+  </div>
+  
+  <!-- Inputs cachés pour stocker les données -->
+  <input type="hidden" id="selected-address" name="selected-address">
+  <input type="hidden" id="selected-lat" name="selected-lat">
+  <input type="hidden" id="selected-lng" name="selected-lng">
+  <input type="hidden" id="selected-need" name="selected-need">
+  <input type="hidden" id="selected-detail" name="selected-detail">
+  <input type="hidden" id="visit-required" name="visit-required" value="false">
+</div>
+
+<style>
+/* Style pour les compteurs de conseillers */
+.online-count {
+  color: #0b9d76;
+  font-weight: bold;
+}
+
+.busy-count {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+/* Style pour le temps de réponse */
+#response-time {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.counselor-status {
+  display: flex;
+  justify-content: center;
+  background-color: #f0f8f4;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.counselor-status-item {
+  margin: 0 15px;
+  display: flex;
+  align-items: center;
+}
+
+.counselor-status-label {
+  margin-right: 5px;
+}
+
+.counselor-status-value {
+  font-weight: bold;
+}
+
+.address-selector-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 15px;
+  font-family: Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+/* Message d'aide pour la localisation */
+.location-help {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 5px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.location-help.success {
+  background-color: #d4edda;
+  border-color: #28a745;
+}
+
+.location-help.error {
+  background-color: #f8d7da;
+  border-color: #dc3545;
+}
+
+.location-help i {
+  font-size: 18px;
+}
+
+/* Barre de progression */
+.progress-bar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 25px;
+  position: relative;
+}
+
+.progress-bar::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #ddd;
+  z-index: 1;
+}
+
+.progress-step {
+  position: relative;
+  background-color: white;
+  color: #777;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 14px;
+  border: 2px solid #ddd;
+  z-index: 2;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.progress-step.active {
+  background-color: #0b9d76;
+  color: white;
+  border-color: #0b9d76;
+}
+
+.progress-step.completed {
+  background-color: #e9f5f1;
+  color: #0b9d76;
+  border-color: #0b9d76;
+}
+
+.address-input-container {
+  display: flex;
+  position: relative;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 30px;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.address-input-container:focus-within {
+  border-color: #0b9d76;
+  box-shadow: 0 0 0 3px rgba(11, 157, 118, 0.1);
+}
+
+.address-icon {
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  color: #555;
+}
+
+#address-input {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  outline: none;
+  font-size: 16px;
+}
+
+.location-button {
+  background-color: #e9f5f1;
+  color: #0b9d76;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 30px;
+  margin: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.location-button:hover {
+  background-color: #0b9d76;
+  color: white;
+}
+
+.location-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.location-button i {
+  font-size: 16px;
+}
+
+.form-step {
+  display: none;
+  margin-top: 15px;
+  padding-top: 15px;
+}
+
+.form-step.active {
+  display: block;
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.need-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.need-option {
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.need-option:hover {
+  background-color: #e9f5f1;
+  border-color: #0b9d76;
+}
+
+.need-option.selected {
+  background-color: #0b9d76;
+  color: white;
+  border-color: #0b9d76;
+}
+
+.need-option i {
+  display: block;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.detail-options {
+  display: flex;
+  flex-direction: column;
+  margin-top: 15px;
+  max-height: 400px; 
+  overflow-y: auto;
+}
+
+.detail-option {
+  padding: 12px 15px;
+  margin-bottom: 8px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  border: 2px solid transparent;
+}
+
+.detail-option:hover {
+  background-color: #e9f5f1;
+  border-color: #0b9d76;
+}
+
+.detail-option.selected {
+  background-color: #0b9d76;
+  color: white;
+  border-color: #0b9d76;
+}
+
+.detail-option i {
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+.detail-option .visit-badge {
+  margin-left: auto;
+  background-color: #e74c3c;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.detail-option.selected .visit-badge {
+  background-color: white;
+  color: #e74c3c;
+}
+
+#map-container {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+#map-instructions {
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s;
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  border-color: #0b9d76;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(11, 157, 118, 0.1);
+}
+
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  gap: 10px;
+}
+
+.back-button {
+  background-color: #f5f5f5;
+  color: #555;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.back-button:hover {
+  background-color: #e0e0e0;
+}
+
+.submit-button, .next-button {
+  background-color: #0b9d76;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.3s;
+}
+
+.submit-button:hover, .next-button:hover {
+  background-color: #098564;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.service-summary {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.service-info {
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .progress-step {
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+  
+  .address-input-container {
+    flex-direction: column;
+    border-radius: 10px;
+  }
+  
+  #address-input {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .location-button {
+    width: 100%;
+    margin: 0;
+    border-radius: 0 0 10px 10px;
+    padding: 15px;
+    justify-content: center;
+  }
+  
+  .need-options {
+    grid-template-columns: 1fr;
+  }
+  
+  .counselor-status {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .counselor-status-item {
+    margin: 5px 0;
+  }
+}
+
+/* Desktop : utiliser toute la largeur */
+@media (min-width: 769px) {
+  .address-selector-container {
+    padding: 30px 50px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .address-selector-container {
+    padding: 40px 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .address-selector-container {
+    padding: 10px;
+  }
+  
+  .progress-step {
+    font-size: 10px;
+    padding: 3px 5px;
+  }
+  
+  #map-container {
+    height: 250px;
+  }
+}
+</style>
+
+<script>
+jQuery(document).ready(function($) {
+  // ============================================
+  // CONFIGURATION DE L'API CRM
+  // ============================================
+  // ⚠️ IMPORTANT : URL de production configurée
+  const CRM_API_URL = 'https://dash.leplombier.ma/api/webhook/client'; // Production
+  // Pour développement local : 'http://localhost:3000/api/webhook/client'
+  // Avec ngrok : 'https://votre-url.ngrok.io/api/webhook/client'
+  const CRM_API_KEY = ''; // Optionnel : votre clé API si configurée dans .env.local
+  
+  var map;
+  var marker;
+  var geocoder;
+  
+  // Configuration des options de service par catégorie
+  const serviceOptions = {
+    fuite: [
+      { id: 'detection', label: 'Détection de fuite', icon: 'fa-search', visitRequired: true },
+      { id: 'reparation-visible', label: 'Réparation de fuite visible', icon: 'fa-tools' },
+      { id: 'reparation-cachee', label: 'Réparation de fuite cachée', icon: 'fa-tools', visitRequired: true },
+      { id: 'robinet', label: 'Réparation de robinet qui fuit', icon: 'fa-faucet' },
+      { id: 'toilette', label: 'Réparation de toilette qui fuit', icon: 'fa-toilet' }
+    ],
+    installation: [
+      { id: 'salle-de-bain', label: 'Salle de bain complète', icon: 'fa-bath', visitRequired: true },
+      { id: 'sanitaires', label: 'Sanitaires (WC, lavabo, douche)', icon: 'fa-toilet' },
+      { id: 'chauffe-eau', label: 'Chauffe-eau', icon: 'fa-hot-tub' },
+      { id: 'chauffage', label: 'Chaudière ou chauffage central', icon: 'fa-temperature-high', visitRequired: true },
+      { id: 'pompe-chaleur', label: 'Pompe à chaleur', icon: 'fa-thermometer-half', visitRequired: true },
+      { id: 'climatiseur', label: 'Climatiseur', icon: 'fa-snowflake' },
+      { id: 'piscine', label: 'Équipement de piscine', icon: 'fa-swimming-pool', visitRequired: true },
+      { id: 'electromenager', label: 'Électroménager', icon: 'fa-blender' },
+      { id: 'traitement-eau', label: 'Système de traitement d\'eau complexe', icon: 'fa-filter', visitRequired: true },
+      { id: 'hamam', label: 'Construction de hamam traditionnel', icon: 'fa-spa', visitRequired: true },
+      { id: 'renovation', label: 'Rénovation complète de plomberie', icon: 'fa-hammer', visitRequired: true }
+    ],
+    reparation: [
+      { id: 'chauffage-panne', label: 'Chauffage en panne', icon: 'fa-temperature-high' },
+      { id: 'eau-chaude-panne', label: 'Eau chaude en panne', icon: 'fa-shower' },
+      { id: 'canalisation', label: 'Canalisation bouchée', icon: 'fa-water' },
+      { id: 'climatiseur-panne', label: 'Climatiseur', icon: 'fa-snowflake' },
+      { id: 'piscine-panne', label: 'Équipement de piscine', icon: 'fa-swimming-pool' },
+      { id: 'lave-vaisselle', label: 'Lave-vaisselle ou lave-linge', icon: 'fa-soap' },
+      { id: 'problemes-recurrents', label: 'Problèmes récurrents de plomberie', icon: 'fa-exclamation-triangle', visitRequired: true }
+    ],
+    entretien: [
+      { id: 'entretien-chauffage', label: 'Entretien chauffage', icon: 'fa-temperature-high' },
+      { id: 'entretien-chauffe-eau', label: 'Entretien chauffe-eau', icon: 'fa-hot-tub' },
+      { id: 'entretien-piscine', label: 'Entretien piscine', icon: 'fa-swimming-pool' },
+      { id: 'entretien-climatisation', label: 'Entretien climatisation', icon: 'fa-snowflake' },
+      { id: 'entretien-eau', label: 'Entretien traitement d\'eau', icon: 'fa-filter' }
+    ],
+    visite: [
+      { id: 'visite-expert', label: 'Visite d\'un expert plombier', icon: 'fa-user-hard-hat', visitRequired: true }
+    ]
+  };
+
+  // ============================================
+  // FONCTION POUR EXTRAIRE LA VILLE DE L'ADRESSE
+  // ============================================
+  function extractCityFromAddress(address) {
+    if (!address) return '';
+    
+    const cities = [
+      'Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger', 'Agadir',
+      'Meknès', 'Oujda', 'Kenitra', 'Tétouan', 'Safi', 'Mohammedia',
+      'El Jadida', 'Nador', 'Beni Mellal', 'Khouribga', 'Settat',
+      'Larache', 'Ksar El Kebir', 'Taza', 'Béni Mellal', 'Azrou'
+    ];
+    
+    for (const city of cities) {
+      if (address.toLowerCase().includes(city.toLowerCase())) {
+        return city;
+      }
+    }
+    
+    const parts = address.split(',');
+    if (parts.length >= 2) {
+      return parts[parts.length - 2].trim();
+    }
+    
+    return '';
+  }
+
+  // ============================================
+  // FONCTION POUR ENVOYER LES DONNÉES AU CRM
+  // ============================================
+  async function sendToCRM(clientData) {
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (CRM_API_KEY) {
+        headers['x-api-key'] = CRM_API_KEY;
+      }
+      
+      const response = await fetch(CRM_API_URL, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(clientData),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Client créé dans le CRM:', result.clientId);
+        return { success: true, clientId: result.clientId };
+      } else {
+        console.error('❌ Erreur CRM:', result.error);
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('❌ Erreur de connexion au CRM:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Fonction pour afficher un message d'aide
+  function showLocationHelp(message, type) {
+    var helpDiv = $('#location-help');
+    var helpText = $('#location-help-text');
+    
+    helpDiv.removeClass('success error');
+    if (type) {
+      helpDiv.addClass(type);
+    }
+    
+    helpText.text(message);
+    helpDiv.fadeIn();
+    
+    if (type === 'success') {
+      setTimeout(function() {
+        helpDiv.fadeOut();
+      }, 5000);
+    }
+  }
+
+  // Fonction pour mettre à jour les nombres de conseillers
+  function updateCounselorStatus() {
+    const totalCounselors = 9;
+    const busyCount = Math.floor(Math.random() * 4) + 1;
+    const onlineCount = totalCounselors - busyCount;
+    
+    $('.online-count').text(onlineCount);
+    $('.busy-count').text(busyCount);
+  }
+  
+  // Fonction pour mettre à jour le temps de réponse estimé
+  function updateResponseTime() {
+    const minTime = 1;
+    const maxTime = 12;
+    const responseTime = Math.floor(Math.random() * (maxTime - minTime + 1)) + minTime;
+    
+    $('#response-time').text(responseTime);
+  }
+
+  // Initialisation et actualisation périodique
+  function initUpdates() {
+    updateCounselorStatus();
+    updateResponseTime();
+    
+    setInterval(updateCounselorStatus, 5000);
+    setInterval(updateResponseTime, 7000);
+  }
+
+  // Charger Google Maps avec les nouvelles API
+  function loadGoogleMaps() {
+    const script = document.createElement('script');
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCqxcdL5GvaVLks1JzVvB_aPKz6Znv2YXg&libraries=places,marker&loading=async&callback=initializeGoogleMaps';
+    script.async = true;
+    script.defer = true;
+    script.onerror = function() {
+      showLocationHelp('Erreur de chargement de la carte. Veuillez saisir votre adresse manuellement.', 'error');
+    };
+    document.head.appendChild(script);
+  }
+  
+  // Initialiser Google Maps avec les nouvelles API
+  window.initializeGoogleMaps = async function() {
+    try {
+      geocoder = new google.maps.Geocoder();
+      
+      const { Map } = await google.maps.importLibrary("maps");
+      const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+      
+      const mapOptions = {
+        center: { lat: 33.5731, lng: -7.5898 },
+        zoom: 12,
+        mapId: 'DEMO_MAP_ID',
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControl: true,
+        gestureHandling: 'greedy'
+      };
+      
+      map = new Map(document.getElementById('map-container'), mapOptions);
+      
+      marker = new AdvancedMarkerElement({
+        map: map,
+        position: { lat: 33.5731, lng: -7.5898 },
+        gmpDraggable: true
+      });
+      
+      marker.addListener('dragend', () => {
+        const position = marker.position;
+        updateAddressFromPosition(position.lat, position.lng);
+      });
+      
+      // Autocomplete moderne
+      const addressInput = document.getElementById('address-input');
+      const options = {
+        componentRestrictions: { country: "ma" },
+        fields: ["formatted_address", "geometry", "name"]
+      };
+      
+      const autocomplete = new google.maps.places.Autocomplete(addressInput, options);
+      
+      autocomplete.addListener('place_changed', function() {
+        const place = autocomplete.getPlace();
+        
+        if (place.geometry) {
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          
+          $('#selected-address').val(place.formatted_address);
+          $('#selected-lat').val(lat);
+          $('#selected-lng').val(lng);
+          
+          $('#selected-address-display').html('<i class="fas fa-check-circle"></i> ' + place.formatted_address).show();
+          
+          $('#map-container').slideDown();
+          $('#map-instructions').slideDown();
+          
+          map.setCenter(place.geometry.location);
+          map.setZoom(16);
+          marker.position = place.geometry.location;
+          
+          $('#continue-to-service-need').fadeIn();
+          
+          showLocationHelp('Adresse sélectionnée avec succès !', 'success');
+        }
+      });
+      
+      console.log('Google Maps initialisé avec succès (nouvelle API)');
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation de Google Maps:', error);
+      showLocationHelp('Erreur lors de l\'initialisation de la carte. Vous pouvez toujours saisir votre adresse manuellement.', 'error');
+    }
+  };
+  
+  // Fonction pour mettre à jour l'adresse à partir des coordonnées
+  function updateAddressFromPosition(lat, lng) {
+    if (!geocoder) {
+      showLocationHelp('Service de géocodage non disponible. Veuillez saisir votre adresse manuellement.', 'error');
+      return;
+    }
+    
+    const latlng = { lat: lat, lng: lng };
+    
+    geocoder.geocode({ 'location': latlng }, function(results, status) {
+      if (status === 'OK') {
+        if (results[0]) {
+          const formattedAddress = results[0].formatted_address;
+          $('#address-input').val(formattedAddress);
+          $('#selected-address').val(formattedAddress);
+          $('#selected-lat').val(lat);
+          $('#selected-lng').val(lng);
+          
+          $('#selected-address-display').html('<i class="fas fa-check-circle"></i> ' + formattedAddress).show();
+          $('#continue-to-service-need').fadeIn();
+          
+          showLocationHelp('Position mise à jour avec succès !', 'success');
+        }
+      } else {
+        showLocationHelp('Impossible de déterminer l\'adresse. Veuillez saisir votre adresse manuellement.', 'error');
+      }
+    });
+  }
+  
+  // Fonction pour passer à l'étape suivante
+  function goToStep(stepId) {
+    $('.form-step').removeClass('active');
+    $('#' + stepId).addClass('active');
+    updateProgressState(stepId);
+    updateCounselorStatus();
+    updateResponseTime();
+    
+    $('html, body').animate({
+      scrollTop: $('.address-selector-container').offset().top - 20
+    }, 300);
+  }
+  
+  // Mettre à jour l'état des indicateurs de progression
+  function updateProgressState(currentStep) {
+    const steps = ['step-address', 'step-service-need', 'step-service-details', 'step-contact-details'];
+    const currentIndex = steps.indexOf(currentStep);
+    
+    $('.progress-step').removeClass('active completed');
+    
+    for (let i = 0; i < steps.length; i++) {
+      if (i < currentIndex) {
+        $('.progress-step[data-step="' + steps[i] + '"]').addClass('completed');
+      } else if (i === currentIndex) {
+        $('.progress-step[data-step="' + steps[i] + '"]').addClass('active');
+      }
+    }
+  }
+  
+  // Gérer le bouton "Utiliser ma position"
+  $('#use-location').on('click', function() {
+    const button = $(this);
+    
+    if (!navigator.geolocation) {
+      showLocationHelp('La géolocalisation n\'est pas prise en charge par votre navigateur. Veuillez saisir votre adresse manuellement.', 'error');
+      return;
+    }
+    
+    button.html('<i class="fas fa-spinner fa-spin"></i> Localisation...').prop('disabled', true);
+    showLocationHelp('Recherche de votre position...', '');
+    
+    const options = {
+      enableHighAccuracy: false,
+      timeout: 20000,
+      maximumAge: 60000
+    };
+    
+    console.log('Tentative de géolocalisation avec options optimisées:', options);
+    
+    const watchId = navigator.geolocation.watchPosition(
+      function(position) {
+        navigator.geolocation.clearWatch(watchId);
+        
+        console.log('Géolocalisation réussie:', position);
+        
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+        
+        $('#selected-lat').val(lat);
+        $('#selected-lng').val(lng);
+        
+        $('#map-container').slideDown();
+        $('#map-instructions').slideDown();
+        
+        if (map && marker) {
+          const latLng = { lat: lat, lng: lng };
+          map.setCenter(latLng);
+          map.setZoom(16);
+          marker.position = latLng;
+          
+          updateAddressFromPosition(lat, lng);
+          
+          const accuracyMsg = accuracy < 100 ? 'Position obtenue !' : 'Position approximative obtenue.';
+          showLocationHelp(accuracyMsg + ' Précision: ' + Math.round(accuracy) + 'm', 'success');
+        } else {
+          showLocationHelp('Coordonnées enregistrées : ' + lat.toFixed(6) + ', ' + lng.toFixed(6), 'success');
+        }
+        
+        button.html('<i class="fas fa-check"></i> Position obtenue').prop('disabled', false);
+        
+        setTimeout(function() {
+          button.html('<i class="fas fa-crosshairs"></i> Utiliser ma position');
+        }, 3000);
+      },
+      function(error) {
+        navigator.geolocation.clearWatch(watchId);
+        
+        console.error('Erreur de géolocalisation:', error);
+        
+        let errorMsg = '';
+        
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMsg = "⚠️ Accès refusé. Autorisez la localisation dans les paramètres de votre navigateur.";
+            break;
+            
+          case error.POSITION_UNAVAILABLE:
+            errorMsg = "📍 Position indisponible. Activez le WiFi ou les données mobiles, ou saisissez votre adresse manuellement.";
+            break;
+            
+          case error.TIMEOUT:
+            errorMsg = "⏱️ Temps écoulé. Vérifiez votre connexion ou saisissez votre adresse manuellement.";
+            break;
+            
+          default:
+            errorMsg = "❌ Impossible d'obtenir votre position. Veuillez saisir votre adresse manuellement.";
+        }
+        
+        showLocationHelp(errorMsg, 'error');
+        button.html('<i class="fas fa-crosshairs"></i> Utiliser ma position').prop('disabled', false);
+        $('#address-input').focus();
+      },
+      options
+    );
+    
+    setTimeout(function() {
+      navigator.geolocation.clearWatch(watchId);
+    }, 25000);
+  });
+  
+  // Bouton pour passer à l'étape suivante
+  $('#continue-to-service-need').on('click', function() {
+    goToStep('step-service-need');
+  });
+  
+  // Gérer la sélection du type de besoin
+  $('.need-option').on('click', function() {
+    $('.need-option').removeClass('selected');
+    $(this).addClass('selected');
+    
+    const needType = $(this).data('need');
+    $('#selected-need').val(needType);
+    
+    generateServiceDetails(needType);
+    goToStep('step-service-details');
+  });
+  
+  // Générer dynamiquement les options détaillées
+  function generateServiceDetails(needType) {
+    const container = $('#service-details-container');
+    container.empty();
+    
+    if (serviceOptions[needType]) {
+      serviceOptions[needType].forEach(option => {
+        let html = `<div class="detail-option" data-detail="${option.id}" data-visit-required="${option.visitRequired ? 'true' : 'false'}">
+          <i class="fas ${option.icon}"></i>
+          <span>${option.label}</span>`;
+          
+        if (option.visitRequired) {
+          html += `<span class="visit-badge">visite requise</span>`;
+        }
+        
+        html += `</div>`;
+        container.append(html);
+      });
+      
+      attachDetailEventHandlers();
+    }
+  }
+  
+  // Attacher les gestionnaires d'événements aux options détaillées
+  function attachDetailEventHandlers() {
+    $('.detail-option').on('click', function() {
+      $('.detail-option').removeClass('selected');
+      $(this).addClass('selected');
+      
+      const detailId = $(this).data('detail');
+      const visitRequired = $(this).data('visit-required') === 'true';
+      
+      $('#selected-detail').val(detailId);
+      $('#visit-required').val(visitRequired);
+      
+      const serviceLabel = $(this).find('span').first().text();
+      $('#service-type-display').text(serviceLabel);
+      
+      if (visitRequired) {
+        $('#visit-required-notice').show();
+      } else {
+        $('#visit-required-notice').hide();
+      }
+      
+      goToStep('step-contact-details');
+    });
+  }
+  
+  // Gérer le retour aux étapes précédentes
+  $('.back-button').on('click', function() {
+    const prevStep = $(this).data('prev');
+    goToStep(prevStep);
+  });
+  
+  // Gérer les clics sur l'indicateur de progression
+  $('.progress-step').on('click', function() {
+    const targetStep = $(this).data('step');
+    
+    if ($(this).hasClass('completed') || $(this).hasClass('active')) {
+      goToStep(targetStep);
+    }
+  });
+  
+  // Validation du téléphone marocain
+  function validateMoroccanPhone(phone) {
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    
+    const patterns = [
+      /^0[5-7]\d{8}$/,
+      /^212[5-7]\d{8}$/,
+      /^\+212[5-7]\d{8}$/
+    ];
+    
+    return patterns.some(pattern => pattern.test(cleaned));
+  }
+  
+  // ============================================
+  // GESTIONNAIRE MODIFIÉ POUR LA SOUMISSION
+  // ============================================
+  // Gérer l'envoi de la demande de service
+  $('#submit-service-request').on('click', async function() {
+    const button = $(this);
+    const originalText = button.text();
+    
+    const clientName = $('#client-name').val().trim();
+    const clientPhone = $('#client-phone').val().trim();
+    
+    if (!clientName || clientName.length < 3) {
+      alert('Veuillez saisir votre nom complet (minimum 3 caractères)');
+      $('#client-name').focus();
+      return;
+    }
+    
+    if (!validateMoroccanPhone(clientPhone)) {
+      alert('Veuillez saisir un numéro de téléphone marocain valide\nExemples acceptés:\n- 0612345678\n- 212612345678\n- +212612345678');
+      $('#client-phone').focus();
+      return;
+    }
+    
+    const address = $('#selected-address').val();
+    if (!address) {
+      alert('Veuillez sélectionner une adresse avant de continuer');
+      goToStep('step-address');
+      return;
+    }
+    
+    const serviceLabel = $('#service-type-display').text();
+    const visitRequired = $('#visit-required').val() === 'true';
+    const selectedNeed = $('#selected-need').val();
+    const selectedDetail = $('#selected-detail').val();
+    const lat = $('#selected-lat').val();
+    const lng = $('#selected-lng').val();
+    
+    // Désactiver le bouton pendant l'envoi
+    button.prop('disabled', true).text('Envoi en cours...');
+    
+    // ============================================
+    // PRÉPARER LES DONNÉES POUR LE CRM
+    // ============================================
+    const crmData = {
+      name: clientName,
+      phone: clientPhone,
+      email: '', // Pas d'email dans le formulaire actuel
+      address: address,
+      city: extractCityFromAddress(address),
+      postalCode: '',
+      clientType: 'particulier',
+      companyName: '',
+      ice: '',
+      message: `Service demandé: ${serviceLabel}\nType: ${selectedNeed}\nDétail: ${selectedDetail}\nVisite requise: ${visitRequired ? 'Oui' : 'Non'}\nCoordonnées GPS: ${lat}, ${lng}\nLien Google Maps: https://www.google.com/maps?q=${lat},${lng}`,
+    };
+    
+    // ============================================
+    // ENVOYER AU CRM (en arrière-plan, non bloquant)
+    // ============================================
+    sendToCRM(crmData).then(result => {
+      if (result.success) {
+        console.log('✅ Données envoyées au CRM avec succès - ID:', result.clientId);
+      } else {
+        console.warn('⚠️ Erreur lors de l\'envoi au CRM:', result.error);
+        // Ne pas bloquer l'utilisateur si le CRM échoue
+      }
+    });
+    
+    // ============================================
+    // PRÉPARER LE MESSAGE WHATSAPP (comme avant)
+    // ============================================
+    let message = '🔧 *DEMANDE DE SERVICE*\n\n';
+    message += '📋 *Service:* ' + serviceLabel + '\n';
+    message += '👤 *Client:* ' + clientName + '\n';
+    message += '📱 *Téléphone:* ' + clientPhone + '\n';
+    message += '📍 *Adresse:* ' + address + '\n';
+    
+    if (visitRequired) {
+      message += '\n⚠️ *VISITE PRÉALABLE REQUISE* ⚠️\n';
+    }
+    
+    message += '\n🗺️ *Localisation:*\n';
+    message += 'https://www.google.com/maps?q=' + lat + ',' + lng;
+    
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappNumber = '212671052371';
+    const whatsappLink = 'https://wa.me/' + whatsappNumber + '?text=' + encodedMessage;
+    
+    console.log('Redirection vers WhatsApp');
+    
+    // Réactiver le bouton
+    button.prop('disabled', false).text(originalText);
+    
+    // Rediriger vers WhatsApp (comme avant)
+    window.location.href = whatsappLink;
+  });
+  
+  // Lancer les mises à jour des compteurs
+  initUpdates();
+  
+  // Charger Google Maps au démarrage
+  loadGoogleMaps();
+  
+  console.log("Script initialisé - jQuery version:", $.fn.jquery);
+});
+</script>

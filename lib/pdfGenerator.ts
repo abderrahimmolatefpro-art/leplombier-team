@@ -4,39 +4,6 @@ import { Document, Client, Project } from '@/types';
 import { formatDate } from './utils';
 import { CompanyInfo } from './companyConfig';
 
-// Fonction helper pour dessiner le tampon en texte
-function drawStampText(
-  pdf: jsPDF,
-  stamp: { name: string; address: string; city: string },
-  x: number,
-  y: number,
-  width: number,
-  height: number
-) {
-  // Dessiner le rectangle avec bordure en pointillés bleue
-  pdf.setDrawColor(0, 102, 204); // Bleu
-  pdf.setLineWidth(1.5);
-  // Note: jsPDF doesn't support setLineDash directly, using solid line instead
-  
-  // Dessiner le rectangle
-  pdf.rect(x, y, width, height, 'D');
-  
-  // Texte du tampon en bleu
-  pdf.setTextColor(0, 102, 204); // Bleu
-  pdf.setFontSize(9);
-  pdf.setFont('helvetica', 'bold');
-  
-  // Positionner le texte dans le tampon
-  pdf.text(stamp.name, x + 3, y + 7);
-  pdf.setFontSize(7);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(stamp.address, x + 3, y + 12);
-  pdf.text(stamp.city, x + 3, y + 17);
-  
-  // Restaurer les paramètres
-  pdf.setTextColor(0, 0, 0); // Remettre en noir
-}
-
 export async function generatePDFFromHTML(
   elementId: string = 'document-content',
   fileName?: string
@@ -218,53 +185,6 @@ export function generatePDFFromData(
   pdf.setFont('helvetica', 'normal');
   pdf.text('Signature :', margin, yPos);
   
-  // Tampon GROUPE OGINCE
-  if (companyInfo.stamp) {
-    const stampX = pageWidth - margin - 60;
-    const stampY = yPos - 10;
-    const stampWidth = 50;
-    const stampHeight = 25;
-    
-    // Si une image du tampon est disponible, l'utiliser
-    if (companyInfo.stamp.image) {
-      try {
-        // Charger et ajouter l'image du tampon
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = companyInfo.stamp.image;
-        
-        // Note: Pour que cela fonctionne, l'image doit être accessible
-        // En production, utilisez generatePDFFromHTML qui capture automatiquement l'image
-        pdf.addImage(img, 'PNG', stampX, stampY, stampWidth, stampHeight);
-      } catch (error) {
-        console.warn('Impossible de charger l\'image du tampon, utilisation du texte', error);
-        // Fallback sur le texte si l'image ne peut pas être chargée
-        drawStampText(pdf, companyInfo.stamp, stampX, stampY, stampWidth, stampHeight);
-      }
-    } else {
-      // Utiliser le texte si pas d'image
-      drawStampText(pdf, companyInfo.stamp, stampX, stampY, stampWidth, stampHeight);
-    }
-  } else {
-    // Tampon par défaut si pas de stamp configuré
-    pdf.setDrawColor(0, 102, 204);
-    pdf.setLineWidth(0.5);
-    // Note: jsPDF doesn't support setLineDash directly, using solid line instead
-    const stampX = pageWidth - margin - 50;
-    const stampY = yPos - 8;
-    pdf.rect(stampX, stampY, 50, 20, 'D');
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(companyInfo.name, stampX + 2, stampY + 5);
-    if (companyInfo.address) {
-      const addressLines = pdf.splitTextToSize(companyInfo.address, 46);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(7);
-      pdf.text(addressLines[0], stampX + 2, stampY + 10);
-    }
-    // Note: jsPDF doesn't support setLineDash, removed
-  }
-
   yPos += 20;
   pdf.setFontSize(8);
   pdf.text('Mentions Légales :', margin, yPos);
@@ -308,7 +228,6 @@ export function generatePDFFromData(
   
   let footerText = '';
   if (companyInfo.rc) footerText += `RC: ${companyInfo.rc} `;
-  if (companyInfo.ice) footerText += `ICE: ${companyInfo.ice} `;
   if (companyInfo.patente) footerText += `Patente: ${companyInfo.patente}`;
   if (footerText) {
     pdf.text(footerText.trim(), (pageWidth - pdf.getTextWidth(footerText.trim())) / 2, yPos);

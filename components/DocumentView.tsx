@@ -135,9 +135,6 @@ export default function DocumentView({ document, client, project, companyInfo }:
             {client?.email && (
               <p className="text-sm text-gray-600">Email: {client.email}</p>
             )}
-            {client?.id && (
-              <p className="text-sm text-gray-600 mt-1">ICE : {client.id}</p>
-            )}
           </div>
         </div>
 
@@ -209,73 +206,10 @@ export default function DocumentView({ document, client, project, companyInfo }:
         </div>
 
         {/* Signature */}
-        <div className="mb-6 flex justify-between items-end">
-          <div>
-            <p className="text-sm text-gray-700 mb-8">Signature :</p>
-            <p className="text-xs text-gray-500 mt-4">Mentions Légales :</p>
-            <p className="text-xs text-gray-500">Art 89 – II – 1° - c, Code Général des Impôts.</p>
-          </div>
-          <div className="text-right">
-            {/* Tampon GROUPE OGINCE */}
-            {companyInfo.stamp && (
-              <>
-                {companyInfo.stamp.image ? (
-                  // Utiliser l'image du tampon si disponible
-                  <img
-                    src={companyInfo.stamp.image}
-                    alt="Tampon GROUPE OGINCE"
-                    className="inline-block"
-                    style={{
-                      maxWidth: '180px',
-                      height: 'auto',
-                      transform: 'rotate(5deg)',
-                    }}
-                  />
-                ) : (
-                  // Fallback sur le texte si pas d'image
-                  <div 
-                    className="inline-block p-3 bg-white"
-                    style={{
-                      transform: 'rotate(5deg)',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                      border: '2px dashed #0284c7',
-                      borderRadius: '4px',
-                      borderWidth: '2px',
-                    }}
-                  >
-                    <p 
-                      className="text-sm font-bold leading-tight mb-1" 
-                      style={{ 
-                        fontFamily: 'Arial, sans-serif',
-                        color: '#0284c7',
-                        letterSpacing: '0.5px',
-                      }}
-                    >
-                      {companyInfo.stamp.name}
-                    </p>
-                    <p 
-                      className="text-xs leading-tight mb-0.5" 
-                      style={{ 
-                        fontFamily: 'Arial, sans-serif',
-                        color: '#0284c7',
-                      }}
-                    >
-                      {companyInfo.stamp.address}
-                    </p>
-                    <p 
-                      className="text-xs leading-tight" 
-                      style={{ 
-                        fontFamily: 'Arial, sans-serif',
-                        color: '#0284c7',
-                      }}
-                    >
-                      {companyInfo.stamp.city}
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+        <div className="mb-6">
+          <p className="text-sm text-gray-700 mb-8">Signature :</p>
+          <p className="text-xs text-gray-500 mt-4">Mentions Légales :</p>
+          <p className="text-xs text-gray-500">Art 89 – II – 1° - c, Code Général des Impôts.</p>
         </div>
 
         {/* Notes */}
@@ -296,9 +230,6 @@ export default function DocumentView({ document, client, project, companyInfo }:
             <div className="flex justify-center items-center gap-4 flex-wrap mt-2">
               {companyInfo.rc && (
                 <span>RC: {companyInfo.rc}</span>
-              )}
-              {companyInfo.ice && (
-                <span>ICE: {companyInfo.ice}</span>
               )}
               {companyInfo.patente && (
                 <span>Patente: {companyInfo.patente}</span>
