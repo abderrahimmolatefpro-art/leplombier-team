@@ -13,7 +13,8 @@ import {
   FileText, 
   LogOut,
   Menu,
-  X
+  X,
+  UserPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +37,7 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/planning', label: 'Planning', icon: Calendar },
     { href: '/documents', label: 'Documents', icon: FileText },
     { href: '/plombiers', label: 'Prestations plombiers', icon: Users },
+    ...(isAdmin ? [{ href: '/recrutements', label: 'Candidatures', icon: UserPlus }] : []),
   ];
 
   const handleLogout = async () => {

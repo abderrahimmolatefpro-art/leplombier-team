@@ -71,5 +71,12 @@ service cloud.firestore {
       allow update: if isAuthenticated();
       allow delete: if isAuthenticated();
     }
+
+    // Collection recruitments (candidatures de recrutement)
+    match /recruitments/{recruitmentId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if true; // Permet la création via l'API webhook (sans authentification)
+      allow update, delete: if isAuthenticated() && isAdmin();
+    }
   }
 }

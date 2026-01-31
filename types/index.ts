@@ -95,6 +95,19 @@ export interface PlanningEntry {
   createdAt: Date;
 }
 
+export interface Recruitment {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  specialty: string;
+  zones: 'casa' | 'rabat' | 'tanger' | 'marrakech' | 'agadir' | 'tetouan' | 'fes';
+  address: string;
+  status: 'pending' | 'contacted' | 'accepted' | 'rejected';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Document {
   id: string;
   type: 'facture' | 'devis' | 'bon_commande';

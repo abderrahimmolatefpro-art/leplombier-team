@@ -1,0 +1,332 @@
+<!-- FORMULAIRE DE RECRUTEMENT POUR WORDPRESS/ELEMENTOR -->
+<!-- Instructions : Copiez ce code dans un widget HTML d'Elementor -->
+<!-- IMPORTANT : Remplacez API_URL par votre URL d'API (ex: https://dash.leplombier.ma/api/webhook/recruitment) -->
+
+<style>
+  .recruitment-form-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  .recruitment-form-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .recruitment-form-intro {
+    font-size: 0.95rem;
+    color: #6b7280;
+    margin-bottom: 2rem;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .recruitment-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .recruitment-form-field {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .recruitment-form-field.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .recruitment-form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+
+  .recruitment-form-label .required {
+    color: #ef4444;
+    margin-left: 2px;
+  }
+
+  .recruitment-form-input,
+  .recruitment-form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #1f2937;
+    background: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .recruitment-form-input:focus,
+  .recruitment-form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .recruitment-form-input::placeholder {
+    color: #9ca3af;
+  }
+
+  .recruitment-form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem;
+    cursor: pointer;
+  }
+
+  .recruitment-form-button {
+    width: 100%;
+    padding: 1rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    margin-top: 1rem;
+  }
+
+  .recruitment-form-button:hover {
+    background: #2563eb;
+  }
+
+  .recruitment-form-button:active {
+    transform: scale(0.98);
+  }
+
+  .recruitment-form-button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .recruitment-form-message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.875rem;
+  }
+
+  .recruitment-form-message.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+  }
+
+  .recruitment-form-message.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .recruitment-form-container {
+      padding: 1.5rem;
+    }
+
+    .recruitment-form-title {
+      font-size: 1.5rem;
+    }
+
+    .recruitment-form-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .recruitment-form-field.full-width {
+      grid-column: 1;
+    }
+  }
+</style>
+
+<div class="recruitment-form-container">
+  <h2 class="recruitment-form-title">Recrutement</h2>
+  <p class="recruitment-form-intro">
+    Toutes les commandes sont traitées dans un délai de 15 jours à compter de la date d'émission du formulaire. 
+    Un agent de notre société vous contactera par téléphone.
+  </p>
+
+  <form id="recruitmentForm" class="recruitment-form">
+    <div class="recruitment-form-grid">
+      <div class="recruitment-form-field">
+        <label class="recruitment-form-label">
+          Prénom <span class="required">*</span>
+        </label>
+        <input
+          type="text"
+          name="firstName"
+          class="recruitment-form-input"
+          placeholder="Prénom ici"
+          required
+        />
+      </div>
+
+      <div class="recruitment-form-field">
+        <label class="recruitment-form-label">
+          Nom <span class="required">*</span>
+        </label>
+        <input
+          type="text"
+          name="lastName"
+          class="recruitment-form-input"
+          placeholder="Nom ici"
+          required
+        />
+      </div>
+
+      <div class="recruitment-form-field">
+        <label class="recruitment-form-label">
+          Numéro Portable <span class="required">*</span>
+        </label>
+        <input
+          type="tel"
+          name="phone"
+          class="recruitment-form-input"
+          placeholder="Votre Numéro Té"
+          required
+        />
+      </div>
+
+      <div class="recruitment-form-field">
+        <label class="recruitment-form-label">
+          Spécialité <span class="required">*</span>
+        </label>
+        <input
+          type="text"
+          name="specialty"
+          class="recruitment-form-input"
+          placeholder="Plombier / Chauffagiste ?"
+          required
+        />
+      </div>
+
+      <div class="recruitment-form-field">
+        <label class="recruitment-form-label">
+          Zones <span class="required">*</span>
+        </label>
+        <select
+          name="zones"
+          class="recruitment-form-select"
+          required
+        >
+          <option value="">...</option>
+          <option value="casa">Casablanca</option>
+          <option value="rabat">Rabat</option>
+          <option value="tanger">Tanger</option>
+          <option value="marrakech">Marrakech</option>
+          <option value="agadir">Agadir</option>
+          <option value="tetouan">Tétouan</option>
+          <option value="fes">Fès</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="recruitment-form-field full-width">
+      <label class="recruitment-form-label">
+        Où préférez-vous travailler?
+      </label>
+      <label class="recruitment-form-label">
+        Adresse <span class="required">*</span>
+      </label>
+      <input
+        type="text"
+        name="address"
+        class="recruitment-form-input"
+        placeholder="Adresse"
+        required
+      />
+    </div>
+
+    <button type="submit" class="recruitment-form-button" id="submitButton">
+      Envoyer
+    </button>
+
+    <div id="formMessage" class="recruitment-form-message" style="display: none;"></div>
+  </form>
+</div>
+
+<script>
+  (function() {
+    // IMPORTANT : Remplacez cette URL par votre URL d'API
+    const API_URL = 'https://dash.leplombier.ma/api/webhook/recruitment';
+    // Pour le développement local, utilisez : 'http://localhost:3000/api/webhook/recruitment'
+
+    const form = document.getElementById('recruitmentForm');
+    const submitButton = document.getElementById('submitButton');
+    const messageDiv = document.getElementById('formMessage');
+
+    function showMessage(text, isError = false) {
+      messageDiv.textContent = text;
+      messageDiv.className = 'recruitment-form-message ' + (isError ? 'error' : 'success');
+      messageDiv.style.display = 'block';
+      
+      if (!isError) {
+        form.reset();
+        setTimeout(() => {
+          messageDiv.style.display = 'none';
+        }, 5000);
+      }
+    }
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      submitButton.disabled = true;
+      submitButton.textContent = 'Envoi en cours...';
+      messageDiv.style.display = 'none';
+
+      const formData = new FormData(form);
+      const data = {
+        firstName: formData.get('firstName'),
+        lastName: formData.get('lastName'),
+        phone: formData.get('phone'),
+        specialty: formData.get('specialty'),
+        zones: formData.get('zones'),
+        address: formData.get('address'),
+      };
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          showMessage('Votre candidature a été envoyée avec succès ! Nous vous contacterons sous 15 jours.');
+        } else {
+          showMessage(result.error || 'Une erreur est survenue. Veuillez réessayer.', true);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showMessage('Une erreur est survenue lors de l\'envoi. Veuillez réessayer.', true);
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Envoyer';
+      }
+    });
+  })();
+</script>
