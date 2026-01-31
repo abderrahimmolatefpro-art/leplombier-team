@@ -45,7 +45,7 @@ export default function RecruitmentsPage() {
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:46',message:'useEffect triggered',data:{authLoading,hasUser:!!user,userRole:user?.role},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:46',message:'useEffect triggered',data:{authLoading,hasUser:!!user,userRole:user?.role,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
     if (!authLoading && !user) {
       router.push('/login');
@@ -54,13 +54,16 @@ export default function RecruitmentsPage() {
 
     if (user && user.role !== 'admin') {
       // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:52',message:'User is not admin, redirecting',data:{userRole:user.role},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:52',message:'User is not admin, redirecting',data:{userRole:user.role,userId:user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
       router.push('/dashboard');
       return;
     }
 
     if (user) {
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:60',message:'User is admin, loading recruitments',data:{userRole:user.role,userId:user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       loadRecruitments();
     }
   }, [user, authLoading, router]);
@@ -117,9 +120,16 @@ export default function RecruitmentsPage() {
       setRecruitments(recruitmentsData);
     } catch (error: any) {
       // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:98',message:'Error loading recruitments',data:{errorName:error?.name,errorMessage:error?.message,errorCode:error?.code,errorStack:error?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:98',message:'Error loading recruitments',data:{errorName:error?.name,errorMessage:error?.message,errorCode:error?.code,errorStack:error?.stack?.substring(0,300),userRole:user?.role,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
       console.error('Error loading recruitments:', error);
+      if (error?.code === 'permission-denied' || error?.message?.includes('permissions')) {
+        console.error('PERMISSIONS ERROR: Vérifiez que:');
+        console.error('1. Votre utilisateur a le rôle "admin" dans Firestore (collection "users")');
+        console.error('2. Les règles Firestore sont publiées dans Firebase Console');
+        console.error('3. Votre userId:', user?.id);
+        console.error('4. Votre rôle actuel:', user?.role);
+      }
     } finally {
       setLoading(false);
     }
