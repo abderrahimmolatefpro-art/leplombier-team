@@ -80,8 +80,13 @@ export default function PlanningPage() {
 
   const loadData = async () => {
     try {
-      // Load planning entries
-      const entriesQuery = query(collection(db, 'planning'));
+      // Load planning entries - filtrer par plombier si nécessaire
+      let entriesQuery;
+      if (user?.role === 'plombier') {
+        entriesQuery = query(collection(db, 'planning'), where('plombierId', '==', user.id));
+      } else {
+        entriesQuery = query(collection(db, 'planning'));
+      }
       const entriesSnapshot = await getDocs(entriesQuery);
       const entriesData = entriesSnapshot.docs.map((doc) => ({
         id: doc.id,

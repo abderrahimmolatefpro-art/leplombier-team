@@ -89,6 +89,12 @@ export default function PlombiersPage() {
       return;
     }
 
+    // Si c'est un plombier, rediriger vers sa page personnelle
+    if (user && user.role === 'plombier') {
+      router.push(`/plombiers/${user.id}`);
+      return;
+    }
+
     if (user) {
       loadData();
     }

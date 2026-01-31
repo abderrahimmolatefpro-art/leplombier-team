@@ -273,38 +273,78 @@ export default function DashboardPage() {
     [documents]
   );
 
-  // Données filtrées par période (réutilisables)
-  // Données filtrées selon la période et les clients existants
+  // Filtrer les données selon le rôle de l'utilisateur
+  const isPlombier = user?.role === 'plombier';
+  const currentPlombierId = isPlombier ? user.id : null;
+
+  // Données filtrées par plombier (si plombier) et par période
   const filteredData = useMemo(() => {
     const { start, end } = getDateRange;
     const existingClientIds = new Set(clients.map(c => c.id));
     
+    // Filtrer les projets selon le plombier
+    let filteredProjectsByPlombier = projects;
+    if (isPlombier && currentPlombierId) {
+      filteredProjectsByPlombier = projects.filter(p => 
+        p.plombierIds?.includes(currentPlombierId) || p.teamLeaderId === currentPlombierId
+      );
+    }
+    
+    // Filtrer les clients selon le plombier
+    let filteredClientsByPlombier = clients;
+    if (isPlombier && currentPlombierId) {
+      filteredClientsByPlombier = clients.filter(c => 
+        c.assignedPlombierId === currentPlombierId
+      );
+      // Mettre à jour existingClientIds pour ne garder que les clients du plombier
+      const plombierClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
+      existingClientIds.clear();
+      plombierClientIds.forEach(id => existingClientIds.add(id));
+    }
+    
+    // Filtrer les factures selon le plombier (via le client assigné)
+    let filteredInvoicesByPlombier = paidInvoices;
+    if (isPlombier && currentPlombierId) {
+      filteredInvoicesByPlombier = paidInvoices.filter(d => {
+        const client = clients.find(c => c.id === d.clientId);
+        return client?.assignedPlombierId === currentPlombierId;
+      });
+    }
+    
+    // Filtrer les revenus manuels selon le plombier
+    let filteredManualRevenuesByPlombier = manualRevenues;
+    if (isPlombier && currentPlombierId) {
+      filteredManualRevenuesByPlombier = manualRevenues.filter(r => 
+        r.plombierId === currentPlombierId
+      );
+    }
+    
     // Factures payées dans la période ET client existant
-    const filteredInvoices = paidInvoices.filter(d => {
+    const filteredInvoices = filteredInvoicesByPlombier.filter(d => {
       const invoiceDate = d.date;
       return invoiceDate >= start && invoiceDate <= end && existingClientIds.has(d.clientId);
     });
     
     // Projets dans la période ET client existant
-    const filteredProjects = projects.filter(p => {
+    const filteredProjects = filteredProjectsByPlombier.filter(p => {
       const projectDate = p.createdAt || p.startDate;
       return projectDate >= start && projectDate <= end && existingClientIds.has(p.clientId);
     });
     
     // Revenus manuels dans la période ET client existant
-    const filteredManualRevenues = manualRevenues.filter(r => {
+    const filteredManualRevenues = filteredManualRevenuesByPlombier.filter(r => {
       const revenueDate = r.date;
       return revenueDate >= start && revenueDate <= end && existingClientIds.has(r.clientId);
     });
     
-    return { filteredInvoices, filteredProjects, filteredManualRevenues };
-  }, [paidInvoices, projects, manualRevenues, clients, getDateRange]);
+    return { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier };
+  }, [paidInvoices, projects, manualRevenues, clients, getDateRange, isPlombier, currentPlombierId]);
 
   // Calcul des KPI avec filtres de date
   const kpis = useMemo(() => {
     const { start, end } = getDateRange;
     const comparisonRange = getComparisonRange;
-    const { filteredInvoices, filteredProjects, filteredManualRevenues } = filteredData;
+    const { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier } = filteredData;
     
     // Revenus de la période
     const invoiceRevenue = filteredInvoices.reduce((sum, doc) => sum + (doc.total || 0), 0);
@@ -314,27 +354,44 @@ export default function DashboardPage() {
     const manualRevenue = filteredManualRevenues.reduce((sum, r) => sum + r.amount, 0);
     const totalRevenue = invoiceRevenue + projectRevenue + manualRevenue;
     
-    // Calcul de la comparaison (uniquement clients existants)
+    // Calcul de la comparaison (uniquement clients existants, filtrés par plombier si nécessaire)
     let comparisonRevenue = 0;
     if (comparisonRange) {
-      const existingClientIds = new Set(clients.map(c => c.id));
-      const compInvoices = paidInvoices.filter(d => {
+      const existingClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
+      
+      // Filtrer les données de comparaison selon le plombier
+      let compInvoices = paidInvoices;
+      let compProjects = projects;
+      let compManual = manualRevenues;
+      
+      if (isPlombier && currentPlombierId) {
+        compInvoices = paidInvoices.filter(d => {
+          const client = clients.find(c => c.id === d.clientId);
+          return client?.assignedPlombierId === currentPlombierId;
+        });
+        compProjects = projects.filter(p => 
+          (p.plombierIds?.includes(currentPlombierId) || p.teamLeaderId === currentPlombierId)
+        );
+        compManual = manualRevenues.filter(r => r.plombierId === currentPlombierId);
+      }
+      
+      const compFilteredInvoices = compInvoices.filter(d => {
         const invoiceDate = d.date;
         return invoiceDate >= comparisonRange.start && invoiceDate <= comparisonRange.end && existingClientIds.has(d.clientId);
       });
-      const compProjects = projects.filter(p => {
+      const compFilteredProjects = compProjects.filter(p => {
         const projectDate = p.createdAt || p.startDate;
         return projectDate >= comparisonRange.start && projectDate <= comparisonRange.end && existingClientIds.has(p.clientId);
       });
-      const compManual = manualRevenues.filter(r => {
+      const compFilteredManual = compManual.filter(r => {
         const revenueDate = r.date;
         return revenueDate >= comparisonRange.start && revenueDate <= comparisonRange.end && existingClientIds.has(r.clientId);
       });
       
       comparisonRevenue = 
-        compInvoices.reduce((sum, doc) => sum + (doc.total || 0), 0) +
-        compProjects.filter(p => p.amount && p.amount > 0).reduce((sum, p) => sum + (p.amount || 0), 0) +
-        compManual.reduce((sum, r) => sum + r.amount, 0);
+        compFilteredInvoices.reduce((sum, doc) => sum + (doc.total || 0), 0) +
+        compFilteredProjects.filter(p => p.amount && p.amount > 0).reduce((sum, p) => sum + (p.amount || 0), 0) +
+        compFilteredManual.reduce((sum, r) => sum + r.amount, 0);
     }
     
     const revenueChange = comparisonRange && comparisonRevenue > 0
@@ -346,12 +403,20 @@ export default function DashboardPage() {
     const completedProjects = filteredProjects.filter(p => p.status === 'termine');
     const pendingProjects = filteredProjects.filter(p => p.status === 'en_attente');
     
-    // Factures (uniquement clients existants)
-    const existingClientIds = new Set(clients.map(c => c.id));
-    const filteredDocuments = documents.filter(d => {
+    // Factures (uniquement clients existants, filtrés par plombier si nécessaire)
+    const existingClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
+    let filteredDocuments = documents.filter(d => {
       const docDate = d.date;
       return docDate >= start && docDate <= end && existingClientIds.has(d.clientId);
     });
+    
+    // Filtrer les documents selon le plombier (via le client assigné)
+    if (isPlombier && currentPlombierId) {
+      filteredDocuments = filteredDocuments.filter(d => {
+        const client = clients.find(c => c.id === d.clientId);
+        return client?.assignedPlombierId === currentPlombierId;
+      });
+    }
     
     const totalInvoices = filteredDocuments.filter(d => d.type === 'facture');
     const unpaidInvoices = filteredDocuments.filter(d => 
@@ -375,9 +440,24 @@ export default function DashboardPage() {
       ? (convertedQuotes.length / quotes.length) * 100 
       : 0;
     
-    // Répartition 60/40
-    const plombierRevenue = totalRevenue * 0.6;
-    const companyRevenue = totalRevenue * 0.4;
+    // Répartition dynamique selon facture (40/60 avec facture, 60/40 sans facture)
+    // Revenus avec facture (factures payées + projets avec facture)
+    const revenueWithInvoice = 
+      filteredInvoices.reduce((sum, doc) => sum + (doc.total || 0), 0) +
+      filteredProjects
+        .filter(p => p.amount && p.amount > 0 && p.hasInvoice)
+        .reduce((sum, p) => sum + (p.amount || 0), 0);
+    
+    // Revenus sans facture (projets sans facture + dépannages)
+    const revenueWithoutInvoice = 
+      filteredProjects
+        .filter(p => p.amount && p.amount > 0 && !p.hasInvoice)
+        .reduce((sum, p) => sum + (p.amount || 0), 0) +
+      filteredManualRevenues.reduce((sum, r) => sum + r.amount, 0);
+    
+    // Répartition : 40% plombier / 60% société avec facture, 60% plombier / 40% société sans facture
+    const plombierRevenue = (revenueWithInvoice * 0.4) + (revenueWithoutInvoice * 0.6);
+    const companyRevenue = (revenueWithInvoice * 0.6) + (revenueWithoutInvoice * 0.4);
     
     return {
       totalRevenue,
@@ -389,7 +469,7 @@ export default function DashboardPage() {
       activeProjects: activeProjects.length,
       completedProjects: completedProjects.length,
       pendingProjects: pendingProjects.length,
-      totalClients: clients.length, // Toujours total
+      totalClients: filteredClientsByPlombier.length,
       totalInvoices: totalInvoices.length,
       paidInvoices: filteredInvoices.length,
       unpaidInvoices: unpaidInvoices.length,
@@ -398,7 +478,7 @@ export default function DashboardPage() {
       conversionRate,
       totalDocuments: filteredDocuments.length,
     };
-  }, [projects, clients, documents, manualRevenues, paidInvoices, getDateRange, getComparisonRange, filteredData]);
+  }, [projects, clients, documents, manualRevenues, paidInvoices, getDateRange, getComparisonRange, filteredData, isPlombier, currentPlombierId]);
 
   // Données pour graphique revenus par mois (selon la période)
   const monthlyRevenueData = useMemo(() => {
@@ -413,39 +493,36 @@ export default function DashboardPage() {
       current.setMonth(current.getMonth() + 1);
     }
     
-    // Factures payées dans la période (uniquement clients existants)
-    const existingClientIds = new Set(clients.map(c => c.id));
-    paidInvoices.forEach(doc => {
-      if (doc.date >= start && doc.date <= end && existingClientIds.has(doc.clientId)) {
-        const date = doc.date;
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        if (months[monthKey] !== undefined) {
-          months[monthKey] += doc.total || 0;
-        }
+    // Utiliser les données filtrées
+    const { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier } = filteredData;
+    const existingClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
+    
+    // Factures payées dans la période (filtrées par plombier si nécessaire)
+    filteredInvoices.forEach(doc => {
+      const date = doc.date;
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (months[monthKey] !== undefined) {
+        months[monthKey] += doc.total || 0;
       }
     });
     
-    // Projets dans la période (uniquement clients existants)
-    projects.forEach(project => {
-      if (project.amount && project.amount > 0 && existingClientIds.has(project.clientId)) {
+    // Projets dans la période (filtrés par plombier si nécessaire)
+    filteredProjects.forEach(project => {
+      if (project.amount && project.amount > 0) {
         const projectDate = project.createdAt || project.startDate;
-        if (projectDate >= start && projectDate <= end) {
-          const monthKey = `${projectDate.getFullYear()}-${String(projectDate.getMonth() + 1).padStart(2, '0')}`;
-          if (months[monthKey] !== undefined) {
-            months[monthKey] += project.amount;
-          }
+        const monthKey = `${projectDate.getFullYear()}-${String(projectDate.getMonth() + 1).padStart(2, '0')}`;
+        if (months[monthKey] !== undefined) {
+          months[monthKey] += project.amount;
         }
       }
     });
     
-    // Revenus manuels dans la période (uniquement clients existants)
-    manualRevenues.forEach(revenue => {
-      if (revenue.date >= start && revenue.date <= end && existingClientIds.has(revenue.clientId)) {
-        const date = revenue.date;
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        if (months[monthKey] !== undefined) {
-          months[monthKey] += revenue.amount;
-        }
+    // Revenus manuels dans la période (filtrés par plombier si nécessaire)
+    filteredManualRevenues.forEach(revenue => {
+      const date = revenue.date;
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (months[monthKey] !== undefined) {
+        months[monthKey] += revenue.amount;
       }
     });
     
@@ -457,25 +534,21 @@ export default function DashboardPage() {
         revenus: Math.round(revenue),
       };
     });
-  }, [projects, documents, manualRevenues, paidInvoices, clients, getDateRange]);
+  }, [filteredData, getDateRange]);
 
-  // Données pour graphique revenus par type de projet (dans la période) - uniquement clients existants
+  // Données pour graphique revenus par type de projet (dans la période) - filtrées par plombier si nécessaire
   const revenueByProjectType = useMemo(() => {
-    const { start, end } = getDateRange;
-    const existingClientIds = new Set(clients.map(c => c.id));
+    const { filteredProjects } = filteredData;
     const typeMap: { [key: string]: number } = {};
     
-    projects.forEach(project => {
-      if (project.amount && project.amount > 0 && existingClientIds.has(project.clientId)) {
-        const projectDate = project.createdAt || project.startDate;
-        if (projectDate >= start && projectDate <= end) {
-          const typeName = 
-            project.type === 'recherche_fuite' ? 'Recherche fuite' :
-            project.type === 'reparation_lourde' ? 'Réparation lourde' :
-            project.type === 'renovation_salle_bain' ? 'Rénovation SDB' : 'Autre';
-          
-          typeMap[typeName] = (typeMap[typeName] || 0) + project.amount;
-        }
+    filteredProjects.forEach(project => {
+      if (project.amount && project.amount > 0) {
+        const typeName = 
+          project.type === 'recherche_fuite' ? 'Recherche fuite' :
+          project.type === 'reparation_lourde' ? 'Réparation lourde' :
+          project.type === 'renovation_salle_bain' ? 'Rénovation SDB' : 'Autre';
+        
+        typeMap[typeName] = (typeMap[typeName] || 0) + project.amount;
       }
     });
     
@@ -483,38 +556,33 @@ export default function DashboardPage() {
       name,
       value: Math.round(value),
     }));
-  }, [projects, clients, getDateRange]);
+  }, [filteredData]);
 
-  // Top clients par revenus (dans la période) - uniquement clients existants
+  // Top clients par revenus (dans la période) - filtrés par plombier si nécessaire
   const topClients = useMemo(() => {
-    const existingClientIds = new Set(clients.map(c => c.id));
-    const { filteredInvoices, filteredProjects, filteredManualRevenues } = filteredData;
+    const { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier } = filteredData;
     const clientRevenue: { [key: string]: number } = {};
     
-    // Factures dans la période (déjà filtrées par client existant)
+    // Factures dans la période (déjà filtrées)
     filteredInvoices.forEach(doc => {
-      if (existingClientIds.has(doc.clientId)) {
-        clientRevenue[doc.clientId] = (clientRevenue[doc.clientId] || 0) + (doc.total || 0);
-      }
+      clientRevenue[doc.clientId] = (clientRevenue[doc.clientId] || 0) + (doc.total || 0);
     });
     
-    // Projets dans la période (déjà filtrés par client existant)
+    // Projets dans la période (déjà filtrés)
     filteredProjects.forEach(project => {
-      if (project.amount && project.amount > 0 && existingClientIds.has(project.clientId)) {
+      if (project.amount && project.amount > 0) {
         clientRevenue[project.clientId] = (clientRevenue[project.clientId] || 0) + project.amount;
       }
     });
     
-    // Revenus manuels dans la période (déjà filtrés par client existant)
+    // Revenus manuels dans la période (déjà filtrés)
     filteredManualRevenues.forEach(revenue => {
-      if (existingClientIds.has(revenue.clientId)) {
-        clientRevenue[revenue.clientId] = (clientRevenue[revenue.clientId] || 0) + revenue.amount;
-      }
+      clientRevenue[revenue.clientId] = (clientRevenue[revenue.clientId] || 0) + revenue.amount;
     });
     
     return Object.entries(clientRevenue)
       .map(([clientId, revenue]) => {
-        const client = clients.find(c => c.id === clientId);
+        const client = filteredClientsByPlombier.find(c => c.id === clientId);
         return {
           name: client?.name || 'Client supprimé',
           revenue: Math.round(revenue),
@@ -523,10 +591,12 @@ export default function DashboardPage() {
       .filter(item => item.name !== 'Client supprimé') // Exclure les clients supprimés
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
-  }, [filteredData, clients]);
+  }, [filteredData]);
 
-  // Revenus par plombier (dans la période)
+  // Revenus par plombier (dans la période) - UNIQUEMENT pour les admins
   const revenueByPlombier = useMemo(() => {
+    if (isPlombier) return []; // Ne pas calculer pour les plombiers
+    
     const { filteredInvoices, filteredProjects, filteredManualRevenues } = filteredData;
     const plombierRevenue: { [key: string]: { name: string; revenue: number; projects: number } } = {};
     
@@ -539,10 +609,11 @@ export default function DashboardPage() {
       };
     });
     
-    // Revenus des projets (60% pour chaque plombier assigné, réparti équitablement)
+    // Revenus des projets (40% avec facture, 60% sans facture pour chaque plombier assigné, réparti équitablement)
     filteredProjects.forEach(project => {
       if (project.amount && project.amount > 0 && project.plombierIds.length > 0) {
-        const plombierShare = (project.amount * 0.6) / project.plombierIds.length;
+        const plombierSharePercent = project.hasInvoice ? 0.4 : 0.6; // Dynamic split
+        const plombierShare = (project.amount * plombierSharePercent) / project.plombierIds.length;
         
         project.plombierIds.forEach(plombierId => {
           if (plombierRevenue[plombierId]) {
@@ -553,21 +624,21 @@ export default function DashboardPage() {
       }
     });
     
-    // Revenus des factures (60% pour le plombier assigné au client) - uniquement clients existants
+    // Revenus des factures (40% pour le plombier assigné au client)
     const existingClientIds = new Set(clients.map(c => c.id));
     filteredInvoices.forEach(invoice => {
       if (existingClientIds.has(invoice.clientId)) {
         const client = clients.find(c => c.id === invoice.clientId);
         if (client?.assignedPlombierId && plombierRevenue[client.assignedPlombierId]) {
-          plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * 0.6;
+          plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * 0.4; // 40% with invoice
         }
       }
     });
     
-    // Revenus manuels (60% pour le plombier spécifié) - uniquement clients existants
+    // Revenus manuels (60% pour le plombier spécifié)
     filteredManualRevenues.forEach(revenue => {
       if (existingClientIds.has(revenue.clientId) && revenue.plombierId && plombierRevenue[revenue.plombierId]) {
-        plombierRevenue[revenue.plombierId].revenue += revenue.amount * 0.6;
+        plombierRevenue[revenue.plombierId].revenue += revenue.amount * 0.6; // 60% without invoice
       }
     });
     
@@ -579,14 +650,15 @@ export default function DashboardPage() {
         revenue: Math.round(p.revenue),
         projects: p.projects,
       }));
-  }, [filteredData, clients, plombiers]);
+  }, [filteredData, clients, plombiers, isPlombier]);
 
-  // Projets récents
+  // Projets récents (filtrés par plombier si nécessaire)
   const recentProjects = useMemo(() => {
-    return projects
+    const { filteredProjects } = filteredData;
+    return filteredProjects
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, 5);
-  }, [projects]);
+  }, [filteredData]);
 
   // Format de la période
   const formatPeriodLabel = () => {
@@ -629,8 +701,12 @@ export default function DashboardPage() {
       <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
         <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tableau de bord</h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Bienvenue, {user?.name}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              {isPlombier ? 'Mon tableau de bord' : 'Tableau de bord'}
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
+              {isPlombier ? `Bienvenue ${user?.name}, voici vos statistiques personnelles` : `Bienvenue, ${user?.name}`}
+            </p>
           </div>
           
           {/* Sélecteur de dates style Google Ads */}
@@ -1035,8 +1111,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Revenus par plombier */}
-        {plombiers.length > 0 && (
+        {/* Revenus par plombier - UNIQUEMENT pour les admins */}
+        {!isPlombier && plombiers.length > 0 && revenueByPlombier.length > 0 && (
           <div className="card">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
               <Users className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
