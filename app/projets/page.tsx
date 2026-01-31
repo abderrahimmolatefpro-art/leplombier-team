@@ -96,9 +96,22 @@ export default function ProjetsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Validate and convert startDate
+      let startDateTimestamp: Timestamp;
+      if (formData.startDate && formData.startDate.trim() !== '') {
+        const date = new Date(formData.startDate);
+        if (isNaN(date.getTime())) {
+          throw new Error('Date de début invalide');
+        }
+        startDateTimestamp = Timestamp.fromDate(date);
+      } else {
+        // Use current date if no date provided
+        startDateTimestamp = Timestamp.now();
+      }
+
       const projectData = {
         ...formData,
-        startDate: Timestamp.fromDate(new Date(formData.startDate)),
+        startDate: startDateTimestamp,
         amount: formData.amount ? parseFloat(formData.amount) : null,
         hasInvoice: formData.hasInvoice,
         createdAt: editingProject ? editingProject.createdAt : Timestamp.now(),
