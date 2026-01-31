@@ -143,14 +143,14 @@ export default function ProjectDetailPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <Link href="/projets" className="text-gray-600 hover:text-gray-900">
-              <ArrowLeft size={24} />
+              <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{project.title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{project.title}</h1>
               <p className="text-gray-600 mt-1">
                 {project.type === 'recherche_fuite' && 'Recherche de fuite'}
                 {project.type === 'reparation_lourde' && 'Réparation lourde'}
@@ -164,9 +164,9 @@ export default function ProjectDetailPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             <div className="card">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Description</h2>
               <p className="text-gray-700 whitespace-pre-wrap">{project.description}</p>
@@ -227,7 +227,7 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="card">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Informations</h2>
               <div className="space-y-4">

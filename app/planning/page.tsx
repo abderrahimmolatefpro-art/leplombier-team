@@ -771,11 +771,11 @@ export default function PlanningPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Planning</h1>
-            <p className="text-sm md:text-base text-gray-600 mt-1 md:mt-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Planning</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
               {user?.role === 'admin' ? 'Planning global' : 'Votre planning'}
             </p>
           </div>
@@ -785,10 +785,10 @@ export default function PlanningPage() {
               resetForm();
               setShowModal(true);
             }}
-            className="btn btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
+            className="btn btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto text-sm sm:text-base"
           >
-            <Plus size={18} className="md:w-5 md:h-5" />
-            <span className="text-sm md:text-base">Nouvelle entrée</span>
+            <Plus size={18} className="sm:w-5 sm:h-5" />
+            <span>Nouvelle entrée</span>
           </button>
         </div>
 

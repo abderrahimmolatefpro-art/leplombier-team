@@ -23,7 +23,7 @@ export default function ProjetsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [formData, setFormData] = useState({
     clientId: '',
-    type: 'recherche_fuite' as Project['type'],
+    type: 'recherche_fuite' as Project['type'], // Valeur par défaut, mais champ supprimé du formulaire
     title: '',
     description: '',
     status: 'en_attente' as Project['status'],
@@ -197,11 +197,11 @@ export default function ProjetsPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Projets</h1>
-            <p className="text-gray-600 mt-2">Gestion des travaux et projets</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Projets</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Gestion des travaux et projets</p>
           </div>
           <button
             onClick={() => {
@@ -209,9 +209,9 @@ export default function ProjetsPage() {
               resetForm();
               setShowModal(true);
             }}
-            className="btn btn-primary flex items-center space-x-2"
+            className="btn btn-primary flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center"
           >
-            <Plus size={20} />
+            <Plus size={18} className="sm:w-5 sm:h-5" />
             <span>Nouveau projet</span>
           </button>
         </div>
@@ -220,7 +220,7 @@ export default function ProjetsPage() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilterStatus('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               filterStatus === 'all'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -230,7 +230,7 @@ export default function ProjetsPage() {
           </button>
           <button
             onClick={() => setFilterStatus('en_attente')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               filterStatus === 'en_attente'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -240,7 +240,7 @@ export default function ProjetsPage() {
           </button>
           <button
             onClick={() => setFilterStatus('en_cours')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               filterStatus === 'en_cours'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -250,7 +250,7 @@ export default function ProjetsPage() {
           </button>
           <button
             onClick={() => setFilterStatus('termine')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               filterStatus === 'termine'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -270,32 +270,32 @@ export default function ProjetsPage() {
                     <div>
                       <Link
                         href={`/projets/${project.id}`}
-                        className="text-xl font-semibold text-primary-600 hover:underline"
+                        className="text-lg sm:text-xl font-semibold text-primary-600 hover:underline"
                       >
                         {project.title}
                       </Link>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
                         Client: {getClientName(project.clientId)}
                       </p>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-1 sm:space-x-2">
                       <button
                         onClick={() => handleEdit(project)}
                         className="p-1 text-gray-600 hover:text-primary-600"
                       >
-                        <Edit size={18} />
+                        <Edit size={14} className="sm:w-[18px] sm:h-[18px]" />
                       </button>
                       <button
                         onClick={() => handleDelete(project.id)}
                         className="p-1 text-gray-600 hover:text-red-600"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={14} className="sm:w-[18px] sm:h-[18px]" />
                       </button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-3 sm:mt-4">
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
                       <span className="font-medium">Type:</span>
                       <span>
                         {project.type === 'recherche_fuite' && 'Recherche de fuite'}
@@ -303,32 +303,34 @@ export default function ProjetsPage() {
                         {project.type === 'renovation_salle_bain' && 'Rénovation salle de bain'}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      <Calendar size={16} />
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                      <Calendar size={14} className="sm:w-4 sm:h-4" />
                       <span>{formatDate(project.startDate)}</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      <UsersIcon size={16} />
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                      <UsersIcon size={14} className="sm:w-4 sm:h-4" />
                       <span>{project.plombierIds.length} plombier(s)</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      <MapPin size={16} />
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                      <MapPin size={14} className="sm:w-4 sm:h-4" />
                       <span className="truncate">{project.address}</span>
                     </div>
                   </div>
 
                   {project.amount && project.amount > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Montant du projet:</span>
-                        <span className="text-lg font-bold text-primary-600">
-                          {formatCurrency(project.amount)}
-                        </span>
-                        {!project.hasInvoice && (
-                          <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded ml-2">
-                            Sans facture
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <span className="text-xs sm:text-sm font-medium text-gray-700">Montant du projet:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-base sm:text-lg font-bold text-primary-600">
+                            {formatCurrency(project.amount)}
                           </span>
-                        )}
+                          {!project.hasInvoice && (
+                            <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded">
+                              Sans facture
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -394,43 +396,23 @@ export default function ProjetsPage() {
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Client *
-                      </label>
-                      <select
-                        required
-                        value={formData.clientId}
-                        onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                        className="input"
-                      >
-                        <option value="">Sélectionner un client</option>
-                        {clients.map((client) => (
-                          <option key={client.id} value={client.id}>
-                            {client.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Type de projet *
-                      </label>
-                      <select
-                        required
-                        value={formData.type}
-                        onChange={(e) =>
-                          setFormData({ ...formData, type: e.target.value as Project['type'] })
-                        }
-                        className="input"
-                      >
-                        <option value="recherche_fuite">Recherche de fuite</option>
-                        <option value="reparation_lourde">Réparation lourde</option>
-                        <option value="renovation_salle_bain">Rénovation salle de bain</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Client *
+                    </label>
+                    <select
+                      required
+                      value={formData.clientId}
+                      onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                      className="input"
+                    >
+                      <option value="">Sélectionner un client</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -448,10 +430,9 @@ export default function ProjetsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description *
+                      Description
                     </label>
                     <textarea
-                      required
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       className="input"
@@ -462,11 +443,10 @@ export default function ProjetsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Date de début *
+                        Date de début
                       </label>
                       <input
                         type="date"
-                        required
                         value={formData.startDate}
                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                         className="input"
@@ -475,11 +455,10 @@ export default function ProjetsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Durée estimée (jours) *
+                        Durée estimée (jours)
                       </label>
                       <input
                         type="number"
-                        required
                         min="1"
                         value={formData.estimatedDuration}
                         onChange={(e) =>
@@ -492,11 +471,10 @@ export default function ProjetsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Adresse *
+                      Adresse
                     </label>
                     <input
                       type="text"
-                      required
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       className="input"
@@ -538,10 +516,9 @@ export default function ProjetsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Chef d&apos;équipe *
+                        Chef d&apos;équipe
                       </label>
                       <select
-                        required
                         value={formData.teamLeaderId}
                         onChange={(e) => setFormData({ ...formData, teamLeaderId: e.target.value })}
                         className="input"
@@ -557,10 +534,9 @@ export default function ProjetsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Statut *
+                        Statut
                       </label>
                       <select
-                        required
                         value={formData.status}
                         onChange={(e) =>
                           setFormData({ ...formData, status: e.target.value as Project['status'] })

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
@@ -466,11 +466,11 @@ export default function PlombiersPage() {
         </div>
 
         {/* Filtres */}
-        <div className="card mb-6">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="card mb-4 sm:mb-6 p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4">
             {/* Filtre plombier */}
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="flex-1 min-w-0 sm:min-w-[200px]">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                 Plombier
               </label>
               <select
@@ -488,8 +488,8 @@ export default function PlombiersPage() {
             </div>
 
             {/* Filtre date */}
-            <div className="flex-1 min-w-[200px] relative date-picker-container">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="flex-1 min-w-0 sm:min-w-[200px] relative date-picker-container">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                 Période
               </label>
               <button
@@ -615,21 +615,22 @@ export default function PlombiersPage() {
         {plombierStats.length > 0 && (
           <div className="card mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Récapitulatif par plombier</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Plombier</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Revenus totaux</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Part plombier (60%)</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Part société (40%)</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Projets</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Actions</th>
-                  </tr>
-                </thead>
+            <div className="overflow-x-auto -mx-2 sm:mx-0">
+              <div className="inline-block min-w-full align-middle px-2 sm:px-0">
+                <table className="w-full min-w-[800px]">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Plombier</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Revenus totaux</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Part plombier (60%)</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Part société (40%)</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Projets</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
                 <tbody>
                   {plombierStats.map((stat) => (
-                    <>
+                    <Fragment key={`fragment-${stat.plombier.id}`}>
                       <tr 
                         key={stat.plombier.id}
                         className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
@@ -822,10 +823,11 @@ export default function PlombiersPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

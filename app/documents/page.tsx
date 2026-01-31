@@ -331,11 +331,11 @@ function DocumentsContent() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Documents</h1>
-            <p className="text-gray-600 mt-2">Factures, devis et bons de commande</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Documents</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Factures, devis et bons de commande</p>
           </div>
           <button
             onClick={() => {
@@ -344,18 +344,18 @@ function DocumentsContent() {
               setFormData({ ...formData, date: new Date().toISOString().split('T')[0] });
               setShowModal(true);
             }}
-            className="btn btn-primary flex items-center space-x-2"
+            className="btn btn-primary flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center"
           >
-            <Plus size={20} />
+            <Plus size={18} className="sm:w-5 sm:h-5" />
             <span>Nouveau document</span>
           </button>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 sm:gap-2">
           <button
             onClick={() => setFilterType('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               filterType === 'all'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -365,7 +365,7 @@ function DocumentsContent() {
           </button>
           <button
             onClick={() => setFilterType('facture')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               filterType === 'facture'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -375,7 +375,7 @@ function DocumentsContent() {
           </button>
           <button
             onClick={() => setFilterType('devis')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               filterType === 'devis'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -385,7 +385,7 @@ function DocumentsContent() {
           </button>
           <button
             onClick={() => setFilterType('bon_commande')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               filterType === 'bon_commande'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -396,23 +396,24 @@ function DocumentsContent() {
         </div>
 
         {/* Documents List */}
-        <div className="card overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Numéro</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Client</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Montant</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Statut</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDocuments.map((document) => (
-                <tr key={document.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4">
+        <div className="card overflow-x-auto -mx-2 sm:mx-0">
+          <div className="inline-block min-w-full align-middle px-2 sm:px-0">
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Type</th>
+                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Numéro</th>
+                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Client</th>
+                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Date</th>
+                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Montant</th>
+                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Statut</th>
+                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDocuments.map((document) => (
+                  <tr key={document.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4">
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${
                         document.type === 'facture'
@@ -427,11 +428,11 @@ function DocumentsContent() {
                       {document.type === 'bon_commande' && 'Bon de commande'}
                     </span>
                   </td>
-                  <td className="py-3 px-4 font-medium text-gray-900">{document.number}</td>
-                  <td className="py-3 px-4 text-gray-600">{getClientName(document.clientId)}</td>
-                  <td className="py-3 px-4 text-gray-600">{formatDate(document.date)}</td>
-                  <td className="py-3 px-4 font-medium text-gray-900">{formatCurrency(document.total)}</td>
-                  <td className="py-3 px-4">
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-900">{document.number}</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm text-gray-600 truncate max-w-[120px] sm:max-w-none">{getClientName(document.clientId)}</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm text-gray-600">{formatDate(document.date)}</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-900">{formatCurrency(document.total)}</td>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${
                         document.status === 'paye'
@@ -449,35 +450,36 @@ function DocumentsContent() {
                       {document.status === 'brouillon' && 'Brouillon'}
                     </span>
                   </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center space-x-2">
-                      <Link
-                        href={`/documents/${document.id}`}
-                        className="p-1 text-gray-600 hover:text-primary-600"
-                        title="Voir / Imprimer"
-                      >
-                        <Eye size={18} />
-                      </Link>
-                      <button
-                        onClick={() => handleEdit(document)}
-                        className="p-1 text-gray-600 hover:text-primary-600"
-                        title="Modifier"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(document.id)}
-                        className="p-1 text-gray-600 hover:text-red-600"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <td className="py-2 sm:py-3 px-2 sm:px-4">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <Link
+                          href={`/documents/${document.id}`}
+                          className="p-1 text-gray-600 hover:text-primary-600"
+                          title="Voir / Imprimer"
+                        >
+                          <Eye size={14} className="sm:w-[18px] sm:h-[18px]" />
+                        </Link>
+                        <button
+                          onClick={() => handleEdit(document)}
+                          className="p-1 text-gray-600 hover:text-primary-600"
+                          title="Modifier"
+                        >
+                          <Edit size={14} className="sm:w-[18px] sm:h-[18px]" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(document.id)}
+                          className="p-1 text-gray-600 hover:text-red-600"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} className="sm:w-[18px] sm:h-[18px]" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {filteredDocuments.length === 0 && (
             <div className="text-center py-12">

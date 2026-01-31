@@ -46,22 +46,23 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile header */}
-      <div className="lg:hidden bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center">
+      <div className="lg:hidden bg-white shadow-sm border-b border-gray-200 px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center flex-1 min-w-0">
           <Image
             src="/logo.png"
             alt="CRM Plomberie"
             width={120}
             height={40}
-            className="h-8 w-auto object-contain"
+            className="h-7 sm:h-8 w-auto object-contain max-w-[100px] sm:max-w-[120px]"
             priority
           />
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-lg hover:bg-gray-100"
+          className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 flex-shrink-0 ml-2"
+          aria-label="Toggle menu"
         >
-          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          {sidebarOpen ? <X size={20} className="sm:w-6 sm:h-6" /> : <Menu size={20} className="sm:w-6 sm:h-6" />}
         </button>
       </div>
 
@@ -138,8 +139,8 @@ export default function Layout({ children }: LayoutProps) {
         )}
 
         {/* Main content */}
-        <main className="flex-1 lg:ml-0 min-h-screen">
-          <div className="p-4 lg:p-8">
+        <main className="flex-1 lg:ml-0 min-h-screen w-full">
+          <div className="p-0 lg:p-8">
             {children}
           </div>
         </main>

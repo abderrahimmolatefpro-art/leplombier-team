@@ -130,22 +130,22 @@ export default function PlombierDetailPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-6">
           <Link 
             href="/plombiers" 
-            className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-3 sm:mb-4"
           >
-            <ArrowLeft size={20} />
-            <span>Retour aux prestations plombiers</span>
+            <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Retour aux prestations plombiers</span>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Fiche plombier</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Fiche plombier</h1>
         </div>
 
         <div className="card">
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
-              <Users className="text-primary-600" size={32} />
+          <div className="flex items-center space-x-3 sm:space-x-4 mb-4 sm:mb-6">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Users className="text-primary-600 w-6 h-6 sm:w-8 sm:h-8" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{plombier.name}</h2>
@@ -153,7 +153,7 @@ export default function PlombierDetailPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nom complet *

@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [compareMode, setCompareMode] = useState<ComparisonMode>('previous_period');
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -79,6 +80,16 @@ export default function DashboardPage() {
       loadDashboardData();
     }
   }, [user, authLoading, router]);
+
+  // Détecter la taille de l'écran pour le pie chart
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Fermer le sélecteur de dates quand on clique en dehors
   useEffect(() => {
@@ -577,16 +588,6 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [projects]);
 
-  if (authLoading || loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-      </Layout>
-    );
-  }
-
   // Format de la période
   const formatPeriodLabel = () => {
     const { start, end } = getDateRange;
@@ -613,28 +614,39 @@ export default function DashboardPage() {
     return presetLabels[datePreset] || formatDateShort(start);
   };
 
+  if (authLoading || loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+        <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Tableau de bord</h1>
-            <p className="text-gray-600 mt-2">Bienvenue, {user?.name}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tableau de bord</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Bienvenue, {user?.name}</p>
           </div>
           
           {/* Sélecteur de dates style Google Ads */}
-          <div className="relative date-picker-container">
-            <button
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              className="btn btn-secondary flex items-center space-x-2"
-            >
-              <Calendar size={18} />
-              <span>{formatPeriodLabel()}</span>
-              <ChevronDown size={18} />
-            </button>
-            
-            {showDatePicker && (
-              <div className="absolute right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50 min-w-[320px]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="relative date-picker-container w-full sm:w-auto">
+              <button
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                className="btn btn-secondary flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+              >
+                <Calendar size={16} />
+                <span className="truncate">{formatPeriodLabel()}</span>
+                <ChevronDown size={14} />
+              </button>
+              
+              {showDatePicker && (
+                <div className="absolute top-full left-0 right-0 sm:right-auto mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50 min-w-[280px] sm:min-w-[320px]">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900">Période</h3>
                   <button
@@ -742,37 +754,38 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
 
         {/* KPI Principaux */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Revenus totaux */}
           <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
             <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-green-700 font-medium">Revenus totaux</p>
-                <p className="text-3xl font-bold text-green-900 mt-2">{formatCurrency(kpis.totalRevenue)}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-green-700 font-medium">Revenus totaux</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-900 mt-1 sm:mt-2 truncate">{formatCurrency(kpis.totalRevenue)}</p>
                 {compareMode !== 'none' && kpis.comparisonRevenue > 0 && (
-                  <div className="flex items-center space-x-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
                     {kpis.revenueChange >= 0 ? (
-                      <TrendingUp className="text-green-600" size={14} />
+                      <TrendingUp className="text-green-600" size={12} />
                     ) : (
-                      <TrendingDown className="text-red-600" size={14} />
+                      <TrendingDown className="text-red-600" size={12} />
                     )}
                     <span className={`text-xs font-medium ${
                       kpis.revenueChange >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
                       {kpis.revenueChange >= 0 ? '+' : ''}{kpis.revenueChange.toFixed(1)}%
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 hidden sm:inline">
                       vs {compareMode === 'previous_period' ? 'période précédente' : 'année précédente'}
                     </span>
                   </div>
                 )}
               </div>
-              <div className="p-3 bg-green-200 rounded-lg">
-                <DollarSign className="text-green-700" size={28} />
+              <div className="p-1.5 sm:p-2 lg:p-3 bg-green-200 rounded-lg flex-shrink-0">
+                <DollarSign className="text-green-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
               </div>
             </div>
           </div>
@@ -780,13 +793,13 @@ export default function DashboardPage() {
           {/* Répartition revenus */}
           <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
             <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-blue-700 font-medium">Part société (40%)</p>
-                <p className="text-3xl font-bold text-blue-900 mt-2">{formatCurrency(kpis.companyRevenue)}</p>
-                <p className="text-xs text-blue-600 mt-1">Part plombier: {formatCurrency(kpis.plombierRevenue)}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-blue-700 font-medium">Part société (40%)</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900 mt-1 sm:mt-2 truncate">{formatCurrency(kpis.companyRevenue)}</p>
+                <p className="text-xs text-blue-600 mt-1 truncate">Plombier: {formatCurrency(kpis.plombierRevenue)}</p>
               </div>
-              <div className="p-3 bg-blue-200 rounded-lg">
-                <TrendingUp className="text-blue-700" size={28} />
+              <div className="p-1.5 sm:p-2 lg:p-3 bg-blue-200 rounded-lg flex-shrink-0">
+                <TrendingUp className="text-blue-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
               </div>
             </div>
           </div>
@@ -794,15 +807,15 @@ export default function DashboardPage() {
           {/* Projets actifs */}
           <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-primary-700 font-medium">Projets actifs</p>
-                <p className="text-3xl font-bold text-primary-900 mt-2">{kpis.activeProjects}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-primary-700 font-medium">Projets actifs</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary-900 mt-1 sm:mt-2">{kpis.activeProjects}</p>
                 <p className="text-xs text-primary-600 mt-1">
                   {kpis.completedProjects} terminés • {kpis.pendingProjects} en attente
                 </p>
               </div>
-              <div className="p-3 bg-primary-200 rounded-lg">
-                <FolderKanban className="text-primary-700" size={28} />
+              <div className="p-1.5 sm:p-2 lg:p-3 bg-primary-200 rounded-lg flex-shrink-0">
+                <FolderKanban className="text-primary-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
               </div>
             </div>
           </div>
@@ -810,44 +823,44 @@ export default function DashboardPage() {
           {/* Clients */}
           <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-purple-700 font-medium">Clients</p>
-                <p className="text-3xl font-bold text-purple-900 mt-2">{kpis.totalClients}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-purple-700 font-medium">Clients</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-900 mt-1 sm:mt-2">{kpis.totalClients}</p>
                 <p className="text-xs text-purple-600 mt-1">Base clients totale</p>
               </div>
-              <div className="p-3 bg-purple-200 rounded-lg">
-                <Users className="text-purple-700" size={28} />
+              <div className="p-1.5 sm:p-2 lg:p-3 bg-purple-200 rounded-lg flex-shrink-0">
+                <Users className="text-purple-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
               </div>
             </div>
           </div>
         </div>
 
         {/* KPI Secondaires */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Répartition revenus */}
           <div className="card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600 font-medium">Part plombier (60%)</p>
-              <Users className="text-primary-600" size={20} />
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Part plombier (60%)</p>
+              <Users className="text-primary-600 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <p className="text-2xl font-bold text-primary-600">{formatCurrency(kpis.plombierRevenue)}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-600 truncate">{formatCurrency(kpis.plombierRevenue)}</p>
           </div>
 
           <div className="card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600 font-medium">Part société (40%)</p>
-              <TrendingUp className="text-blue-600" size={20} />
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Part société (40%)</p>
+              <TrendingUp className="text-blue-600 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(kpis.companyRevenue)}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 truncate">{formatCurrency(kpis.companyRevenue)}</p>
           </div>
 
           {/* Factures */}
           <div className="card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600 font-medium">Factures</p>
-              <FileText className="text-gray-600" size={20} />
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Factures</p>
+              <FileText className="text-gray-600 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{kpis.totalInvoices}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{kpis.totalInvoices}</p>
             <p className="text-xs text-gray-500 mt-1">
               {kpis.paidInvoices} payées • {kpis.unpaidInvoices} impayées
               {kpis.overdueInvoices > 0 && (
@@ -859,10 +872,10 @@ export default function DashboardPage() {
           {/* Taux de conversion */}
           <div className="card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600 font-medium">Taux conversion</p>
-              <BarChart3 className="text-gray-600" size={20} />
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Taux conversion</p>
+              <BarChart3 className="text-gray-600 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{kpis.conversionRate.toFixed(1)}%</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{kpis.conversionRate.toFixed(1)}%</p>
             <p className="text-xs text-gray-500 mt-1">
               {kpis.totalQuotes} devis • {Math.round(kpis.totalQuotes * kpis.conversionRate / 100)} convertis
             </p>
@@ -870,20 +883,20 @@ export default function DashboardPage() {
         </div>
 
         {/* Graphiques */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Revenus par mois */}
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <BarChart3 className="mr-2" size={24} />
-              Revenus par mois (6 derniers mois)
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
+              <BarChart3 className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base">Revenus par mois (6 derniers mois)</span>
             </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyRevenueData}>
+            <ResponsiveContainer width="100%" height={200} className="sm:h-[300px]">
+              <LineChart data={monthlyRevenueData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis width={50} tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
                 <Line 
                   type="monotone" 
                   dataKey="revenus" 
@@ -897,11 +910,11 @@ export default function DashboardPage() {
 
           {/* Revenus par type de projet */}
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <PieChart className="mr-2" size={24} />
-              Revenus par type de projet
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
+              <PieChart className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base">Revenus par type de projet</span>
             </h2>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={200} className="sm:h-[300px]">
               <RechartsPieChart>
                 <Pie
                   data={revenueByProjectType}
@@ -909,7 +922,7 @@ export default function DashboardPage() {
                   cy="50%"
                   labelLine={false}
                   label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                  outerRadius={80}
+                  outerRadius={isMobile ? 60 : 70}
                   fill="#8884d8"
                   dataKey="value"
                 >
@@ -924,18 +937,26 @@ export default function DashboardPage() {
         </div>
 
         {/* Top clients et projets récents */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Top 5 clients */}
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <Users className="mr-2" size={24} />
-              Top 5 clients par revenus
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
+              <Users className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base">Top 5 clients par revenus</span>
             </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topClients}>
+            <ResponsiveContainer width="100%" height={200} className="sm:h-[300px]">
+              <BarChart data={topClients} margin={{ top: 5, right: 5, left: 0, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={80}
+                  className="text-xs"
+                  tick={{ fontSize: 9 }}
+                  interval={0}
+                />
+                <YAxis width={50} tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
                 <Bar dataKey="revenue" fill="#3B82F6" name="Revenus (MAD)" />
               </BarChart>
@@ -944,24 +965,24 @@ export default function DashboardPage() {
 
           {/* Projets récents */}
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <FolderKanban className="mr-2" size={24} />
-              Projets récents
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
+              <FolderKanban className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base">Projets récents</span>
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {recentProjects.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">Aucun projet pour le moment</p>
               ) : (
                 recentProjects.map((project) => (
                   <div
                     key={project.id}
-                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="p-2 sm:p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex-1 min-w-0">
                         <a
                           href={`/projets/${project.id}`}
-                          className="text-primary-600 hover:underline font-medium text-sm"
+                          className="text-primary-600 hover:underline font-medium text-xs sm:text-sm block truncate"
                         >
                           {project.title}
                         </a>
@@ -974,9 +995,9 @@ export default function DashboardPage() {
                           )}
                         </p>
                       </div>
-                      <div className="flex flex-col items-end">
+                      <div className="flex flex-row sm:flex-col sm:items-end items-center justify-between sm:justify-end gap-2">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                             project.status === 'en_cours'
                               ? 'bg-green-100 text-green-700'
                               : project.status === 'termine'
@@ -1017,64 +1038,65 @@ export default function DashboardPage() {
         {/* Revenus par plombier */}
         {plombiers.length > 0 && (
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <Users className="mr-2" size={24} />
-              Répartition des revenus par plombier (60%)
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
+              <Users className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base">Répartition des revenus par plombier (60%)</span>
             </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Plombier</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700">Revenus (60%)</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700">Projets</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700">% du total</th>
-                  </tr>
-                </thead>
+            <div className="overflow-x-auto -mx-2 sm:mx-0">
+              <div className="inline-block min-w-full align-middle px-2 sm:px-0">
+                <table className="w-full min-w-[500px] sm:min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Plombier</th>
+                      <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Revenus (60%)</th>
+                      <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Projets</th>
+                      <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">% du total</th>
+                    </tr>
+                  </thead>
                 <tbody>
                   {revenueByPlombier.map((plombier, index) => {
                     const percentage = kpis.plombierRevenue > 0 
                       ? (plombier.revenue / kpis.plombierRevenue) * 100 
                       : 0;
                     const plombierUser = plombiers.find(p => p.name === plombier.name);
-                    return (
+                      return (
                       <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                              <span className="text-primary-700 font-medium text-sm">
+                        <td className="py-2 sm:py-3 px-2 sm:px-4">
+                          <div className="flex items-center space-x-1 sm:space-x-2 min-w-0">
+                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                              <span className="text-primary-700 font-medium text-xs sm:text-sm">
                                 {plombier.name.charAt(0).toUpperCase()}
                               </span>
                             </div>
-                            <span className="font-medium text-gray-900">{plombier.name}</span>
+                            <span className="font-medium text-gray-900 text-xs sm:text-sm truncate">{plombier.name}</span>
                             {plombierUser && (
                               <Link
                                 href={`/plombiers/${plombierUser.id}`}
-                                className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded"
+                                className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded flex-shrink-0"
                                 title="Modifier"
                               >
-                                <Edit size={14} />
+                                <Edit className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                               </Link>
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="font-semibold text-gray-900">
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-right">
+                          <span className="font-semibold text-gray-900 text-xs sm:text-sm">
                             {formatCurrency(plombier.revenue)}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right text-gray-600">
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-gray-600 text-xs sm:text-sm">
                           {plombier.projects}
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-right">
+                          <div className="flex items-center justify-end space-x-1 sm:space-x-2">
+                            <div className="w-16 sm:w-24 bg-gray-200 rounded-full h-1.5 sm:h-2">
                               <div
-                                className="bg-primary-600 h-2 rounded-full"
+                                className="bg-primary-600 h-1.5 sm:h-2 rounded-full"
                                 style={{ width: `${percentage}%` }}
                               />
                             </div>
-                            <span className="text-sm text-gray-600 w-12 text-right">
+                            <span className="text-xs sm:text-sm text-gray-600 w-10 sm:w-12 text-right">
                               {percentage.toFixed(1)}%
                             </span>
                           </div>
@@ -1083,19 +1105,20 @@ export default function DashboardPage() {
                     );
                   })}
                 </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 font-semibold">
-                    <td className="py-3 px-4">Total</td>
-                    <td className="py-3 px-4 text-right">
-                      {formatCurrency(revenueByPlombier.reduce((sum, p) => sum + p.revenue, 0))}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {revenueByPlombier.reduce((sum, p) => sum + p.projects, 0)}
-                    </td>
-                    <td className="py-3 px-4 text-right">100%</td>
-                  </tr>
-                </tfoot>
-              </table>
+                  <tfoot>
+                    <tr className="bg-gray-50 font-semibold">
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm">Total</td>
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
+                        {formatCurrency(revenueByPlombier.reduce((sum, p) => sum + p.revenue, 0))}
+                      </td>
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
+                        {revenueByPlombier.reduce((sum, p) => sum + p.projects, 0)}
+                      </td>
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -1103,9 +1126,9 @@ export default function DashboardPage() {
         {/* Alertes */}
         {(kpis.overdueInvoices > 0 || kpis.pendingProjects > 0) && (
           <div className="card bg-yellow-50 border-yellow-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <AlertCircle className="mr-2 text-yellow-600" size={24} />
-              Alertes
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
+              <AlertCircle className="mr-2 text-yellow-600 w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base">Alertes</span>
             </h2>
             <div className="space-y-2">
               {kpis.overdueInvoices > 0 && (

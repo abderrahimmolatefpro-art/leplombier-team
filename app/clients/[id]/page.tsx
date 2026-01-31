@@ -20,7 +20,8 @@ import {
   MapPin,
   Edit,
   Plus,
-  Trash2
+  Trash2,
+  Send
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -41,7 +42,13 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showRevenueModal, setShowRevenueModal] = useState(false);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showSmsModal, setShowSmsModal] = useState(false);
   const [documentType, setDocumentType] = useState<'facture' | 'devis' | 'bon_commande'>('devis');
+  const [emailData, setEmailData] = useState({ subject: '', message: '' });
+  const [smsData, setSmsData] = useState({ message: '' });
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingSms, setSendingSms] = useState(false);
   const [documentFormData, setDocumentFormData] = useState({
     type: 'devis' as Document['type'],
     projectId: '',
@@ -252,15 +259,15 @@ export default function ClientDetailPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
         {/* En-tête */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <Link href="/clients" className="text-gray-600 hover:text-gray-900">
-              <ArrowLeft size={24} />
+              <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{client.name}</h1>
               {client.companyName && (
                 <p className="text-gray-600 mt-1">{client.companyName}</p>
               )}
@@ -275,24 +282,24 @@ export default function ClientDetailPage() {
               )}
             </div>
           </div>
-          <Link href="/clients" className="btn btn-secondary flex items-center space-x-2">
-            <Edit size={20} />
+          <Link href="/clients" className="btn btn-secondary flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center">
+            <Edit size={18} className="sm:w-5 sm:h-5" />
             <span>Modifier</span>
           </Link>
         </div>
 
         {/* Statistiques financières */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="card">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Revenus totaux</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600">Revenus totaux</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 truncate">
                     {formatCurrency(stats.totalRevenue)}
                   </p>
                 </div>
-                <DollarSign className="text-green-600" size={32} />
+                <DollarSign className="text-green-600 w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
               </div>
             </div>
 
@@ -366,22 +373,48 @@ export default function ClientDetailPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Informations client */}
           <div className="lg:col-span-1 space-y-6">
             <div className="card">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Informations</h2>
               <div className="space-y-3">
                 {client.phone && (
-                  <div className="flex items-center space-x-2">
-                    <Phone size={18} className="text-gray-400" />
-                    <span className="text-sm text-gray-700">{client.phone}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Phone size={18} className="text-gray-400" />
+                      <span className="text-sm text-gray-700">{client.phone}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSmsData({ message: `Bonjour ${client.name},\n\n` });
+                        setShowSmsModal(true);
+                      }}
+                      className="btn btn-sm btn-primary flex items-center space-x-1"
+                      title="Envoyer un SMS"
+                    >
+                      <Phone size={14} />
+                      <span>SMS</span>
+                    </button>
                   </div>
                 )}
                 {client.email && (
-                  <div className="flex items-center space-x-2">
-                    <Mail size={18} className="text-gray-400" />
-                    <span className="text-sm text-gray-700">{client.email}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Mail size={18} className="text-gray-400" />
+                      <span className="text-sm text-gray-700">{client.email}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEmailData({ subject: `Message de Le Plombier`, message: `Bonjour ${client.name},\n\n` });
+                        setShowEmailModal(true);
+                      }}
+                      className="btn btn-sm btn-primary flex items-center space-x-1"
+                      title="Envoyer un email"
+                    >
+                      <Mail size={14} />
+                      <span>Email</span>
+                    </button>
                   </div>
                 )}
                 <div className="flex items-start space-x-2">
@@ -706,6 +739,235 @@ export default function ClientDetailPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pour envoyer un email */}
+      {showEmailModal && client?.email && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Envoyer un email</h2>
+              
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setSendingEmail(true);
+                  try {
+                    const response = await fetch('/api/client/send-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        to: client.email,
+                        subject: emailData.subject,
+                        message: emailData.message,
+                        clientName: client.name,
+                      }),
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                      alert('Email envoyé avec succès !');
+                      setShowEmailModal(false);
+                      setEmailData({ subject: '', message: '' });
+                    } else {
+                      alert(`Erreur: ${result.error}`);
+                    }
+                  } catch (error: any) {
+                    console.error('Error sending email:', error);
+                    alert('Erreur lors de l\'envoi de l\'email');
+                  } finally {
+                    setSendingEmail(false);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Destinataire
+                  </label>
+                  <input
+                    type="email"
+                    value={client.email}
+                    disabled
+                    className="input bg-gray-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sujet *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={emailData.subject}
+                    onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+                    className="input"
+                    placeholder="Sujet de l'email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Message *
+                  </label>
+                  <textarea
+                    required
+                    value={emailData.message}
+                    onChange={(e) => setEmailData({ ...emailData, message: e.target.value })}
+                    className="input"
+                    rows={10}
+                    placeholder="Votre message..."
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEmailModal(false);
+                      setEmailData({ subject: '', message: '' });
+                    }}
+                    className="btn btn-secondary"
+                    disabled={sendingEmail}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary flex items-center space-x-2"
+                    disabled={sendingEmail}
+                  >
+                    {sendingEmail ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Envoi...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={18} />
+                        <span>Envoyer</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pour envoyer un SMS */}
+      {showSmsModal && client?.phone && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Envoyer un SMS</h2>
+              
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setSendingSms(true);
+                  try {
+                    const response = await fetch('/api/client/send-sms', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        phone: client.phone,
+                        message: smsData.message,
+                      }),
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                      if (result.whatsappUrl) {
+                        // Ouvrir WhatsApp Web dans un nouvel onglet
+                        window.open(result.whatsappUrl, '_blank');
+                        alert('WhatsApp Web ouvert dans un nouvel onglet. Pour envoyer de vrais SMS, configurez Twilio dans les variables d\'environnement.');
+                      } else {
+                        alert('SMS envoyé avec succès !');
+                      }
+                      setShowSmsModal(false);
+                      setSmsData({ message: '' });
+                    } else {
+                      alert(`Erreur: ${result.error}`);
+                    }
+                  } catch (error: any) {
+                    console.error('Error sending SMS:', error);
+                    alert('Erreur lors de l\'envoi du SMS');
+                  } finally {
+                    setSendingSms(false);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Destinataire
+                  </label>
+                  <input
+                    type="tel"
+                    value={client.phone}
+                    disabled
+                    className="input bg-gray-50"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Note: Si Twilio n&apos;est pas configuré, WhatsApp Web sera ouvert
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Message *
+                  </label>
+                  <textarea
+                    required
+                    value={smsData.message}
+                    onChange={(e) => setSmsData({ message: e.target.value })}
+                    className="input"
+                    rows={8}
+                    placeholder="Votre message SMS..."
+                    maxLength={160}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {smsData.message.length}/160 caractères
+                  </p>
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSmsModal(false);
+                      setSmsData({ message: '' });
+                    }}
+                    className="btn btn-secondary"
+                    disabled={sendingSms}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary flex items-center space-x-2"
+                    disabled={sendingSms}
+                  >
+                    {sendingSms ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Envoi...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={18} />
+                        <span>Envoyer</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
