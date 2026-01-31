@@ -304,6 +304,9 @@
         address: formData.get('address'),
       };
 
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FORMULAIRE_RECRUTEMENT.html:307',message:'Starting fetch request',data:{apiUrl:API_URL,dataKeys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       try {
         const response = await fetch(API_URL, {
           method: 'POST',
@@ -312,6 +315,9 @@
           },
           body: JSON.stringify(data),
         });
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FORMULAIRE_RECRUTEMENT.html:315',message:'Fetch response received',data:{status:response.status,statusText:response.statusText,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
 
         const result = await response.json();
 
@@ -321,6 +327,9 @@
           showMessage(result.error || 'Une erreur est survenue. Veuillez réessayer.', true);
         }
       } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FORMULAIRE_RECRUTEMENT.html:323',message:'Fetch error caught',data:{errorName:error?.name,errorMessage:error?.message,errorStack:error?.stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         console.error('Error:', error);
         showMessage('Une erreur est survenue lors de l\'envoi. Veuillez réessayer.', true);
       } finally {
