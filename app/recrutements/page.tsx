@@ -44,12 +44,18 @@ export default function RecruitmentsPage() {
   const [filterZone, setFilterZone] = useState<string>('all');
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:46',message:'useEffect triggered',data:{authLoading,hasUser:!!user,userRole:user?.role},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     if (!authLoading && !user) {
       router.push('/login');
       return;
     }
 
     if (user && user.role !== 'admin') {
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:52',message:'User is not admin, redirecting',data:{userRole:user.role},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       router.push('/dashboard');
       return;
     }
@@ -60,20 +66,59 @@ export default function RecruitmentsPage() {
   }, [user, authLoading, router]);
 
   const loadRecruitments = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:62',message:'loadRecruitments called',data:{userRole:user?.role,isAdmin:user?.role==='admin'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     try {
-      const recruitmentsQuery = query(
-        collection(db, 'recruitments'),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(recruitmentsQuery);
-      const recruitmentsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-      })) as Recruitment[];
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:65',message:'Creating query with orderBy',data:{collection:'recruitments'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      let snapshot;
+      try {
+        const recruitmentsQuery = query(
+          collection(db, 'recruitments'),
+          orderBy('createdAt', 'desc')
+        );
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:71',message:'Executing getDocs with orderBy',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        snapshot = await getDocs(recruitmentsQuery);
+      } catch (orderByError: any) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:75',message:'orderBy failed, trying without orderBy',data:{errorCode:orderByError?.code,errorMessage:orderByError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        // Fallback: try without orderBy (in case index is missing)
+        snapshot = await getDocs(collection(db, 'recruitments'));
+      }
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:79',message:'Snapshot received',data:{docsCount:snapshot.docs.length,empty:snapshot.empty},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      const recruitmentsData = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:82',message:'Processing doc',data:{docId:doc.id,hasCreatedAt:!!data.createdAt,createdAtType:data.createdAt?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+        };
+      }) as Recruitment[];
+      // Sort manually if orderBy failed
+      recruitmentsData.sort((a, b) => {
+        const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+        const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+        return bTime - aTime; // desc
+      });
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:95',message:'Setting recruitments state',data:{recruitmentsCount:recruitmentsData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       setRecruitments(recruitmentsData);
-    } catch (error) {
+    } catch (error: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:98',message:'Error loading recruitments',data:{errorName:error?.name,errorMessage:error?.message,errorCode:error?.code,errorStack:error?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       console.error('Error loading recruitments:', error);
     } finally {
       setLoading(false);
