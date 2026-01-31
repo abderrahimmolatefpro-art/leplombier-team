@@ -8,7 +8,7 @@ import { collection, getDocs, updateDoc, doc, Timestamp, query, orderBy } from '
 import { db } from '@/lib/firebase';
 import { Recruitment } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { Users, Phone, MapPin, Calendar, CheckCircle, XCircle, Clock, Search, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Search } from 'lucide-react';
 
 const ZONE_LABELS: Record<string, string> = {
   casa: 'Casablanca',
@@ -44,63 +44,36 @@ export default function RecruitmentsPage() {
   const [filterZone, setFilterZone] = useState<string>('all');
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:46',message:'useEffect triggered',data:{authLoading,hasUser:!!user,userRole:user?.role,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     if (!authLoading && !user) {
       router.push('/login');
       return;
     }
 
     if (user && user.role !== 'admin') {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:52',message:'User is not admin, redirecting',data:{userRole:user.role,userId:user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       router.push('/dashboard');
       return;
     }
 
     if (user) {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:60',message:'User is admin, loading recruitments',data:{userRole:user.role,userId:user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       loadRecruitments();
     }
   }, [user, authLoading, router]);
 
   const loadRecruitments = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:62',message:'loadRecruitments called',data:{userRole:user?.role,isAdmin:user?.role==='admin'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:65',message:'Creating query with orderBy',data:{collection:'recruitments'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       let snapshot;
       try {
         const recruitmentsQuery = query(
           collection(db, 'recruitments'),
           orderBy('createdAt', 'desc')
         );
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:71',message:'Executing getDocs with orderBy',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         snapshot = await getDocs(recruitmentsQuery);
       } catch (orderByError: any) {
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:75',message:'orderBy failed, trying without orderBy',data:{errorCode:orderByError?.code,errorMessage:orderByError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         // Fallback: try without orderBy (in case index is missing)
         snapshot = await getDocs(collection(db, 'recruitments'));
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:79',message:'Snapshot received',data:{docsCount:snapshot.docs.length,empty:snapshot.empty},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       const recruitmentsData = snapshot.docs.map((doc) => {
         const data = doc.data();
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:82',message:'Processing doc',data:{docId:doc.id,hasCreatedAt:!!data.createdAt,createdAtType:data.createdAt?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         return {
           id: doc.id,
           ...data,
@@ -114,14 +87,8 @@ export default function RecruitmentsPage() {
         const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
         return bTime - aTime; // desc
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:95',message:'Setting recruitments state',data:{recruitmentsCount:recruitmentsData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       setRecruitments(recruitmentsData);
     } catch (error: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:98',message:'Error loading recruitments',data:{errorName:error?.name,errorMessage:error?.message,errorCode:error?.code,errorStack:error?.stack?.substring(0,300),userRole:user?.role,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       console.error('Error loading recruitments:', error);
       if (error?.code === 'permission-denied' || error?.message?.includes('permissions')) {
         console.error('PERMISSIONS ERROR: Vérifiez que:');
@@ -234,119 +201,125 @@ export default function RecruitmentsPage() {
           </div>
         </div>
 
-        {/* Recruitments List */}
-        <div className="space-y-3 sm:space-y-4">
-          {filteredRecruitments.length === 0 ? (
-            <div className="card text-center py-12">
-              <Users className="mx-auto text-gray-400 mb-4" size={48} />
-              <p className="text-gray-600">
-                {recruitments.length === 0
-                  ? 'Aucune candidature pour le moment'
-                  : 'Aucune candidature ne correspond aux filtres'}
-              </p>
-            </div>
-          ) : (
-            filteredRecruitments.map((recruitment) => (
-              <div key={recruitment.id} className="card hover:shadow-lg transition-shadow">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+        {/* Recruitments Table */}
+        <div className="card p-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Candidat</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Spécialité / Zone</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredRecruitments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 text-gray-500 text-sm">
+                      {recruitments.length === 0
+                        ? 'Aucune candidature pour le moment'
+                        : 'Aucune candidature ne correspond aux filtres'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRecruitments.map((recruitment) => (
+                    <tr key={recruitment.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
                           {recruitment.firstName} {recruitment.lastName}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[recruitment.status]}`}>
-                            {STATUS_LABELS[recruitment.status]}
-                          </span>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                            {ZONE_LABELS[recruitment.zones]}
-                          </span>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-3">
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Phone size={16} className="text-gray-400 flex-shrink-0" />
-                        <a href={`tel:${recruitment.phone}`} className="hover:text-primary-600">
+                        <div className="text-xs text-gray-500 truncate max-w-[200px]" title={recruitment.address}>
+                          {recruitment.address}
+                        </div>
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                        <a href={`tel:${recruitment.phone}`} className="text-sm text-primary-600 hover:text-primary-800">
                           {recruitment.phone}
                         </a>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <MapPin size={16} className="text-gray-400 flex-shrink-0" />
-                        <span className="truncate">{recruitment.address}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Users size={16} className="text-gray-400 flex-shrink-0" />
-                        <span>{recruitment.specialty}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Calendar size={16} className="text-gray-400 flex-shrink-0" />
-                        <span>{formatDate(recruitment.createdAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 flex-shrink-0">
-                    {recruitment.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => handleStatusChange(recruitment.id, 'contacted')}
-                          className="btn btn-secondary text-xs sm:text-sm flex items-center justify-center space-x-1 sm:space-x-2"
-                        >
-                          <Clock size={14} className="sm:w-4 sm:h-4" />
-                          <span>Contacté</span>
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(recruitment.id, 'accepted')}
-                          className="btn btn-primary text-xs sm:text-sm flex items-center justify-center space-x-1 sm:space-x-2"
-                        >
-                          <CheckCircle size={14} className="sm:w-4 sm:h-4" />
-                          <span>Accepter</span>
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(recruitment.id, 'rejected')}
-                          className="btn btn-secondary text-xs sm:text-sm flex items-center justify-center space-x-1 sm:space-x-2 bg-red-50 text-red-700 hover:bg-red-100"
-                        >
-                          <XCircle size={14} className="sm:w-4 sm:h-4" />
-                          <span>Rejeter</span>
-                        </button>
-                      </>
-                    )}
-                    {recruitment.status === 'contacted' && (
-                      <>
-                        <button
-                          onClick={() => handleStatusChange(recruitment.id, 'accepted')}
-                          className="btn btn-primary text-xs sm:text-sm flex items-center justify-center space-x-1 sm:space-x-2"
-                        >
-                          <CheckCircle size={14} className="sm:w-4 sm:h-4" />
-                          <span>Accepter</span>
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(recruitment.id, 'rejected')}
-                          className="btn btn-secondary text-xs sm:text-sm flex items-center justify-center space-x-1 sm:space-x-2 bg-red-50 text-red-700 hover:bg-red-100"
-                        >
-                          <XCircle size={14} className="sm:w-4 sm:h-4" />
-                          <span>Rejeter</span>
-                        </button>
-                      </>
-                    )}
-                    {(recruitment.status === 'accepted' || recruitment.status === 'rejected') && (
-                      <button
-                        onClick={() => handleStatusChange(recruitment.id, 'pending')}
-                        className="btn btn-secondary text-xs sm:text-sm flex items-center justify-center space-x-1 sm:space-x-2"
-                      >
-                        <Clock size={14} className="sm:w-4 sm:h-4" />
-                        <span>Remettre en attente</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{recruitment.specialty}</div>
+                        <div className="text-xs text-gray-500">{ZONE_LABELS[recruitment.zones] || recruitment.zones}</div>
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{formatDate(recruitment.createdAt)}</div>
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[recruitment.status]}`}>
+                          {STATUS_LABELS[recruitment.status]}
+                        </span>
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-1 sm:space-x-2">
+                          {recruitment.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleStatusChange(recruitment.id, 'contacted')}
+                                className="btn btn-sm btn-secondary flex items-center space-x-1"
+                                title="Marquer comme contacté"
+                              >
+                                <Clock size={14} />
+                                <span className="hidden sm:inline">Contacté</span>
+                              </button>
+                              <button
+                                onClick={() => handleStatusChange(recruitment.id, 'accepted')}
+                                className="btn btn-sm btn-success flex items-center space-x-1"
+                                title="Accepter la candidature"
+                              >
+                                <CheckCircle size={14} />
+                                <span className="hidden sm:inline">Accepter</span>
+                              </button>
+                              <button
+                                onClick={() => handleStatusChange(recruitment.id, 'rejected')}
+                                className="btn btn-sm btn-danger flex items-center space-x-1"
+                                title="Rejeter la candidature"
+                              >
+                                <XCircle size={14} />
+                                <span className="hidden sm:inline">Rejeter</span>
+                              </button>
+                            </>
+                          )}
+                          {recruitment.status === 'contacted' && (
+                            <>
+                              <button
+                                onClick={() => handleStatusChange(recruitment.id, 'accepted')}
+                                className="btn btn-sm btn-success flex items-center space-x-1"
+                                title="Accepter la candidature"
+                              >
+                                <CheckCircle size={14} />
+                                <span className="hidden sm:inline">Accepter</span>
+                              </button>
+                              <button
+                                onClick={() => handleStatusChange(recruitment.id, 'rejected')}
+                                className="btn btn-sm btn-danger flex items-center space-x-1"
+                                title="Rejeter la candidature"
+                              >
+                                <XCircle size={14} />
+                                <span className="hidden sm:inline">Rejeter</span>
+                              </button>
+                            </>
+                          )}
+                          {(recruitment.status === 'accepted' || recruitment.status === 'rejected') && (
+                            <button
+                              onClick={() => handleStatusChange(recruitment.id, 'pending')}
+                              className="btn btn-sm btn-secondary flex items-center space-x-1"
+                              title="Remettre en attente"
+                            >
+                              <Clock size={14} />
+                              <span className="hidden sm:inline">En attente</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </Layout>
