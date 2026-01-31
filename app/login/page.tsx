@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -32,7 +33,16 @@ export default function LoginPage() {
       <div className="max-w-md w-full">
         <div className="card">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">CRM Plomberie</h1>
+            <div className="flex justify-center mb-4">
+              <Image
+                src="/logo.png"
+                alt="CRM Plomberie"
+                width={200}
+                height={67}
+                className="h-auto w-auto max-w-[200px] object-contain"
+                priority
+              />
+            </div>
             <p className="text-gray-600">Connectez-vous à votre compte</p>
           </div>
 
@@ -81,15 +91,6 @@ export default function LoginPage() {
               {loading ? 'Connexion...' : 'Se connecter'}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <a
-              href="/setup"
-              className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-            >
-              Créer le premier administrateur
-            </a>
-          </div>
         </div>
       </div>
     </div>
