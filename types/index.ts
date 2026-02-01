@@ -64,7 +64,7 @@ export interface Project {
   address: string;
   amount?: number; // Montant du projet en DH (peut être saisi manuellement)
   hasInvoice?: boolean; // Si le projet a une facture associée
-  paidPlombierIds?: string[]; // Liste des IDs des plombiers qui ont été payés pour ce projet
+  paidByPlombierIds?: string[]; // Liste des IDs des plombiers qui ont payé leur part à la société pour ce projet
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,7 +79,7 @@ export interface ManualRevenue {
   description: string;
   plombierId?: string; // Plombier associé
   isBlackRevenue?: boolean; // Revenu "en noir" (sans facture)
-  isPaidToPlombier?: boolean; // Si le plombier a été payé pour ce dépannage
+  plombierHasPaid?: boolean; // Si le plombier a payé sa part à la société pour ce dépannage
   notes?: string;
   createdAt: Date;
   updatedAt: Date;

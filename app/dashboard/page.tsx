@@ -118,7 +118,7 @@ export default function DashboardPage() {
         endDate: doc.data().endDate?.toDate(),
         amount: doc.data().amount || 0,
         hasInvoice: doc.data().hasInvoice || false,
-        paidPlombierIds: doc.data().paidPlombierIds || [],
+        paidByPlombierIds: doc.data().paidByPlombierIds || [],
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
@@ -155,7 +155,7 @@ export default function DashboardPage() {
         id: doc.id,
         ...doc.data(),
         date: doc.data().date?.toDate() || new Date(),
-        isPaidToPlombier: doc.data().isPaidToPlombier || false,
+        plombierHasPaid: doc.data().plombierHasPaid || false,
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as ManualRevenue[];
@@ -442,24 +442,9 @@ export default function DashboardPage() {
       ? (convertedQuotes.length / quotes.length) * 100 
       : 0;
     
-    // Répartition dynamique selon facture (40/60 avec facture, 60/40 sans facture)
-    // Revenus avec facture (factures payées + projets avec facture)
-    const revenueWithInvoice = 
-      filteredInvoices.reduce((sum, doc) => sum + (doc.total || 0), 0) +
-      filteredProjects
-        .filter(p => p.amount && p.amount > 0 && p.hasInvoice)
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
-    
-    // Revenus sans facture (projets sans facture + dépannages)
-    const revenueWithoutInvoice = 
-      filteredProjects
-        .filter(p => p.amount && p.amount > 0 && !p.hasInvoice)
-        .reduce((sum, p) => sum + (p.amount || 0), 0) +
-      filteredManualRevenues.reduce((sum, r) => sum + r.amount, 0);
-    
-    // Répartition : 40% plombier / 60% société avec facture, 60% plombier / 40% société sans facture
-    const plombierRevenue = (revenueWithInvoice * 0.4) + (revenueWithoutInvoice * 0.6);
-    const companyRevenue = (revenueWithInvoice * 0.6) + (revenueWithoutInvoice * 0.4);
+    // Répartition fixe : 60% plombier / 40% société
+    const plombierRevenue = totalRevenue * 0.6;
+    const companyRevenue = totalRevenue * 0.4;
     
     return {
       totalRevenue,
@@ -491,14 +476,15 @@ export default function DashboardPage() {
     let totalUnpaidToPlombiers = 0;
     
     // Calculer les paiements pour les projets
+    // Les plombiers paient 40% à la société (60% pour eux, 40% pour la société)
     filteredProjects.forEach(project => {
       if (project.amount && project.amount > 0 && project.plombierIds.length > 0) {
-        const plombierSharePercent = project.hasInvoice ? 0.4 : 0.6;
-        const sharePerPlombier = (project.amount * plombierSharePercent) / project.plombierIds.length;
+        const companySharePercent = 0.4; // Part que la société reçoit (40%)
+        const sharePerPlombier = (project.amount * companySharePercent) / project.plombierIds.length;
         
         project.plombierIds.forEach(plombierId => {
-          const isPaid = project.paidPlombierIds?.includes(plombierId) || false;
-          if (isPaid) {
+          const hasPaid = project.paidByPlombierIds?.includes(plombierId) || false;
+          if (hasPaid) {
             totalPaidToPlombiers += sharePerPlombier;
           } else {
             totalUnpaidToPlombiers += sharePerPlombier;
@@ -508,38 +494,37 @@ export default function DashboardPage() {
     });
     
     // Calculer les paiements pour les factures (via clients assignés)
-    // Pour les factures, on considère qu'elles sont payées au plombier si le client a un plombier assigné
-    // Le paiement réel est géré via les projets liés
+    // Plombier paie 40% à la société
     filteredInvoices.forEach(invoice => {
       if (existingClientIds.has(invoice.clientId)) {
         const client = clients.find(c => c.id === invoice.clientId);
         if (client?.assignedPlombierId) {
-          // Vérifier si un projet lié avec facture a été payé
+          // Vérifier si un projet lié a été payé
           const relatedProject = filteredProjects.find(p => 
             p.clientId === invoice.clientId && 
-            p.hasInvoice &&
-            p.paidPlombierIds?.includes(client.assignedPlombierId)
+            p.paidByPlombierIds?.includes(client.assignedPlombierId)
           );
           if (relatedProject) {
-            const plombierShare = (invoice.total || 0) * 0.4;
-            totalPaidToPlombiers += plombierShare;
+            const companyReceives = (invoice.total || 0) * 0.4; // Société reçoit 40%
+            totalPaidToPlombiers += companyReceives;
           } else {
             // Si pas de projet lié payé, on considère comme non payé
-            const plombierShare = (invoice.total || 0) * 0.4;
-            totalUnpaidToPlombiers += plombierShare;
+            const companyReceives = (invoice.total || 0) * 0.4;
+            totalUnpaidToPlombiers += companyReceives;
           }
         }
       }
     });
     
     // Calculer les paiements pour les dépannages
+    // Plombier paie 40% à la société
     filteredManualRevenues.forEach(revenue => {
       if (revenue.plombierId) {
-        const plombierShare = revenue.amount * 0.6; // 60% sans facture
-        if (revenue.isPaidToPlombier) {
-          totalPaidToPlombiers += plombierShare;
+        const companyReceives = revenue.amount * 0.4; // Société reçoit 40%
+        if (revenue.plombierHasPaid) {
+          totalPaidToPlombiers += companyReceives;
         } else {
-          totalUnpaidToPlombiers += plombierShare;
+          totalUnpaidToPlombiers += companyReceives;
         }
       }
     });
@@ -1035,7 +1020,7 @@ export default function DashboardPage() {
             <div className="card bg-green-50 border-green-200">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-green-700 font-medium">Payé aux plombiers</p>
+                  <p className="text-xs sm:text-sm text-green-700 font-medium">Payé par les plombiers</p>
                   <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-900 mt-1 sm:mt-2 truncate">
                     {formatCurrency(paymentStats.totalPaid)}
                   </p>
@@ -1049,7 +1034,7 @@ export default function DashboardPage() {
             <div className="card bg-orange-50 border-orange-200">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-orange-700 font-medium">Non payé aux plombiers</p>
+                  <p className="text-xs sm:text-sm text-orange-700 font-medium">Non payé par les plombiers</p>
                   <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-900 mt-1 sm:mt-2 truncate">
                     {formatCurrency(paymentStats.totalUnpaid)}
                   </p>
@@ -1063,7 +1048,7 @@ export default function DashboardPage() {
             <div className="card bg-blue-50 border-blue-200">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-blue-700 font-medium">Total dû aux plombiers</p>
+                  <p className="text-xs sm:text-sm text-blue-700 font-medium">Total dû par les plombiers</p>
                   <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900 mt-1 sm:mt-2 truncate">
                     {formatCurrency(paymentStats.totalDue)}
                   </p>

@@ -61,7 +61,7 @@ export default function ProjetsPage() {
         endDate: doc.data().endDate?.toDate(),
         amount: doc.data().amount || undefined,
         hasInvoice: doc.data().hasInvoice || false,
-        paidPlombierIds: doc.data().paidPlombierIds || [],
+        paidByPlombierIds: doc.data().paidByPlombierIds || [],
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
@@ -163,15 +163,15 @@ export default function ProjetsPage() {
       const project = projets.find(p => p.id === projectId);
       if (!project) return;
       
-      const currentPaidIds = project.paidPlombierIds || [];
-      const isPaid = currentPaidIds.includes(plombierId);
+      const currentPaidIds = project.paidByPlombierIds || [];
+      const hasPaid = currentPaidIds.includes(plombierId);
       
-      const newPaidIds = isPaid
+      const newPaidIds = hasPaid
         ? currentPaidIds.filter(id => id !== plombierId)
         : [...currentPaidIds, plombierId];
       
       await updateDoc(doc(db, 'projects', projectId), {
-        paidPlombierIds: newPaidIds,
+        paidByPlombierIds: newPaidIds,
         updatedAt: Timestamp.now(),
       });
       

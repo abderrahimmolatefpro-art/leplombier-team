@@ -138,7 +138,7 @@ export default function PlombiersPage() {
         endDate: doc.data().endDate?.toDate(),
         amount: doc.data().amount || 0,
         hasInvoice: doc.data().hasInvoice || false,
-        paidPlombierIds: doc.data().paidPlombierIds || [],
+        paidByPlombierIds: doc.data().paidByPlombierIds || [],
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
@@ -374,15 +374,15 @@ export default function PlombiersPage() {
       const project = projects.find(p => p.id === projectId);
       if (!project) return;
       
-      const currentPaidIds = project.paidPlombierIds || [];
-      const isPaid = currentPaidIds.includes(plombierId);
+      const currentPaidIds = project.paidByPlombierIds || [];
+      const hasPaid = currentPaidIds.includes(plombierId);
       
-      const newPaidIds = isPaid
+      const newPaidIds = hasPaid
         ? currentPaidIds.filter(id => id !== plombierId)
         : [...currentPaidIds, plombierId];
       
       await updateDoc(doc(db, 'projects', projectId), {
-        paidPlombierIds: newPaidIds,
+        paidByPlombierIds: newPaidIds,
         updatedAt: Timestamp.now(),
       });
       
@@ -400,10 +400,10 @@ export default function PlombiersPage() {
       const depannage = manualRevenues.find(r => r.id === depannageId);
       if (!depannage) return;
       
-      const newIsPaid = !depannage.isPaidToPlombier;
+      const newHasPaid = !depannage.plombierHasPaid;
       
       await updateDoc(doc(db, 'manualRevenues', depannageId), {
-        isPaidToPlombier: newIsPaid,
+        plombierHasPaid: newHasPaid,
         updatedAt: Timestamp.now(),
       });
       
@@ -780,8 +780,8 @@ export default function PlombiersPage() {
                                       </thead>
                                       <tbody>
                                         {stat.projects.map(project => {
-                                          const isPaid = project.paidPlombierIds?.includes(stat.plombier.id) || false;
-                                          const plombierSharePercent = project.hasInvoice ? 0.4 : 0.6;
+                                          const hasPaid = project.paidByPlombierIds?.includes(stat.plombier.id) || false;
+                                          const plombierSharePercent = 0.6; // 60% pour le plombier
                                           const plombierShare = project.amount && project.plombierIds.length > 0
                                             ? (project.amount * plombierSharePercent) / project.plombierIds.length
                                             : 0;
@@ -814,13 +814,13 @@ export default function PlombiersPage() {
                                                   <button
                                                     onClick={() => handleToggleProjectPayment(project.id, stat.plombier.id)}
                                                     className={`px-2 py-1 text-xs rounded flex items-center gap-1 mx-auto ${
-                                                      isPaid
+                                                      hasPaid
                                                         ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                     }`}
-                                                    title={`${isPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(plombierShare)}`}
+                                                    title={`${hasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(plombierShare)}`}
                                                   >
-                                                    <span>{isPaid ? '✓ Payé' : '○ Non payé'}</span>
+                                                    <span>{hasPaid ? '✓ Payé' : '○ Non payé'}</span>
                                                   </button>
                                                 </td>
                                               )}
@@ -909,13 +909,13 @@ export default function PlombiersPage() {
                                                   <button
                                                     onClick={() => handleToggleDepannagePayment(depannage.id)}
                                                     className={`px-2 py-1 text-xs rounded flex items-center gap-1 mx-auto ${
-                                                      depannage.isPaidToPlombier
+                                                      depannage.plombierHasPaid
                                                         ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                     }`}
-                                                    title={`${depannage.isPaidToPlombier ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(plombierShare)}`}
+                                                    title={`${depannage.plombierHasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(plombierShare)}`}
                                                   >
-                                                    <span>{depannage.isPaidToPlombier ? '✓ Payé' : '○ Non payé'}</span>
+                                                    <span>{depannage.plombierHasPaid ? '✓ Payé' : '○ Non payé'}</span>
                                                   </button>
                                                 </td>
                                               )}

@@ -174,7 +174,7 @@ export default function ClientDetailPage() {
         id: doc.id,
         ...doc.data(),
         date: doc.data().date?.toDate() || new Date(),
-        isPaidToPlombier: doc.data().isPaidToPlombier || false,
+        plombierHasPaid: doc.data().plombierHasPaid || false,
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as ManualRevenue[];
@@ -656,7 +656,7 @@ export default function ClientDetailPage() {
                                 onClick={async () => {
                                   try {
                                     await updateDoc(doc(db, 'manualRevenues', revenue.id), {
-                                      isPaidToPlombier: !revenue.isPaidToPlombier,
+                                      plombierHasPaid: !revenue.plombierHasPaid,
                                       updatedAt: Timestamp.now(),
                                     });
                                     loadClientData();
@@ -666,19 +666,19 @@ export default function ClientDetailPage() {
                                   }
                                 }}
                                 className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                                  revenue.isPaidToPlombier
+                                  revenue.plombierHasPaid
                                     ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
-                                title={`${revenue.isPaidToPlombier ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${plombier.name} - ${formatCurrency(plombierShare)}`}
+                                title={`${revenue.plombierHasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${plombier.name} - ${formatCurrency(plombierShare)}`}
                               >
                                 <span>{plombier.name}</span>
-                                <span className={revenue.isPaidToPlombier ? 'text-green-600' : 'text-gray-500'}>
-                                  {revenue.isPaidToPlombier ? '✓' : '○'}
+                                <span className={revenue.plombierHasPaid ? 'text-green-600' : 'text-gray-500'}>
+                                  {revenue.plombierHasPaid ? '✓' : '○'}
                                 </span>
                               </button>
                             )}
-                            {plombier && revenue.isPaidToPlombier && (
+                            {plombier && revenue.plombierHasPaid && (
                               <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
                                 Payé
                               </span>
