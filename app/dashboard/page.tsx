@@ -1001,18 +1001,6 @@ export default function DashboardPage() {
           </div>
 
           {/* Répartition revenus */}
-          <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm text-blue-700 font-medium">Part société (40%)</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900 mt-1 sm:mt-2 truncate">{formatCurrency(kpis.companyRevenue)}</p>
-                <p className="text-xs text-blue-600 mt-1 truncate">Plombier: {formatCurrency(kpis.plombierRevenue)}</p>
-              </div>
-              <div className="p-1.5 sm:p-2 lg:p-3 bg-blue-200 rounded-lg flex-shrink-0">
-                <TrendingUp className="text-blue-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
-              </div>
-            </div>
-          </div>
 
           {/* Projets actifs */}
           <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
