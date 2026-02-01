@@ -196,24 +196,43 @@ export default function ClientDetailPage() {
     appointments: PlanningEntry[],
     manualRevenues: ManualRevenue[]
   ): ClientStats => {
-    // Revenus des factures payées
+    // Revenus des factures payées (utiliser pourcentage du projet lié ou 60% par défaut)
     const paidInvoices = documents.filter(
       d => d.type === 'facture' && d.status === 'paye'
     );
-    const invoiceRevenue = paidInvoices.reduce((sum, doc) => sum + doc.total, 0);
+    let totalPlombierShare = 0;
+    let totalCompanyShare = 0;
     
-    // Revenus des projets (montants saisis manuellement)
-    const projectRevenue = projects
-      .filter(p => p.amount && p.amount > 0)
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    paidInvoices.forEach(invoice => {
+      const relatedProject = projects.find(p => p.clientId === invoice.clientId);
+      const plombierPercent = relatedProject ? (relatedProject.plombierPercentage || 60) / 100 : 0.6;
+      const companyPercent = 1 - plombierPercent;
+      totalPlombierShare += invoice.total * plombierPercent;
+      totalCompanyShare += invoice.total * companyPercent;
+    });
     
-    // Dépannages (revenus sans facture)
-    const depannageRevenue = manualRevenues.reduce((sum, r) => sum + r.amount, 0);
+    // Revenus des projets (montants saisis manuellement avec pourcentage personnalisé)
+    projects.forEach(project => {
+      if (project.amount && project.amount > 0) {
+        const plombierPercent = (project.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        totalPlombierShare += project.amount * plombierPercent;
+        totalCompanyShare += project.amount * companyPercent;
+      }
+    });
+    
+    // Dépannages (revenus sans facture avec pourcentage personnalisé)
+    manualRevenues.forEach(revenue => {
+      const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+      const companyPercent = 1 - plombierPercent;
+      totalPlombierShare += revenue.amount * plombierPercent;
+      totalCompanyShare += revenue.amount * companyPercent;
+    });
     
     // Total = factures + projets + dépannages
-    const totalRevenue = invoiceRevenue + projectRevenue + depannageRevenue;
-    const plombierRevenue = totalRevenue * 0.6; // 60%
-    const companyRevenue = totalRevenue * 0.4; // 40%
+    const totalRevenue = totalPlombierShare + totalCompanyShare;
+    const plombierRevenue = totalPlombierShare;
+    const companyRevenue = totalCompanyShare;
 
     const nextAppointment = appointments.length > 0
       ? appointments
@@ -307,7 +326,7 @@ export default function ClientDetailPage() {
             <div className="card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Part plombier (60%)</p>
+                  <p className="text-sm text-gray-600">Part plombier</p>
                   <p className="text-2xl font-bold text-primary-600 mt-1">
                     {formatCurrency(stats.plombierRevenue)}
                   </p>
@@ -319,7 +338,7 @@ export default function ClientDetailPage() {
             <div className="card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Part société (40%)</p>
+                  <p className="text-sm text-gray-600">Part société</p>
                   <p className="text-2xl font-bold text-blue-600 mt-1">
                     {formatCurrency(stats.companyRevenue)}
                   </p>
@@ -633,7 +652,10 @@ export default function ClientDetailPage() {
               <div className="space-y-3">
                 {manualRevenues.map((revenue) => {
                   const plombier = revenue.plombierId ? allPlombiers.find(p => p.id === revenue.plombierId) : null;
-                  const plombierShare = revenue.amount * 0.6; // 60% pour le plombier (sans facture)
+                  const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+                  const companyPercent = 1 - plombierPercent;
+                  const plombierShare = revenue.amount * plombierPercent;
+                  const companyShare = revenue.amount * companyPercent;
                   
                   return (
                     <div
@@ -670,7 +692,7 @@ export default function ClientDetailPage() {
                                     ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
-                                title={`${revenue.plombierHasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${plombier.name} - ${formatCurrency(plombierShare)}`}
+                                title={`${revenue.plombierHasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${plombier.name} - ${formatCurrency(companyShare)}`}
                               >
                                 <span>{plombier.name}</span>
                                 <span className={revenue.plombierHasPaid ? 'text-green-600' : 'text-gray-500'}>
@@ -1042,6 +1064,7 @@ function RevenueModal({
     projectId: '',
     plombierId: '',
     isBlackRevenue: false,
+    plombierPercentage: 60,
     notes: '',
   });
 
@@ -1056,6 +1079,7 @@ function RevenueModal({
         projectId: formData.projectId || null,
         plombierId: formData.plombierId || null,
         isBlackRevenue: formData.isBlackRevenue,
+        plombierPercentage: formData.plombierPercentage || 60,
         notes: formData.notes || '',
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -1160,17 +1184,37 @@ function RevenueModal({
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="isBlackRevenue"
-                checked={formData.isBlackRevenue}
-                onChange={(e) => setFormData({ ...formData, isBlackRevenue: e.target.checked })}
-                className="rounded"
-              />
-              <label htmlFor="isBlackRevenue" className="text-sm text-gray-700">
-                Revenu &quot;en noir&quot; (sans facture)
-              </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="isBlackRevenue"
+                  checked={formData.isBlackRevenue}
+                  onChange={(e) => setFormData({ ...formData, isBlackRevenue: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="isBlackRevenue" className="text-sm text-gray-700">
+                  Revenu &quot;en noir&quot; (sans facture)
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  % Plombier (défaut: 60%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={formData.plombierPercentage}
+                  onChange={(e) => setFormData({ ...formData, plombierPercentage: parseInt(e.target.value) || 60 })}
+                  className="input"
+                  placeholder="60"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Société: {100 - (formData.plombierPercentage || 60)}%
+                </p>
+              </div>
             </div>
 
             <div>

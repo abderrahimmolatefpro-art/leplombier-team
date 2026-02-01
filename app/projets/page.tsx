@@ -36,6 +36,7 @@ export default function ProjetsPage() {
     address: '',
     amount: '',
     hasInvoice: false,
+    plombierPercentage: 60, // Pourcentage par défaut 60%
   });
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function ProjetsPage() {
         amount: doc.data().amount || undefined,
         hasInvoice: doc.data().hasInvoice || false,
         paidByPlombierIds: doc.data().paidByPlombierIds || [],
+        plombierPercentage: doc.data().plombierPercentage || 60,
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
@@ -113,11 +115,12 @@ export default function ProjetsPage() {
       const projectData = {
         ...formData,
         startDate: startDateTimestamp,
-        amount: formData.amount ? parseFloat(formData.amount) : null,
-        hasInvoice: formData.hasInvoice,
-        createdAt: editingProject ? editingProject.createdAt : Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      };
+            amount: formData.amount ? parseFloat(formData.amount) : null,
+            hasInvoice: formData.hasInvoice,
+            plombierPercentage: formData.plombierPercentage || 60,
+            createdAt: editingProject ? editingProject.createdAt : Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          };
 
       if (editingProject) {
         await updateDoc(doc(db, 'projects', editingProject.id), projectData);
@@ -152,6 +155,7 @@ export default function ProjetsPage() {
       address: project.address,
       amount: project.amount?.toString() || '',
       hasInvoice: project.hasInvoice || false,
+      plombierPercentage: project.plombierPercentage || 60,
     });
     setShowModal(true);
   };
@@ -210,6 +214,7 @@ export default function ProjetsPage() {
       address: '',
       amount: '',
       hasInvoice: false,
+      plombierPercentage: 60,
     });
   };
 
@@ -539,18 +544,37 @@ export default function ProjetsPage() {
                         Montant saisi manuellement (sans facture)
                       </p>
                     </div>
-                    <div className="flex items-center space-x-2 pt-6">
-                      <input
-                        type="checkbox"
-                        id="hasInvoice"
-                        checked={formData.hasInvoice}
-                        onChange={(e) => setFormData({ ...formData, hasInvoice: e.target.checked })}
-                        className="rounded"
-                      />
-                      <label htmlFor="hasInvoice" className="text-sm text-gray-700">
-                        A une facture associée
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        % Plombier (défaut: 60%)
                       </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={formData.plombierPercentage}
+                        onChange={(e) => setFormData({ ...formData, plombierPercentage: parseInt(e.target.value) || 60 })}
+                        className="input"
+                        placeholder="60"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Société: {100 - (formData.plombierPercentage || 60)}%
+                      </p>
                     </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="hasInvoice"
+                      checked={formData.hasInvoice}
+                      onChange={(e) => setFormData({ ...formData, hasInvoice: e.target.checked })}
+                      className="rounded"
+                    />
+                    <label htmlFor="hasInvoice" className="text-sm text-gray-700">
+                      A une facture associée
+                    </label>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

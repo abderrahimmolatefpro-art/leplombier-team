@@ -16,7 +16,7 @@ type SortDirection = 'asc' | 'desc';
 export default function ClientsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [clients, setClients] = useState<(Client & { _stats?: { totalRevenue: number; totalProjects: number; totalInvoices: number } })[]>([]);
+  const [clients, setClients] = useState<(Client & { _stats?: { totalRevenue: number; totalProjects: number; totalInvoices: number; plombierRevenue: number; companyRevenue: number } })[]>([]);
   const [plombiers, setPlombiers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -115,28 +115,44 @@ export default function ClientsPage() {
               getDocs(revenuesQuery).catch(() => ({ docs: [], size: 0 })),
             ]);
 
-            // Revenus des factures payées
+            // Calculer les revenus avec pourcentages personnalisés
+            let totalPlombierShare = 0;
+            let totalCompanyShare = 0;
+            
+            // Revenus des projets (avec pourcentage personnalisé)
+            const projectsData = projectsSnapshot.docs.map(d => d.data());
+            projectsData.forEach(project => {
+              if (project.amount && project.amount > 0) {
+                const plombierPercent = (project.plombierPercentage || 60) / 100;
+                const companyPercent = 1 - plombierPercent;
+                totalPlombierShare += project.amount * plombierPercent;
+                totalCompanyShare += project.amount * companyPercent;
+              }
+            });
+
+            // Revenus des factures payées (utiliser pourcentage du projet lié ou 60% par défaut)
             const paidInvoices = documentsSnapshot.docs
               .map(d => d.data())
               .filter(d => d.type === 'facture' && d.status === 'paye');
-            const invoiceRevenue = paidInvoices.reduce(
-              (sum, doc) => sum + (doc.total || 0), 
-              0
-            );
+            paidInvoices.forEach(invoice => {
+              const relatedProject = projectsData.find(p => p.clientId === invoice.clientId);
+              const plombierPercent = relatedProject ? (relatedProject.plombierPercentage || 60) / 100 : 0.6;
+              const companyPercent = 1 - plombierPercent;
+              totalPlombierShare += (invoice.total || 0) * plombierPercent;
+              totalCompanyShare += (invoice.total || 0) * companyPercent;
+            });
 
-            // Revenus des projets (montants saisis manuellement)
-            const projectsData = projectsSnapshot.docs.map(d => d.data());
-            const projectRevenue = projectsData
-              .filter(p => p.amount && p.amount > 0)
-              .reduce((sum, p) => sum + (p.amount || 0), 0);
-
-            // Dépannages
-            const depannageRevenue = revenuesSnapshot.docs
-              .map(d => d.data())
-              .reduce((sum, r) => sum + (r.amount || 0), 0);
+            // Dépannages (avec pourcentage personnalisé)
+            const revenuesData = revenuesSnapshot.docs.map(d => d.data());
+            revenuesData.forEach(revenue => {
+              const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+              const companyPercent = 1 - plombierPercent;
+              totalPlombierShare += revenue.amount * plombierPercent;
+              totalCompanyShare += revenue.amount * companyPercent;
+            });
             
-            // Total = factures + projets + dépannages
-            const totalRevenue = invoiceRevenue + projectRevenue + depannageRevenue;
+            // Total = part plombier + part société
+            const totalRevenue = totalPlombierShare + totalCompanyShare;
 
             return {
               ...clientData,
@@ -144,6 +160,8 @@ export default function ClientsPage() {
                 totalRevenue,
                 totalProjects: projectsSnapshot.size || 0,
                 totalInvoices: documentsSnapshot.size || 0,
+                plombierRevenue: totalPlombierShare,
+                companyRevenue: totalCompanyShare,
               },
             };
           } catch (error) {
@@ -161,6 +179,8 @@ export default function ClientsPage() {
                 totalRevenue: 0,
                 totalProjects: 0,
                 totalInvoices: 0,
+                plombierRevenue: 0,
+                companyRevenue: 0,
               },
             };
           }
@@ -699,8 +719,8 @@ export default function ClientsPage() {
                         </div>
                         {stats.totalRevenue > 0 && (
                           <div className="text-xs text-gray-500 mt-1">
-                            <div>60%: {formatCurrency(stats.totalRevenue * 0.6)}</div>
-                            <div>40%: {formatCurrency(stats.totalRevenue * 0.4)}</div>
+                            <div>Part plombier: {formatCurrency(client._stats?.plombierRevenue || 0)}</div>
+                            <div>Part société: {formatCurrency(client._stats?.companyRevenue || 0)}</div>
                           </div>
                         )}
                       </td>

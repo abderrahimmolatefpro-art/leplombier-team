@@ -442,9 +442,43 @@ export default function DashboardPage() {
       ? (convertedQuotes.length / quotes.length) * 100 
       : 0;
     
-    // Répartition fixe : 60% plombier / 40% société
-    const plombierRevenue = totalRevenue * 0.6;
-    const companyRevenue = totalRevenue * 0.4;
+    // Calculer la répartition réelle avec pourcentages personnalisés
+    let totalPlombierShare = 0;
+    let totalCompanyShare = 0;
+    
+    // Revenus des projets
+    filteredProjects.forEach(project => {
+      if (project.amount && project.amount > 0) {
+        const plombierPercent = (project.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        totalPlombierShare += project.amount * plombierPercent;
+        totalCompanyShare += project.amount * companyPercent;
+      }
+    });
+    
+    // Revenus des factures (utiliser pourcentage du projet lié ou 60% par défaut)
+    filteredInvoices.forEach(invoice => {
+      if (existingClientIds.has(invoice.clientId)) {
+        const relatedProject = filteredProjects.find(p => p.clientId === invoice.clientId);
+        const plombierPercent = relatedProject ? (relatedProject.plombierPercentage || 60) / 100 : 0.6;
+        const companyPercent = 1 - plombierPercent;
+        totalPlombierShare += (invoice.total || 0) * plombierPercent;
+        totalCompanyShare += (invoice.total || 0) * companyPercent;
+      }
+    });
+    
+    // Revenus des dépannages
+    filteredManualRevenues.forEach(revenue => {
+      if (existingClientIds.has(revenue.clientId)) {
+        const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        totalPlombierShare += revenue.amount * plombierPercent;
+        totalCompanyShare += revenue.amount * companyPercent;
+      }
+    });
+    
+    const plombierRevenue = totalPlombierShare;
+    const companyRevenue = totalCompanyShare;
     
     return {
       totalRevenue,
@@ -476,11 +510,12 @@ export default function DashboardPage() {
     let totalUnpaidToPlombiers = 0;
     
     // Calculer les paiements pour les projets
-    // Les plombiers paient 40% à la société (60% pour eux, 40% pour la société)
+    // Utiliser le pourcentage personnalisé ou 60% par défaut
     filteredProjects.forEach(project => {
       if (project.amount && project.amount > 0 && project.plombierIds.length > 0) {
-        const companySharePercent = 0.4; // Part que la société reçoit (40%)
-        const sharePerPlombier = (project.amount * companySharePercent) / project.plombierIds.length;
+        const plombierPercent = (project.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        const sharePerPlombier = (project.amount * companyPercent) / project.plombierIds.length;
         
         project.plombierIds.forEach(plombierId => {
           const hasPaid = project.paidByPlombierIds?.includes(plombierId) || false;
@@ -499,18 +534,19 @@ export default function DashboardPage() {
       if (existingClientIds.has(invoice.clientId)) {
         const client = clients.find(c => c.id === invoice.clientId);
         if (client?.assignedPlombierId) {
-          // Vérifier si un projet lié a été payé
+          // Pour les factures, utiliser le pourcentage du projet lié ou 60% par défaut
           const relatedProject = filteredProjects.find(p => 
-            p.clientId === invoice.clientId && 
-            client.assignedPlombierId &&
-            p.paidByPlombierIds?.includes(client.assignedPlombierId)
+            p.clientId === invoice.clientId
           );
-          if (relatedProject) {
-            const companyReceives = (invoice.total || 0) * 0.4; // Société reçoit 40%
+          const plombierPercent = relatedProject ? (relatedProject.plombierPercentage || 60) / 100 : 0.6;
+          const companyPercent = 1 - plombierPercent;
+          const companyReceives = (invoice.total || 0) * companyPercent;
+          
+          // Vérifier si un projet lié a été payé
+          if (relatedProject && relatedProject.paidByPlombierIds?.includes(client.assignedPlombierId)) {
             totalPaidToPlombiers += companyReceives;
           } else {
             // Si pas de projet lié payé, on considère comme non payé
-            const companyReceives = (invoice.total || 0) * 0.4;
             totalUnpaidToPlombiers += companyReceives;
           }
         }
@@ -518,10 +554,12 @@ export default function DashboardPage() {
     });
     
     // Calculer les paiements pour les dépannages
-    // Plombier paie 40% à la société
+    // Utiliser le pourcentage personnalisé ou 60% par défaut
     filteredManualRevenues.forEach(revenue => {
       if (revenue.plombierId) {
-        const companyReceives = revenue.amount * 0.4; // Société reçoit 40%
+        const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        const companyReceives = revenue.amount * companyPercent;
         if (revenue.plombierHasPaid) {
           totalPaidToPlombiers += companyReceives;
         } else {
@@ -537,8 +575,9 @@ export default function DashboardPage() {
     // Projets non payés par plombier
     filteredProjects.forEach(project => {
       if (project.amount && project.amount > 0 && project.plombierIds.length > 0) {
-        const companySharePercent = 0.4;
-        const sharePerPlombier = (project.amount * companySharePercent) / project.plombierIds.length;
+        const plombierPercent = (project.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        const sharePerPlombier = (project.amount * companyPercent) / project.plombierIds.length;
         
         project.plombierIds.forEach(plombierId => {
           const hasPaid = project.paidByPlombierIds?.includes(plombierId) || false;
@@ -562,12 +601,13 @@ export default function DashboardPage() {
         const client = clients.find(c => c.id === invoice.clientId);
         if (client?.assignedPlombierId) {
           const relatedProject = filteredProjects.find(p => 
-            p.clientId === invoice.clientId && 
-            client.assignedPlombierId &&
-            p.paidByPlombierIds?.includes(client.assignedPlombierId)
+            p.clientId === invoice.clientId
           );
-          if (!relatedProject) {
-            const companyReceives = (invoice.total || 0) * 0.4;
+          const plombierPercent = relatedProject ? (relatedProject.plombierPercentage || 60) / 100 : 0.6;
+          const companyPercent = 1 - plombierPercent;
+          const companyReceives = (invoice.total || 0) * companyPercent;
+          
+          if (!relatedProject || !relatedProject.paidByPlombierIds?.includes(client.assignedPlombierId)) {
             if (!unpaidByPlombierMap[client.assignedPlombierId]) {
               unpaidByPlombierMap[client.assignedPlombierId] = {
                 name: plombiers.find(p => p.id === client.assignedPlombierId)?.name || 'Inconnu',
@@ -583,7 +623,9 @@ export default function DashboardPage() {
     // Dépannages non payés par plombier
     filteredManualRevenues.forEach(revenue => {
       if (revenue.plombierId && !revenue.plombierHasPaid) {
-        const companyReceives = revenue.amount * 0.4;
+        const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        const companyReceives = revenue.amount * companyPercent;
         if (!unpaidByPlombierMap[revenue.plombierId]) {
           unpaidByPlombierMap[revenue.plombierId] = {
             name: plombiers.find(p => p.id === revenue.plombierId)?.name || 'Inconnu',
@@ -744,19 +786,20 @@ export default function DashboardPage() {
       };
     });
     
-    // Revenus des projets (60% pour chaque plombier assigné, réparti équitablement)
+    // Revenus des projets (pourcentage personnalisé pour chaque plombier assigné, réparti équitablement)
     filteredProjects.forEach(project => {
       if (project.amount && project.amount > 0 && project.plombierIds.length > 0) {
-        const plombierSharePercent = 0.6; // 60% pour le plombier
-        const sharePerPlombier = (project.amount * plombierSharePercent) / project.plombierIds.length;
-        const companySharePerPlombier = (project.amount * 0.4) / project.plombierIds.length; // 40% pour la société
+        const plombierPercent = (project.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        const sharePerPlombier = (project.amount * plombierPercent) / project.plombierIds.length;
+        const companySharePerPlombier = (project.amount * companyPercent) / project.plombierIds.length;
         
         project.plombierIds.forEach(plombierId => {
           if (plombierRevenue[plombierId]) {
             plombierRevenue[plombierId].revenue += sharePerPlombier;
             plombierRevenue[plombierId].projects += 1;
             
-            // Calculer le montant non payé (40% que le plombier doit à la société)
+            // Calculer le montant non payé (part société que le plombier doit payer)
             const hasPaid = project.paidByPlombierIds?.includes(plombierId) || false;
             if (!hasPaid) {
               plombierRevenue[plombierId].unpaid += companySharePerPlombier;
@@ -766,35 +809,36 @@ export default function DashboardPage() {
       }
     });
     
-    // Revenus des factures (60% pour le plombier assigné au client)
+    // Revenus des factures (pourcentage personnalisé pour le plombier assigné au client)
     const existingClientIds = new Set(clients.map(c => c.id));
     filteredInvoices.forEach(invoice => {
       if (existingClientIds.has(invoice.clientId)) {
         const client = clients.find(c => c.id === invoice.clientId);
         if (client?.assignedPlombierId && plombierRevenue[client.assignedPlombierId]) {
-          plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * 0.6; // 60% pour le plombier
+          // Utiliser le pourcentage du projet lié ou 60% par défaut
+          const relatedProject = filteredProjects.find(p => p.clientId === invoice.clientId);
+          const plombierPercent = relatedProject ? (relatedProject.plombierPercentage || 60) / 100 : 0.6;
+          plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * plombierPercent;
           
-          // Calculer le montant non payé (40% que le plombier doit à la société)
-          const relatedProject = filteredProjects.find(p => 
-            p.clientId === invoice.clientId && 
-            client.assignedPlombierId &&
-            p.paidByPlombierIds?.includes(client.assignedPlombierId)
-          );
-          if (!relatedProject) {
-            plombierRevenue[client.assignedPlombierId].unpaid += (invoice.total || 0) * 0.4;
+          // Calculer le montant non payé (part société que le plombier doit payer)
+          const companyPercent = 1 - plombierPercent;
+          if (!relatedProject || !relatedProject.paidByPlombierIds?.includes(client.assignedPlombierId)) {
+            plombierRevenue[client.assignedPlombierId].unpaid += (invoice.total || 0) * companyPercent;
           }
         }
       }
     });
     
-    // Revenus manuels (60% pour le plombier spécifié)
+    // Revenus manuels (pourcentage personnalisé pour le plombier spécifié)
     filteredManualRevenues.forEach(revenue => {
       if (existingClientIds.has(revenue.clientId) && revenue.plombierId && plombierRevenue[revenue.plombierId]) {
-        plombierRevenue[revenue.plombierId].revenue += revenue.amount * 0.6; // 60% pour le plombier
+        const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+        plombierRevenue[revenue.plombierId].revenue += revenue.amount * plombierPercent;
         
-        // Calculer le montant non payé (40% que le plombier doit à la société)
+        // Calculer le montant non payé (part société que le plombier doit payer)
         if (!revenue.plombierHasPaid) {
-          plombierRevenue[revenue.plombierId].unpaid += revenue.amount * 0.4;
+          const companyPercent = 1 - plombierPercent;
+          plombierRevenue[revenue.plombierId].unpaid += revenue.amount * companyPercent;
         }
       }
     });
@@ -1062,7 +1106,7 @@ export default function DashboardPage() {
           {/* Répartition revenus */}
           <div className="card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs sm:text-sm text-gray-600 font-medium">Part plombier (60%)</p>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Part plombier</p>
               <Users className="text-primary-600 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <p className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-600 truncate">{formatCurrency(kpis.plombierRevenue)}</p>
@@ -1070,7 +1114,7 @@ export default function DashboardPage() {
 
           <div className="card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs sm:text-sm text-gray-600 font-medium">Part société (40%)</p>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Part société</p>
               <TrendingUp className="text-blue-600 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 truncate">{formatCurrency(kpis.companyRevenue)}</p>
@@ -1349,7 +1393,7 @@ export default function DashboardPage() {
           <div className="card">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
               <Users className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
-              <span className="text-sm sm:text-base">Répartition des revenus par plombier (60%)</span>
+              <span className="text-sm sm:text-base">Répartition des revenus par plombier</span>
             </h2>
             <div className="overflow-x-auto -mx-2 sm:mx-0">
               <div className="inline-block min-w-full align-middle px-2 sm:px-0">
@@ -1357,7 +1401,7 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Plombier</th>
-                      <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Revenus (60%)</th>
+                      <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Revenus</th>
                       <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Non payé</th>
                       <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Projets</th>
                       <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">% du total</th>

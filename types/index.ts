@@ -65,6 +65,7 @@ export interface Project {
   amount?: number; // Montant du projet en DH (peut être saisi manuellement)
   hasInvoice?: boolean; // Si le projet a une facture associée
   paidByPlombierIds?: string[]; // Liste des IDs des plombiers qui ont payé leur part à la société pour ce projet
+  plombierPercentage?: number; // Pourcentage pour le plombier (par défaut 60, le reste va à la société)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -80,6 +81,7 @@ export interface ManualRevenue {
   plombierId?: string; // Plombier associé
   isBlackRevenue?: boolean; // Revenu "en noir" (sans facture)
   plombierHasPaid?: boolean; // Si le plombier a payé sa part à la société pour ce dépannage
+  plombierPercentage?: number; // Pourcentage pour le plombier (par défaut 60, le reste va à la société)
   notes?: string;
   createdAt: Date;
   updatedAt: Date;

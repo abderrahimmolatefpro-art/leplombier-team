@@ -294,59 +294,66 @@ export default function PlombiersPage() {
       // Calcul des revenus
       let totalRevenue = 0;
 
-      // Revenus des projets (montant total du projet)
-      plombierProjects.forEach(project => {
-        if (project.amount && project.amount > 0) {
-          // Répartition équitable entre les plombiers du projet
-          const share = project.amount / (project.plombierIds?.length || 1);
-          totalRevenue += share;
-        }
-      });
-
-      // Revenus des factures
-      plombierInvoices.forEach(invoice => {
-        totalRevenue += invoice.total || 0;
-      });
-
-      // Revenus des dépannages
-      plombierDepannages.forEach(depannage => {
-        totalRevenue += depannage.amount;
-      });
-
-      const plombierShare = totalRevenue * 0.6; // 60%
-      const companyShare = totalRevenue * 0.4; // 40%
-      
-      // Calculer le montant non payé (40% que le plombier doit à la société)
+      // Calculer les revenus avec pourcentages personnalisés
+      let totalPlombierShare = 0;
+      let totalCompanyShare = 0;
       let unpaidAmount = 0;
       
-      // Projets non payés
+      // Revenus des projets (avec pourcentage personnalisé)
       plombierProjects.forEach(project => {
         if (project.amount && project.amount > 0) {
-          const companySharePerPlombier = (project.amount * 0.4) / (project.plombierIds?.length || 1);
+          const plombierPercent = (project.plombierPercentage || 60) / 100;
+          const companyPercent = 1 - plombierPercent;
+          const sharePerPlombier = project.amount / (project.plombierIds?.length || 1);
+          const plombierSharePerPlombier = sharePerPlombier * plombierPercent;
+          const companySharePerPlombier = sharePerPlombier * companyPercent;
+          
+          totalRevenue += sharePerPlombier;
+          totalPlombierShare += plombierSharePerPlombier;
+          totalCompanyShare += companySharePerPlombier;
+          
+          // Calculer le montant non payé
           const hasPaid = project.paidByPlombierIds?.includes(plombier.id) || false;
           if (!hasPaid) {
             unpaidAmount += companySharePerPlombier;
           }
         }
       });
-      
-      // Factures non payées (via projets liés)
+
+      // Revenus des factures (utiliser pourcentage du projet lié ou 60% par défaut)
       plombierInvoices.forEach(invoice => {
-        const relatedProject = plombierProjects.find(p => 
-          p.clientId === invoice.clientId && 
-          p.paidByPlombierIds?.includes(plombier.id)
-        );
-        if (!relatedProject) {
-          unpaidAmount += (invoice.total || 0) * 0.4;
+        const relatedProject = plombierProjects.find(p => p.clientId === invoice.clientId);
+        const plombierPercent = relatedProject ? (relatedProject.plombierPercentage || 60) / 100 : 0.6;
+        const companyPercent = 1 - plombierPercent;
+        const invoiceAmount = invoice.total || 0;
+        
+        totalRevenue += invoiceAmount;
+        totalPlombierShare += invoiceAmount * plombierPercent;
+        totalCompanyShare += invoiceAmount * companyPercent;
+        
+        // Calculer le montant non payé
+        if (!relatedProject || !relatedProject.paidByPlombierIds?.includes(plombier.id)) {
+          unpaidAmount += invoiceAmount * companyPercent;
         }
       });
-      
-      // Dépannages non payés
+
+      // Revenus des dépannages (avec pourcentage personnalisé)
       plombierDepannages.forEach(depannage => {
+        const plombierPercent = (depannage.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        
+        totalRevenue += depannage.amount;
+        totalPlombierShare += depannage.amount * plombierPercent;
+        totalCompanyShare += depannage.amount * companyPercent;
+        
+        // Calculer le montant non payé
         if (!depannage.plombierHasPaid) {
-          unpaidAmount += (depannage.amount || 0) * 0.4;
+          unpaidAmount += depannage.amount * companyPercent;
         }
       });
+
+      const plombierShare = totalPlombierShare;
+      const companyShare = totalCompanyShare;
 
       stats.push({
         plombier,
@@ -678,13 +685,13 @@ export default function PlombiersPage() {
                 </p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
-                <p className="text-sm text-green-700 font-medium">Part plombiers (60%)</p>
+                <p className="text-sm text-green-700 font-medium">Part plombiers</p>
                 <p className="text-2xl font-bold text-green-900 mt-1">
                   {formatCurrency(totals.totalPlombierShare)}
                 </p>
               </div>
               <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-700 font-medium">Part société (40%)</p>
+                <p className="text-sm text-blue-700 font-medium">Part société</p>
                 <p className="text-2xl font-bold text-blue-900 mt-1">
                   {formatCurrency(totals.totalCompanyShare)}
                 </p>
@@ -719,8 +726,8 @@ export default function PlombiersPage() {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Plombier</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Revenus totaux</th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Part plombier (60%)</th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Part société (40%)</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Part plombier</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Part société</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Non payé</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Projets</th>
                       <th className="text-center py-3 px-4 font-semibold text-gray-700">Actions</th>
@@ -831,9 +838,13 @@ export default function PlombiersPage() {
                                       <tbody>
                                         {stat.projects.map(project => {
                                           const hasPaid = project.paidByPlombierIds?.includes(stat.plombier.id) || false;
-                                          const plombierSharePercent = 0.6; // 60% pour le plombier
+                                          const plombierPercent = (project.plombierPercentage || 60) / 100;
+                                          const companyPercent = 1 - plombierPercent;
                                           const plombierShare = project.amount && project.plombierIds.length > 0
-                                            ? (project.amount * plombierSharePercent) / project.plombierIds.length
+                                            ? (project.amount * plombierPercent) / project.plombierIds.length
+                                            : 0;
+                                          const companyShare = project.amount && project.plombierIds.length > 0
+                                            ? (project.amount * companyPercent) / project.plombierIds.length
                                             : 0;
                                           
                                           return (
@@ -868,7 +879,7 @@ export default function PlombiersPage() {
                                                         ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                     }`}
-                                                    title={`${hasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(plombierShare)}`}
+                                                    title={`${hasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(companyShare)}`}
                                                   >
                                                     <span>{hasPaid ? '✓ Payé' : '○ Non payé'}</span>
                                                   </button>
@@ -935,7 +946,10 @@ export default function PlombiersPage() {
                                       </thead>
                                       <tbody>
                                         {stat.depannages.map(depannage => {
-                                          const plombierShare = depannage.amount * 0.6; // 60% sans facture
+                                          const plombierPercent = (depannage.plombierPercentage || 60) / 100;
+                                          const companyPercent = 1 - plombierPercent;
+                                          const plombierShare = depannage.amount * plombierPercent;
+                                          const companyShare = depannage.amount * companyPercent;
                                           
                                           return (
                                             <tr key={depannage.id} className="border-b border-gray-100 hover:bg-white">
@@ -944,7 +958,7 @@ export default function PlombiersPage() {
                                               <td className="py-2 px-3 text-right font-medium text-gray-900">
                                                 {formatCurrency(depannage.amount)}
                                                 <span className="text-xs text-gray-500 block">
-                                                  Part: {formatCurrency(plombierShare)}
+                                                  Part plombier: {formatCurrency(plombierShare)} | Part société: {formatCurrency(companyShare)}
                                                 </span>
                                               </td>
                                               <td className="py-2 px-3 text-center">
@@ -963,7 +977,7 @@ export default function PlombiersPage() {
                                                         ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                     }`}
-                                                    title={`${depannage.plombierHasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(plombierShare)}`}
+                                                    title={`${depannage.plombierHasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(companyShare)}`}
                                                   >
                                                     <span>{depannage.plombierHasPaid ? '✓ Payé' : '○ Non payé'}</span>
                                                   </button>
