@@ -530,12 +530,89 @@ export default function DashboardPage() {
       }
     });
     
+    // Calculer le détail par plombier (montants non payés)
+    const unpaidByPlombier: { plombierId: string; plombierName: string; unpaidAmount: number }[] = [];
+    const unpaidByPlombierMap: { [key: string]: { name: string; amount: number } } = {};
+
+    // Projets non payés par plombier
+    filteredProjects.forEach(project => {
+      if (project.amount && project.amount > 0 && project.plombierIds.length > 0) {
+        const companySharePercent = 0.4;
+        const sharePerPlombier = (project.amount * companySharePercent) / project.plombierIds.length;
+        
+        project.plombierIds.forEach(plombierId => {
+          const hasPaid = project.paidByPlombierIds?.includes(plombierId) || false;
+          if (!hasPaid) {
+            if (!unpaidByPlombierMap[plombierId]) {
+              const plombier = plombiers.find(p => p.id === plombierId);
+              unpaidByPlombierMap[plombierId] = {
+                name: plombier?.name || 'Inconnu',
+                amount: 0,
+              };
+            }
+            unpaidByPlombierMap[plombierId].amount += sharePerPlombier;
+          }
+        });
+      }
+    });
+
+    // Factures non payées par plombier
+    filteredInvoices.forEach(invoice => {
+      if (existingClientIds.has(invoice.clientId)) {
+        const client = clients.find(c => c.id === invoice.clientId);
+        if (client?.assignedPlombierId) {
+          const relatedProject = filteredProjects.find(p => 
+            p.clientId === invoice.clientId && 
+            client.assignedPlombierId &&
+            p.paidByPlombierIds?.includes(client.assignedPlombierId)
+          );
+          if (!relatedProject) {
+            const companyReceives = (invoice.total || 0) * 0.4;
+            if (!unpaidByPlombierMap[client.assignedPlombierId]) {
+              unpaidByPlombierMap[client.assignedPlombierId] = {
+                name: plombiers.find(p => p.id === client.assignedPlombierId)?.name || 'Inconnu',
+                amount: 0,
+              };
+            }
+            unpaidByPlombierMap[client.assignedPlombierId].amount += companyReceives;
+          }
+        }
+      }
+    });
+
+    // Dépannages non payés par plombier
+    filteredManualRevenues.forEach(revenue => {
+      if (revenue.plombierId && !revenue.plombierHasPaid) {
+        const companyReceives = revenue.amount * 0.4;
+        if (!unpaidByPlombierMap[revenue.plombierId]) {
+          unpaidByPlombierMap[revenue.plombierId] = {
+            name: plombiers.find(p => p.id === revenue.plombierId)?.name || 'Inconnu',
+            amount: 0,
+          };
+        }
+        unpaidByPlombierMap[revenue.plombierId].amount += companyReceives;
+      }
+    });
+
+    // Convertir en tableau et trier par montant décroissant
+    Object.entries(unpaidByPlombierMap).forEach(([plombierId, data]) => {
+      if (data.amount > 0) {
+        unpaidByPlombier.push({
+          plombierId,
+          plombierName: data.name,
+          unpaidAmount: Math.round(data.amount),
+        });
+      }
+    });
+    unpaidByPlombier.sort((a, b) => b.unpaidAmount - a.unpaidAmount);
+
     return {
       totalPaid: Math.round(totalPaidToPlombiers),
       totalUnpaid: Math.round(totalUnpaidToPlombiers),
       totalDue: Math.round(totalPaidToPlombiers + totalUnpaidToPlombiers),
+      unpaidByPlombier,
     };
-  }, [filteredData, clients]);
+  }, [filteredData, clients, plombiers]);
 
   // Données pour graphique revenus par mois (selon la période)
   const monthlyRevenueData = useMemo(() => {
@@ -1058,6 +1135,46 @@ export default function DashboardPage() {
                   <DollarSign className="text-blue-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Récapitulatif des plombiers non payés */}
+        {user?.role === 'admin' && paymentStats.unpaidByPlombier.length > 0 && (
+          <div className="card">
+            <div className="mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Plombiers non payés</h2>
+              <p className="text-sm text-gray-600 mt-1">Montants restants à recevoir de chaque plombier</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[500px] sm:min-w-[600px]">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Plombier</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">Montant restant</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paymentStats.unpaidByPlombier.map((item) => (
+                    <tr key={item.plombierId} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{item.plombierName}</div>
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-right">
+                        <div className="text-sm font-bold text-orange-600">{formatCurrency(item.unpaidAmount)}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50 border-t-2 border-gray-300">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-sm font-bold text-gray-900">Total</td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-sm font-bold text-orange-600">
+                      {formatCurrency(paymentStats.totalUnpaid)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
         )}
