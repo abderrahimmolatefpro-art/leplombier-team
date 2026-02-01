@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -14,9 +14,14 @@ import {
   LogOut,
   Menu,
   X,
-  UserPlus
+  UserPlus,
+  Bell,
+  X as XIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Client } from '@/types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,9 +29,11 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [newClientNotification, setNewClientNotification] = useState<Client | null>(null);
+  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
 
   const isAdmin = user?.role === 'admin';
 
@@ -43,6 +50,63 @@ export default function Layout({ children }: LayoutProps) {
   const handleLogout = async () => {
     await logout();
     router.push('/login');
+  };
+
+  // Écouter les nouveaux clients créés via formulaire
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    // Écouter les 10 derniers clients créés (pour filtrer côté client)
+    const clientsQuery = query(
+      collection(db, 'clients'),
+      orderBy('createdAt', 'desc'),
+      limit(10)
+    );
+
+    const unsubscribe = onSnapshot(clientsQuery, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const clientData = change.doc.data();
+          
+          // Filtrer uniquement les clients créés via formulaire
+          if (clientData.source !== 'form') return;
+
+          const client = {
+            id: change.doc.id,
+            ...clientData,
+            createdAt: clientData.createdAt?.toDate() || new Date(),
+            updatedAt: clientData.updatedAt?.toDate() || new Date(),
+          } as Client;
+
+          // Vérifier si la notification n'a pas déjà été fermée
+          if (!dismissedNotifications.has(client.id)) {
+            // Vérifier si le client a été créé récemment (dans les 5 dernières minutes)
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            if (client.createdAt > fiveMinutesAgo) {
+              setNewClientNotification(client);
+            }
+          }
+        }
+      });
+    }, (error) => {
+      console.error('Error listening to clients:', error);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, dismissedNotifications]);
+
+  const handleDismissNotification = () => {
+    if (newClientNotification) {
+      setDismissedNotifications(prev => new Set([...prev, newClientNotification.id]));
+      setNewClientNotification(null);
+    }
+  };
+
+  const handleViewClient = () => {
+    if (newClientNotification) {
+      router.push(`/clients/${newClientNotification.id}`);
+      handleDismissNotification();
+    }
   };
 
   return (
@@ -142,6 +206,40 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Main content */}
         <main className="flex-1 lg:ml-0 min-h-screen w-full">
+          {/* Notification pour nouveau client */}
+          {newClientNotification && (
+            <div className="sticky top-0 z-50 px-2 sm:px-4 lg:px-8 pt-2 sm:pt-4">
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-3 sm:p-4 flex items-center justify-between animate-slide-down">
+                <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                  <div className="flex-shrink-0">
+                    <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm sm:text-base font-semibold">Nouveau client ajouté !</p>
+                    <p className="text-xs sm:text-sm text-blue-100 truncate">
+                      {newClientNotification.name} - {newClientNotification.phone}
+                      {newClientNotification.city && ` • ${newClientNotification.city}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                  <button
+                    onClick={handleViewClient}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-white text-blue-600 rounded-md text-xs sm:text-sm font-medium hover:bg-blue-50 transition-colors whitespace-nowrap"
+                  >
+                    Voir
+                  </button>
+                  <button
+                    onClick={handleDismissNotification}
+                    className="p-1 sm:p-1.5 hover:bg-blue-700 rounded-md transition-colors"
+                    aria-label="Fermer"
+                  >
+                    <XIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="p-0 lg:p-8">
             {children}
           </div>

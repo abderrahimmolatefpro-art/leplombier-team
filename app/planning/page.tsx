@@ -16,7 +16,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { PlanningEntry, Project, User } from '@/types';
+import { PlanningEntry, Project, User, Client } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { Plus, Edit, Trash2, Calendar, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
@@ -45,8 +45,10 @@ export default function PlanningPage() {
   const router = useRouter();
   const [planningEntries, setPlanningEntries] = useState<PlanningEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [plombiers, setPlombiers] = useState<User[]>([]);
   const [selectedPlombier, setSelectedPlombier] = useState<string>('all');
+  const [filterType, setFilterType] = useState<'all' | 'project' | 'congé' | 'indisponibilite'>('all');
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -107,6 +109,17 @@ export default function PlanningPage() {
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
       setProjects(projectsData);
+
+      // Load clients
+      const clientsQuery = query(collection(db, 'clients'));
+      const clientsSnapshot = await getDocs(clientsQuery);
+      const clientsData = clientsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      })) as Client[];
+      setClients(clientsData);
 
       // Load plombiers
       const plombiersQuery = query(collection(db, 'users'), where('role', '==', 'plombier'));
@@ -336,10 +349,11 @@ export default function PlanningPage() {
     ? eachDayOfInterval({ start: viewStart, end: viewEnd })
     : [currentDate];
 
-  const filteredEntries =
-    selectedPlombier === 'all'
-      ? planningEntries
-      : planningEntries.filter((e) => e.plombierId === selectedPlombier);
+  const filteredEntries = planningEntries.filter((e) => {
+    const matchesPlombier = selectedPlombier === 'all' || e.plombierId === selectedPlombier;
+    const matchesType = filterType === 'all' || e.type === filterType;
+    return matchesPlombier && matchesType;
+  });
 
   const getEntriesForDay = (day: Date, plombierId?: string) => {
     const entries = filteredEntries.filter((e) => {
@@ -353,6 +367,14 @@ export default function PlanningPage() {
   const getProjectName = (projectId?: string) => {
     if (!projectId) return '';
     return projects.find((p) => p.id === projectId)?.title || 'Projet inconnu';
+  };
+
+  const getClientName = (projectId?: string) => {
+    if (!projectId) return '';
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return '';
+    const client = clients.find((c) => c.id === project.clientId);
+    return client?.name || '';
   };
 
   const getPlombierName = (plombierId: string) => {
@@ -375,6 +397,7 @@ export default function PlanningPage() {
     filteredEntries,
     getEntriesForDay,
     getProjectName,
+    getClientName,
     getPlombierName,
     hasConflict,
     user,
@@ -483,6 +506,7 @@ export default function PlanningPage() {
     filteredEntries,
     getEntriesForDay,
     getProjectName,
+    getClientName,
     getPlombierName,
     hasConflict,
     user,
@@ -546,6 +570,9 @@ export default function PlanningPage() {
                       const projectName = entry.projectId
                         ? getProjectName(entry.projectId)
                         : null;
+                      const clientName = entry.projectId
+                        ? getClientName(entry.projectId)
+                        : null;
                       const plombierName =
                         user?.role === 'admin'
                           ? getPlombierName(entry.plombierId)
@@ -574,6 +601,11 @@ export default function PlanningPage() {
                           {projectName && (
                             <div className="font-semibold text-gray-900 text-xs md:text-sm mb-0.5 md:mb-1 truncate">
                               {projectName}
+                            </div>
+                          )}
+                          {entry.projectId && getClientName(entry.projectId) && (
+                            <div className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1 truncate">
+                              📍 {getClientName(entry.projectId)}
                             </div>
                           )}
                           {plombierName && (
@@ -637,6 +669,7 @@ export default function PlanningPage() {
     filteredEntries,
     getEntriesForDay,
     getProjectName,
+    getClientName,
     getPlombierName,
     hasConflict,
     user,
@@ -675,6 +708,7 @@ export default function PlanningPage() {
               })
               .map((entry: PlanningEntry) => {
                 const projectName = entry.projectId ? getProjectName(entry.projectId) : null;
+                const clientName = entry.projectId ? getClientName(entry.projectId) : null;
                 const plombierName = user?.role === 'admin' ? getPlombierName(entry.plombierId) : null;
                 const hasConflictEntry = hasConflict(entry);
 
@@ -702,6 +736,11 @@ export default function PlanningPage() {
                         {projectName && (
                           <div className="text-base md:text-lg font-bold text-gray-900 mb-1 md:mb-2 break-words">
                             {projectName}
+                          </div>
+                        )}
+                        {clientName && (
+                          <div className="text-xs md:text-sm text-gray-500 mb-1 md:mb-2">
+                            📍 Client: {clientName}
                           </div>
                         )}
                         {plombierName && (
@@ -796,6 +835,97 @@ export default function PlanningPage() {
             <span>Nouvelle entrée</span>
           </button>
         </div>
+
+        {/* Statistiques */}
+        {(() => {
+          const stats = {
+            totalEntries: filteredEntries.length,
+            thisWeek: filteredEntries.filter((e) => {
+              const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+              const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+              return e.date >= weekStart && e.date <= weekEnd;
+            }).length,
+            thisMonth: filteredEntries.filter((e) => {
+              const monthStart = startOfMonth(new Date());
+              const monthEnd = endOfMonth(new Date());
+              return e.date >= monthStart && e.date <= monthEnd;
+            }).length,
+            conflicts: conflicts.length,
+            projects: filteredEntries.filter((e) => e.type === 'project').length,
+            conges: filteredEntries.filter((e) => e.type === 'congé').length,
+            indisponibilites: filteredEntries.filter((e) => e.type === 'indisponibilite').length,
+          };
+          
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+              <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-blue-700 font-medium">Total</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900 mt-1 sm:mt-2">{stats.totalEntries}</p>
+                  </div>
+                  <Calendar className="text-blue-700 w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                </div>
+              </div>
+              <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-green-700 font-medium">Cette semaine</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-900 mt-1 sm:mt-2">{stats.thisWeek}</p>
+                  </div>
+                  <Calendar className="text-green-700 w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                </div>
+              </div>
+              <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-purple-700 font-medium">Ce mois</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-900 mt-1 sm:mt-2">{stats.thisMonth}</p>
+                  </div>
+                  <Calendar className="text-purple-700 w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                </div>
+              </div>
+              <div className="card bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-orange-700 font-medium">Projets</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-900 mt-1 sm:mt-2">{stats.projects}</p>
+                  </div>
+                  <Calendar className="text-orange-700 w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                </div>
+              </div>
+              <div className="card bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-red-700 font-medium">Congés</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-900 mt-1 sm:mt-2">{stats.conges}</p>
+                  </div>
+                  <Calendar className="text-red-700 w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                </div>
+              </div>
+              <div className="card bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-yellow-700 font-medium">Indisponibilités</p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-900 mt-1 sm:mt-2">{stats.indisponibilites}</p>
+                  </div>
+                  <Calendar className="text-yellow-700 w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                </div>
+              </div>
+              {stats.conflicts > 0 && (
+                <div className="card bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-red-700 font-medium">Conflits</p>
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-900 mt-1 sm:mt-2">{stats.conflicts}</p>
+                    </div>
+                    <AlertTriangle className="text-red-700 w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Conflicts Alert */}
         {conflicts.length > 0 && (
@@ -892,26 +1022,43 @@ export default function PlanningPage() {
             </div>
           </div>
 
-          {/* Plombier Filter (Admin only) */}
-          {user?.role === 'admin' && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                <label className="text-xs md:text-sm font-medium text-gray-700 whitespace-nowrap">Plombier:</label>
+          {/* Filtres */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {/* Plombier Filter (Admin only) */}
+              {user?.role === 'admin' && (
+                <div>
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">Plombier:</label>
+                  <select
+                    value={selectedPlombier}
+                    onChange={(e) => setSelectedPlombier(e.target.value)}
+                    className="input w-full text-sm md:text-base"
+                  >
+                    <option value="all">Tous les plombiers</option>
+                    {plombiers.map((plombier) => (
+                      <option key={plombier.id} value={plombier.id}>
+                        {plombier.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {/* Type Filter */}
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">Type:</label>
                 <select
-                  value={selectedPlombier}
-                  onChange={(e) => setSelectedPlombier(e.target.value)}
-                  className="input w-full sm:w-auto"
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value as 'all' | 'project' | 'congé' | 'indisponibilite')}
+                  className="input w-full text-sm md:text-base"
                 >
-                  <option value="all">Tous</option>
-                  {plombiers.map((plombier) => (
-                    <option key={plombier.id} value={plombier.id}>
-                      {plombier.name}
-                    </option>
-                  ))}
+                  <option value="all">Tous les types</option>
+                  <option value="project">Projets</option>
+                  <option value="congé">Congés</option>
+                  <option value="indisponibilite">Indisponibilités</option>
                 </select>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Calendar Views */}
@@ -922,6 +1069,7 @@ export default function PlanningPage() {
             filteredEntries={filteredEntries}
             getEntriesForDay={getEntriesForDay}
             getProjectName={getProjectName}
+            getClientName={getClientName}
             getPlombierName={getPlombierName}
             hasConflict={hasConflict}
             user={user}
@@ -951,6 +1099,7 @@ export default function PlanningPage() {
             filteredEntries={filteredEntries}
             getEntriesForDay={getEntriesForDay}
             getProjectName={getProjectName}
+            getClientName={getClientName}
             getPlombierName={getPlombierName}
             hasConflict={hasConflict}
             user={user}
@@ -977,6 +1126,7 @@ export default function PlanningPage() {
             filteredEntries={filteredEntries}
             getEntriesForDay={getEntriesForDay}
             getProjectName={getProjectName}
+            getClientName={getClientName}
             getPlombierName={getPlombierName}
             hasConflict={hasConflict}
             user={user}

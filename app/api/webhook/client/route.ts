@@ -267,6 +267,7 @@ export async function POST(request: NextRequest) {
       ice: body.ice?.trim() || '',
       notes: body.message?.trim() || body.notes?.trim() || '',
       assignedPlombierId: body.assignedPlombierId || '',
+      source: 'form', // Marquer comme créé via formulaire
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };

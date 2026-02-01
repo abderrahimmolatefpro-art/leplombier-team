@@ -24,6 +24,7 @@ export interface Client {
   ice?: string; // ICE pour facturation
   companyName?: string; // Nom de l'entreprise si client professionnel
   clientType?: 'particulier' | 'professionnel';
+  source?: 'form' | 'manual'; // Source de création : formulaire web ou manuel
   createdAt: Date;
   updatedAt: Date;
 }
