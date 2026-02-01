@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
-import { collection, getDocs, updateDoc, doc, Timestamp, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, deleteDoc, doc, Timestamp, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Recruitment } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { CheckCircle, XCircle, Clock, Search } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, Search } from 'lucide-react';
 
 const ZONE_LABELS: Record<string, string> = {
   casa: 'Casablanca',
@@ -112,6 +112,18 @@ export default function RecruitmentsPage() {
     } catch (error) {
       console.error('Error updating status:', error);
       alert('Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette candidature ?')) return;
+    
+    try {
+      await deleteDoc(doc(db, 'recruitments', id));
+      loadRecruitments();
+    } catch (error) {
+      console.error('Error deleting recruitment:', error);
+      alert('Erreur lors de la suppression');
     }
   };
 
@@ -254,64 +266,43 @@ export default function RecruitmentsPage() {
                       </td>
                       <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-1 sm:space-x-2">
-                          {recruitment.status === 'pending' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusChange(recruitment.id, 'contacted')}
-                                className="btn btn-sm btn-secondary flex items-center space-x-1"
-                                title="Marquer comme contacté"
-                              >
-                                <Clock size={14} />
-                                <span className="hidden sm:inline">Contacté</span>
-                              </button>
-                              <button
-                                onClick={() => handleStatusChange(recruitment.id, 'accepted')}
-                                className="btn btn-sm btn-success flex items-center space-x-1"
-                                title="Accepter la candidature"
-                              >
-                                <CheckCircle size={14} />
-                                <span className="hidden sm:inline">Accepter</span>
-                              </button>
-                              <button
-                                onClick={() => handleStatusChange(recruitment.id, 'rejected')}
-                                className="btn btn-sm btn-danger flex items-center space-x-1"
-                                title="Rejeter la candidature"
-                              >
-                                <XCircle size={14} />
-                                <span className="hidden sm:inline">Rejeter</span>
-                              </button>
-                            </>
-                          )}
-                          {recruitment.status === 'contacted' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusChange(recruitment.id, 'accepted')}
-                                className="btn btn-sm btn-success flex items-center space-x-1"
-                                title="Accepter la candidature"
-                              >
-                                <CheckCircle size={14} />
-                                <span className="hidden sm:inline">Accepter</span>
-                              </button>
-                              <button
-                                onClick={() => handleStatusChange(recruitment.id, 'rejected')}
-                                className="btn btn-sm btn-danger flex items-center space-x-1"
-                                title="Rejeter la candidature"
-                              >
-                                <XCircle size={14} />
-                                <span className="hidden sm:inline">Rejeter</span>
-                              </button>
-                            </>
-                          )}
-                          {(recruitment.status === 'accepted' || recruitment.status === 'rejected') && (
+                          {recruitment.status !== 'accepted' && (
                             <button
-                              onClick={() => handleStatusChange(recruitment.id, 'pending')}
-                              className="btn btn-sm btn-secondary flex items-center space-x-1"
-                              title="Remettre en attente"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(recruitment.id, 'accepted');
+                              }}
+                              className="btn btn-sm btn-success flex items-center space-x-1"
+                              title="Accepter la candidature"
                             >
-                              <Clock size={14} />
-                              <span className="hidden sm:inline">En attente</span>
+                              <CheckCircle size={14} />
+                              <span className="hidden sm:inline">Accepter</span>
                             </button>
                           )}
+                          {recruitment.status !== 'rejected' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(recruitment.id, 'rejected');
+                              }}
+                              className="btn btn-sm btn-danger flex items-center space-x-1"
+                              title="Rejeter la candidature"
+                            >
+                              <XCircle size={14} />
+                              <span className="hidden sm:inline">Rejeter</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(recruitment.id);
+                            }}
+                            className="btn btn-sm btn-secondary flex items-center space-x-1"
+                            title="Supprimer la candidature"
+                          >
+                            <Trash2 size={14} />
+                            <span className="hidden sm:inline">Supprimer</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
