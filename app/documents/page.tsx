@@ -45,6 +45,7 @@ function DocumentsContent() {
     subtotal: 0,
     tax: 0,
     total: 0,
+    includeTax: true, // Par défaut, inclure la TVA
     status: 'brouillon' as Document['status'],
     notes: '',
   });
@@ -81,6 +82,7 @@ function DocumentsContent() {
           subtotal: 0,
           tax: 0,
           total: 0,
+          includeTax: true,
           status: 'brouillon',
           notes: '',
         });
@@ -180,7 +182,8 @@ function DocumentsContent() {
 
     const newItems = [...formData.items, item];
     const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
-    const tax = subtotal * 0.2; // 20% TVA
+    // Calculer la TVA uniquement si includeTax est true (et uniquement pour les devis)
+    const tax = (formData.type === 'devis' && formData.includeTax) ? subtotal * 0.2 : 0;
     const total = subtotal + tax;
 
     setFormData({
@@ -201,7 +204,8 @@ function DocumentsContent() {
   const removeItem = (index: number) => {
     const newItems = formData.items.filter((_, i) => i !== index);
     const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
-    const tax = subtotal * 0.2;
+    // Calculer la TVA uniquement si includeTax est true (et uniquement pour les devis)
+    const tax = (formData.type === 'devis' && formData.includeTax) ? subtotal * 0.2 : 0;
     const total = subtotal + tax;
 
     setFormData({
@@ -230,6 +234,7 @@ function DocumentsContent() {
         number: formData.number || generateDocumentNumber(formData.type),
         date: Timestamp.fromDate(new Date(formData.date || new Date())),
         dueDate: formData.dueDate ? Timestamp.fromDate(new Date(formData.dueDate)) : null,
+        includeTax: formData.type === 'devis' ? formData.includeTax : undefined, // Uniquement pour les devis
         createdAt: editingDocument ? editingDocument.createdAt : Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
@@ -264,6 +269,7 @@ function DocumentsContent() {
       subtotal: document.subtotal,
       tax: document.tax,
       total: document.total,
+      includeTax: document.includeTax !== undefined ? document.includeTax : true, // Par défaut true pour rétrocompatibilité
       status: document.status,
       notes: document.notes || '',
     });
@@ -295,6 +301,7 @@ function DocumentsContent() {
       subtotal: 0,
       tax: 0,
       total: 0,
+      includeTax: true,
       status: 'brouillon',
       notes: '',
     });
@@ -630,6 +637,33 @@ function DocumentsContent() {
                     </div>
                   )}
 
+                  {/* Option TVA - Uniquement pour les devis */}
+                  {formData.type === 'devis' && (
+                    <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <input
+                        type="checkbox"
+                        id="includeTax"
+                        checked={formData.includeTax}
+                        onChange={(e) => {
+                          const includeTax = e.target.checked;
+                          const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
+                          const tax = includeTax ? subtotal * 0.2 : 0;
+                          const total = subtotal + tax;
+                          setFormData({ 
+                            ...formData, 
+                            includeTax,
+                            tax,
+                            total
+                          });
+                        }}
+                        className="rounded"
+                      />
+                      <label htmlFor="includeTax" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Inclure la TVA (20%)
+                      </label>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -772,15 +806,18 @@ function DocumentsContent() {
                                 </td>
                                 <td></td>
                               </tr>
-                              <tr>
-                                <td colSpan={3} className="py-2 px-2 text-right font-medium text-gray-700">
-                                  TVA (20%)
-                                </td>
-                                <td className="py-2 px-2 text-right font-medium text-gray-900">
-                                  {formatCurrency(formData.tax)}
-                                </td>
-                                <td></td>
-                              </tr>
+                              {/* Afficher la TVA uniquement si elle est incluse (pour les devis) ou toujours pour factures/bons de commande */}
+                              {(formData.type !== 'devis' || formData.includeTax) && (
+                                <tr>
+                                  <td colSpan={3} className="py-2 px-2 text-right font-medium text-gray-700">
+                                    TVA (20%)
+                                  </td>
+                                  <td className="py-2 px-2 text-right font-medium text-gray-900">
+                                    {formatCurrency(formData.tax)}
+                                  </td>
+                                  <td></td>
+                                </tr>
+                              )}
                               <tr className="border-t-2 border-gray-300">
                                 <td colSpan={3} className="py-2 px-2 text-right font-bold text-gray-900">
                                   Total TTC

@@ -190,18 +190,30 @@ export default function DocumentView({ document, client, project, companyInfo }:
         {/* Totaux */}
         <div className="flex justify-end mb-6">
           <div className="w-80">
-            <div className="flex justify-between py-2 border-b border-gray-300">
-              <span className="text-sm text-gray-700 font-medium">Total HT :</span>
-              <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.subtotal)} MAD</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-gray-300">
-              <span className="text-sm text-gray-700 font-medium">TVA (20%) :</span>
-              <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.tax)} MAD</span>
-            </div>
-            <div className="flex justify-between py-3 border-t-2 border-gray-400 mt-2">
-              <span className="text-lg font-bold text-gray-900">Total TTC :</span>
-              <span className="text-lg font-bold text-primary-600">{formatNumberFR(document.total)} MAD</span>
-            </div>
+            {/* Pour les devis sans TVA, on affiche directement le total sans ligne HT */}
+            {document.type === 'devis' && document.includeTax === false ? (
+              <>
+                <div className="flex justify-between py-3 border-t-2 border-gray-400 mt-2">
+                  <span className="text-lg font-bold text-gray-900">Total TTC :</span>
+                  <span className="text-lg font-bold text-primary-600">{formatNumberFR(document.total)} MAD</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between py-2 border-b border-gray-300">
+                  <span className="text-sm text-gray-700 font-medium">Total HT :</span>
+                  <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.subtotal)} MAD</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-300">
+                  <span className="text-sm text-gray-700 font-medium">TVA (20%) :</span>
+                  <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.tax)} MAD</span>
+                </div>
+                <div className="flex justify-between py-3 border-t-2 border-gray-400 mt-2">
+                  <span className="text-lg font-bold text-gray-900">Total TTC :</span>
+                  <span className="text-lg font-bold text-primary-600">{formatNumberFR(document.total)} MAD</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

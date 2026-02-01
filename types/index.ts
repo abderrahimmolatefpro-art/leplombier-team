@@ -121,6 +121,7 @@ export interface Document {
   subtotal: number;
   tax: number;
   total: number;
+  includeTax?: boolean; // Optionnel : inclure la TVA (uniquement pour les devis, par défaut true)
   status: 'brouillon' | 'envoye' | 'paye' | 'annule';
   notes?: string;
   createdAt: Date;
