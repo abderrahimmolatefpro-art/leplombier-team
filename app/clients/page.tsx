@@ -55,9 +55,9 @@ export default function ClientsPage() {
   const [filterPlombier, setFilterPlombier] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'particulier' | 'professionnel'>('all');
   
-  // Tri
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  // Tri (par défaut : les plus récents en premier)
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -640,6 +640,13 @@ export default function ClientsPage() {
                         <SortIcon field="totalProjects" />
                       </div>
                     </th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('createdAt')}>
+                      <div className="flex items-center space-x-1">
+                        <span>Date d&apos;ajout</span>
+                        <SortIcon field="createdAt" />
+                      </div>
+                    </th>
                     <th className="px-2 sm:px-4 py-2 sm:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -730,6 +737,14 @@ export default function ClientsPage() {
                         </div>
                         <div className="text-xs text-gray-500">
                           {stats.totalInvoices} doc{stats.totalInvoices > 1 ? 's' : ''}
+                        </div>
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3">
+                        <div className="text-xs sm:text-sm text-gray-900">
+                          {formatDate(client.createdAt)}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(client.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </td>
                       <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-xs sm:text-sm font-medium" onClick={(e) => e.stopPropagation()}>
