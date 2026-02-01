@@ -680,13 +680,13 @@ export default function DashboardPage() {
       }
     });
     
-    // Revenus des factures (40% pour le plombier assigné au client)
+    // Revenus des factures (60% pour le plombier assigné au client)
     const existingClientIds = new Set(clients.map(c => c.id));
     filteredInvoices.forEach(invoice => {
       if (existingClientIds.has(invoice.clientId)) {
         const client = clients.find(c => c.id === invoice.clientId);
         if (client?.assignedPlombierId && plombierRevenue[client.assignedPlombierId]) {
-          plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * 0.4; // 40% with invoice
+          plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * 0.6; // 60% pour le plombier
         }
       }
     });
