@@ -49,6 +49,7 @@ interface PlombierStats {
   totalRevenue: number;
   plombierShare: number; // 60% du total
   companyShare: number; // 40% du total
+  unpaid: number; // Montant non payé à la société
   projects: Project[];
   invoices: Document[];
   depannages: ManualRevenue[];
@@ -314,12 +315,45 @@ export default function PlombiersPage() {
 
       const plombierShare = totalRevenue * 0.6; // 60%
       const companyShare = totalRevenue * 0.4; // 40%
+      
+      // Calculer le montant non payé (40% que le plombier doit à la société)
+      let unpaidAmount = 0;
+      
+      // Projets non payés
+      plombierProjects.forEach(project => {
+        if (project.amount && project.amount > 0) {
+          const companySharePerPlombier = (project.amount * 0.4) / (project.plombierIds?.length || 1);
+          const hasPaid = project.paidByPlombierIds?.includes(plombier.id) || false;
+          if (!hasPaid) {
+            unpaidAmount += companySharePerPlombier;
+          }
+        }
+      });
+      
+      // Factures non payées (via projets liés)
+      plombierInvoices.forEach(invoice => {
+        const relatedProject = plombierProjects.find(p => 
+          p.clientId === invoice.clientId && 
+          p.paidByPlombierIds?.includes(plombier.id)
+        );
+        if (!relatedProject) {
+          unpaidAmount += (invoice.total || 0) * 0.4;
+        }
+      });
+      
+      // Dépannages non payés
+      plombierDepannages.forEach(depannage => {
+        if (!depannage.plombierHasPaid) {
+          unpaidAmount += (depannage.amount || 0) * 0.4;
+        }
+      });
 
       stats.push({
         plombier,
         totalRevenue,
         plombierShare,
         companyShare,
+        unpaid: Math.round(unpaidAmount),
         projects: plombierProjects,
         invoices: plombierInvoices,
         depannages: plombierDepannages,
@@ -343,6 +377,7 @@ export default function PlombiersPage() {
       acc.totalRevenue += stat.totalRevenue;
       acc.totalPlombierShare += stat.plombierShare;
       acc.totalCompanyShare += stat.companyShare;
+      acc.totalUnpaid += (stat.unpaid || 0);
       acc.totalProjects += stat.totalProjects;
       acc.totalCompletedProjects += stat.completedProjects;
       acc.totalActiveProjects += stat.activeProjects;
@@ -351,6 +386,7 @@ export default function PlombiersPage() {
       totalRevenue: 0,
       totalPlombierShare: 0,
       totalCompanyShare: 0,
+      totalUnpaid: 0,
       totalProjects: 0,
       totalCompletedProjects: 0,
       totalActiveProjects: 0,
@@ -653,6 +689,12 @@ export default function PlombiersPage() {
                   {formatCurrency(totals.totalCompanyShare)}
                 </p>
               </div>
+              <div className="bg-orange-50 p-4 rounded-lg">
+                <p className="text-sm text-orange-700 font-medium">Non payé</p>
+                <p className="text-2xl font-bold text-orange-900 mt-1">
+                  {formatCurrency(totals.totalUnpaid)}
+                </p>
+              </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-700 font-medium">Projets</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -679,6 +721,7 @@ export default function PlombiersPage() {
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Revenus totaux</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Part plombier (60%)</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Part société (40%)</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Non payé</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Projets</th>
                       <th className="text-center py-3 px-4 font-semibold text-gray-700">Actions</th>
                     </tr>
@@ -710,6 +753,13 @@ export default function PlombiersPage() {
                         </td>
                         <td className="text-right py-3 px-4 text-blue-700 font-medium">
                           {formatCurrency(stat.companyShare)}
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          <span className={`font-medium text-xs sm:text-sm ${
+                            stat.unpaid > 0 ? 'text-orange-600' : 'text-gray-500'
+                          }`}>
+                            {formatCurrency(stat.unpaid)}
+                          </span>
                         </td>
                         <td className="text-right py-3 px-4">
                           <span className="font-medium text-gray-900">{stat.totalProjects}</span>

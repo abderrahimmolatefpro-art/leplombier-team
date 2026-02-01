@@ -732,7 +732,7 @@ export default function DashboardPage() {
     if (isPlombier) return []; // Ne pas calculer pour les plombiers
     
     const { filteredInvoices, filteredProjects, filteredManualRevenues } = filteredData;
-    const plombierRevenue: { [key: string]: { name: string; revenue: number; projects: number } } = {};
+    const plombierRevenue: { [key: string]: { name: string; revenue: number; projects: number; unpaid: number } } = {};
     
     // Initialiser tous les plombiers
     plombiers.forEach(plombier => {
@@ -740,19 +740,27 @@ export default function DashboardPage() {
         name: plombier.name,
         revenue: 0,
         projects: 0,
+        unpaid: 0,
       };
     });
     
-    // Revenus des projets (40% avec facture, 60% sans facture pour chaque plombier assigné, réparti équitablement)
+    // Revenus des projets (60% pour chaque plombier assigné, réparti équitablement)
     filteredProjects.forEach(project => {
       if (project.amount && project.amount > 0 && project.plombierIds.length > 0) {
-        const plombierSharePercent = project.hasInvoice ? 0.4 : 0.6; // Dynamic split
-        const plombierShare = (project.amount * plombierSharePercent) / project.plombierIds.length;
+        const plombierSharePercent = 0.6; // 60% pour le plombier
+        const sharePerPlombier = (project.amount * plombierSharePercent) / project.plombierIds.length;
+        const companySharePerPlombier = (project.amount * 0.4) / project.plombierIds.length; // 40% pour la société
         
         project.plombierIds.forEach(plombierId => {
           if (plombierRevenue[plombierId]) {
-            plombierRevenue[plombierId].revenue += plombierShare;
+            plombierRevenue[plombierId].revenue += sharePerPlombier;
             plombierRevenue[plombierId].projects += 1;
+            
+            // Calculer le montant non payé (40% que le plombier doit à la société)
+            const hasPaid = project.paidByPlombierIds?.includes(plombierId) || false;
+            if (!hasPaid) {
+              plombierRevenue[plombierId].unpaid += companySharePerPlombier;
+            }
           }
         });
       }
@@ -765,6 +773,16 @@ export default function DashboardPage() {
         const client = clients.find(c => c.id === invoice.clientId);
         if (client?.assignedPlombierId && plombierRevenue[client.assignedPlombierId]) {
           plombierRevenue[client.assignedPlombierId].revenue += (invoice.total || 0) * 0.6; // 60% pour le plombier
+          
+          // Calculer le montant non payé (40% que le plombier doit à la société)
+          const relatedProject = filteredProjects.find(p => 
+            p.clientId === invoice.clientId && 
+            client.assignedPlombierId &&
+            p.paidByPlombierIds?.includes(client.assignedPlombierId)
+          );
+          if (!relatedProject) {
+            plombierRevenue[client.assignedPlombierId].unpaid += (invoice.total || 0) * 0.4;
+          }
         }
       }
     });
@@ -772,7 +790,12 @@ export default function DashboardPage() {
     // Revenus manuels (60% pour le plombier spécifié)
     filteredManualRevenues.forEach(revenue => {
       if (existingClientIds.has(revenue.clientId) && revenue.plombierId && plombierRevenue[revenue.plombierId]) {
-        plombierRevenue[revenue.plombierId].revenue += revenue.amount * 0.6; // 60% without invoice
+        plombierRevenue[revenue.plombierId].revenue += revenue.amount * 0.6; // 60% pour le plombier
+        
+        // Calculer le montant non payé (40% que le plombier doit à la société)
+        if (!revenue.plombierHasPaid) {
+          plombierRevenue[revenue.plombierId].unpaid += revenue.amount * 0.4;
+        }
       }
     });
     
@@ -783,6 +806,7 @@ export default function DashboardPage() {
         name: p.name,
         revenue: Math.round(p.revenue),
         projects: p.projects,
+        unpaid: Math.round(p.unpaid),
       }));
   }, [filteredData, clients, plombiers, isPlombier]);
 
@@ -1334,6 +1358,7 @@ export default function DashboardPage() {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Plombier</th>
                       <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Revenus (60%)</th>
+                      <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Non payé</th>
                       <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">Projets</th>
                       <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">% du total</th>
                     </tr>
@@ -1370,6 +1395,13 @@ export default function DashboardPage() {
                             {formatCurrency(plombier.revenue)}
                           </span>
                         </td>
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-right">
+                          <span className={`font-semibold text-xs sm:text-sm ${
+                            plombier.unpaid > 0 ? 'text-orange-600' : 'text-gray-500'
+                          }`}>
+                            {formatCurrency(plombier.unpaid)}
+                          </span>
+                        </td>
                         <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-gray-600 text-xs sm:text-sm">
                           {plombier.projects}
                         </td>
@@ -1395,6 +1427,11 @@ export default function DashboardPage() {
                       <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm">Total</td>
                       <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
                         {formatCurrency(revenueByPlombier.reduce((sum, p) => sum + p.revenue, 0))}
+                      </td>
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
+                        <span className="text-orange-600">
+                          {formatCurrency(revenueByPlombier.reduce((sum, p) => sum + p.unpaid, 0))}
+                        </span>
                       </td>
                       <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
                         {revenueByPlombier.reduce((sum, p) => sum + p.projects, 0)}

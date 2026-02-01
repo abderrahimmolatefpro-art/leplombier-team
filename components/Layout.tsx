@@ -36,7 +36,7 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/projets', label: 'Projets', icon: FolderKanban },
     { href: '/planning', label: 'Planning', icon: Calendar },
     { href: '/documents', label: 'Documents', icon: FileText },
-    { href: '/plombiers', label: 'Prestations plombiers', icon: Users },
+    { href: '/plombiers', label: 'Plombiers', icon: Users },
     ...(isAdmin ? [{ href: '/recrutements', label: 'Candidatures', icon: UserPlus }] : []),
   ];
 
