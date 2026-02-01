@@ -118,6 +118,7 @@ export default function DashboardPage() {
         endDate: doc.data().endDate?.toDate(),
         amount: doc.data().amount || 0,
         hasInvoice: doc.data().hasInvoice || false,
+        paidPlombierIds: doc.data().paidPlombierIds || [],
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
@@ -154,6 +155,7 @@ export default function DashboardPage() {
         id: doc.id,
         ...doc.data(),
         date: doc.data().date?.toDate() || new Date(),
+        isPaidToPlombier: doc.data().isPaidToPlombier || false,
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as ManualRevenue[];
@@ -479,6 +481,75 @@ export default function DashboardPage() {
       totalDocuments: filteredDocuments.length,
     };
   }, [projects, clients, documents, manualRevenues, paidInvoices, getDateRange, getComparisonRange, filteredData, isPlombier, currentPlombierId]);
+
+  // Calcul des statistiques de paiement aux plombiers
+  const paymentStats = useMemo(() => {
+    const { filteredProjects, filteredManualRevenues, filteredInvoices, filteredClientsByPlombier } = filteredData;
+    const existingClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
+    
+    let totalPaidToPlombiers = 0;
+    let totalUnpaidToPlombiers = 0;
+    
+    // Calculer les paiements pour les projets
+    filteredProjects.forEach(project => {
+      if (project.amount && project.amount > 0 && project.plombierIds.length > 0) {
+        const plombierSharePercent = project.hasInvoice ? 0.4 : 0.6;
+        const sharePerPlombier = (project.amount * plombierSharePercent) / project.plombierIds.length;
+        
+        project.plombierIds.forEach(plombierId => {
+          const isPaid = project.paidPlombierIds?.includes(plombierId) || false;
+          if (isPaid) {
+            totalPaidToPlombiers += sharePerPlombier;
+          } else {
+            totalUnpaidToPlombiers += sharePerPlombier;
+          }
+        });
+      }
+    });
+    
+    // Calculer les paiements pour les factures (via clients assignés)
+    // Pour les factures, on considère qu'elles sont payées au plombier si le client a un plombier assigné
+    // Le paiement réel est géré via les projets liés
+    filteredInvoices.forEach(invoice => {
+      if (existingClientIds.has(invoice.clientId)) {
+        const client = clients.find(c => c.id === invoice.clientId);
+        if (client?.assignedPlombierId) {
+          // Vérifier si un projet lié avec facture a été payé
+          const relatedProject = filteredProjects.find(p => 
+            p.clientId === invoice.clientId && 
+            p.hasInvoice &&
+            p.paidPlombierIds?.includes(client.assignedPlombierId)
+          );
+          if (relatedProject) {
+            const plombierShare = (invoice.total || 0) * 0.4;
+            totalPaidToPlombiers += plombierShare;
+          } else {
+            // Si pas de projet lié payé, on considère comme non payé
+            const plombierShare = (invoice.total || 0) * 0.4;
+            totalUnpaidToPlombiers += plombierShare;
+          }
+        }
+      }
+    });
+    
+    // Calculer les paiements pour les dépannages
+    filteredManualRevenues.forEach(revenue => {
+      if (revenue.plombierId) {
+        const plombierShare = revenue.amount * 0.6; // 60% sans facture
+        if (revenue.isPaidToPlombier) {
+          totalPaidToPlombiers += plombierShare;
+        } else {
+          totalUnpaidToPlombiers += plombierShare;
+        }
+      }
+    });
+    
+    return {
+      totalPaid: Math.round(totalPaidToPlombiers),
+      totalUnpaid: Math.round(totalUnpaidToPlombiers),
+      totalDue: Math.round(totalPaidToPlombiers + totalUnpaidToPlombiers),
+    };
+  }, [filteredData, clients]);
 
   // Données pour graphique revenus par mois (selon la période)
   const monthlyRevenueData = useMemo(() => {
@@ -957,6 +1028,53 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+
+        {/* Statistiques de paiement aux plombiers */}
+        {user?.role === 'admin' && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="card bg-green-50 border-green-200">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-green-700 font-medium">Payé aux plombiers</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-900 mt-1 sm:mt-2 truncate">
+                    {formatCurrency(paymentStats.totalPaid)}
+                  </p>
+                </div>
+                <div className="p-1.5 sm:p-2 lg:p-3 bg-green-200 rounded-lg flex-shrink-0">
+                  <CheckCircle className="text-green-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
+                </div>
+              </div>
+            </div>
+
+            <div className="card bg-orange-50 border-orange-200">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-orange-700 font-medium">Non payé aux plombiers</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-900 mt-1 sm:mt-2 truncate">
+                    {formatCurrency(paymentStats.totalUnpaid)}
+                  </p>
+                </div>
+                <div className="p-1.5 sm:p-2 lg:p-3 bg-orange-200 rounded-lg flex-shrink-0">
+                  <Clock className="text-orange-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
+                </div>
+              </div>
+            </div>
+
+            <div className="card bg-blue-50 border-blue-200">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-blue-700 font-medium">Total dû aux plombiers</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900 mt-1 sm:mt-2 truncate">
+                    {formatCurrency(paymentStats.totalDue)}
+                  </p>
+                </div>
+                <div className="p-1.5 sm:p-2 lg:p-3 bg-blue-200 rounded-lg flex-shrink-0">
+                  <DollarSign className="text-blue-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Graphiques */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">

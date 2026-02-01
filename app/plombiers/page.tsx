@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { db } from '@/lib/firebase';
@@ -137,6 +137,8 @@ export default function PlombiersPage() {
         startDate: doc.data().startDate?.toDate() || new Date(),
         endDate: doc.data().endDate?.toDate(),
         amount: doc.data().amount || 0,
+        hasInvoice: doc.data().hasInvoice || false,
+        paidPlombierIds: doc.data().paidPlombierIds || [],
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
@@ -363,6 +365,53 @@ export default function PlombiersPage() {
       newExpanded.add(plombierId);
     }
     setExpandedPlombiers(newExpanded);
+  };
+
+  const handleToggleProjectPayment = async (projectId: string, plombierId: string) => {
+    if (!user || user.role !== 'admin') return;
+    
+    try {
+      const project = projects.find(p => p.id === projectId);
+      if (!project) return;
+      
+      const currentPaidIds = project.paidPlombierIds || [];
+      const isPaid = currentPaidIds.includes(plombierId);
+      
+      const newPaidIds = isPaid
+        ? currentPaidIds.filter(id => id !== plombierId)
+        : [...currentPaidIds, plombierId];
+      
+      await updateDoc(doc(db, 'projects', projectId), {
+        paidPlombierIds: newPaidIds,
+        updatedAt: Timestamp.now(),
+      });
+      
+      loadData();
+    } catch (error) {
+      console.error('Error updating project payment status:', error);
+      alert('Erreur lors de la mise à jour du statut de paiement');
+    }
+  };
+
+  const handleToggleDepannagePayment = async (depannageId: string) => {
+    if (!user || user.role !== 'admin') return;
+    
+    try {
+      const depannage = manualRevenues.find(r => r.id === depannageId);
+      if (!depannage) return;
+      
+      const newIsPaid = !depannage.isPaidToPlombier;
+      
+      await updateDoc(doc(db, 'manualRevenues', depannageId), {
+        isPaidToPlombier: newIsPaid,
+        updatedAt: Timestamp.now(),
+      });
+      
+      loadData();
+    } catch (error) {
+      console.error('Error updating depannage payment status:', error);
+      alert('Erreur lors de la mise à jour du statut de paiement');
+    }
   };
 
   const handleCreatePlombier = async (e: React.FormEvent) => {
@@ -724,27 +773,60 @@ export default function PlombiersPage() {
                                           <th className="text-left py-2 px-3 font-medium text-gray-700">Date</th>
                                           <th className="text-right py-2 px-3 font-medium text-gray-700">Montant</th>
                                           <th className="text-center py-2 px-3 font-medium text-gray-700">Statut</th>
+                                          {user?.role === 'admin' && (
+                                            <th className="text-center py-2 px-3 font-medium text-gray-700">Paiement</th>
+                                          )}
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {stat.projects.map(project => (
-                                          <tr key={project.id} className="border-b border-gray-100 hover:bg-white">
-                                            <td className="py-2 px-3 font-medium text-gray-900">{project.title}</td>
-                                            <td className="py-2 px-3 text-gray-600">{formatDate(project.startDate)}</td>
-                                            <td className="py-2 px-3 text-right font-medium text-gray-900">{formatCurrency(project.amount || 0)}</td>
-                                            <td className="py-2 px-3 text-center">
-                                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                                project.status === 'termine' ? 'bg-green-100 text-green-700' :
-                                                project.status === 'en_cours' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-gray-100 text-gray-700'
-                                              }`}>
-                                                {project.status === 'termine' ? 'Terminé' :
-                                                 project.status === 'en_cours' ? 'En cours' :
-                                                 project.status === 'en_attente' ? 'En attente' : project.status}
-                                              </span>
-                                            </td>
-                                          </tr>
-                                        ))}
+                                        {stat.projects.map(project => {
+                                          const isPaid = project.paidPlombierIds?.includes(stat.plombier.id) || false;
+                                          const plombierSharePercent = project.hasInvoice ? 0.4 : 0.6;
+                                          const plombierShare = project.amount && project.plombierIds.length > 0
+                                            ? (project.amount * plombierSharePercent) / project.plombierIds.length
+                                            : 0;
+                                          
+                                          return (
+                                            <tr key={project.id} className="border-b border-gray-100 hover:bg-white">
+                                              <td className="py-2 px-3 font-medium text-gray-900">{project.title}</td>
+                                              <td className="py-2 px-3 text-gray-600">{formatDate(project.startDate)}</td>
+                                              <td className="py-2 px-3 text-right font-medium text-gray-900">
+                                                {formatCurrency(project.amount || 0)}
+                                                {project.plombierIds.length > 1 && (
+                                                  <span className="text-xs text-gray-500 block">
+                                                    Part: {formatCurrency(plombierShare)}
+                                                  </span>
+                                                )}
+                                              </td>
+                                              <td className="py-2 px-3 text-center">
+                                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                  project.status === 'termine' ? 'bg-green-100 text-green-700' :
+                                                  project.status === 'en_cours' ? 'bg-blue-100 text-blue-700' :
+                                                  'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                  {project.status === 'termine' ? 'Terminé' :
+                                                   project.status === 'en_cours' ? 'En cours' :
+                                                   project.status === 'en_attente' ? 'En attente' : project.status}
+                                                </span>
+                                              </td>
+                                              {user?.role === 'admin' && (
+                                                <td className="py-2 px-3 text-center">
+                                                  <button
+                                                    onClick={() => handleToggleProjectPayment(project.id, stat.plombier.id)}
+                                                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 mx-auto ${
+                                                      isPaid
+                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                    }`}
+                                                    title={`${isPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(plombierShare)}`}
+                                                  >
+                                                    <span>{isPaid ? '✓ Payé' : '○ Non payé'}</span>
+                                                  </button>
+                                                </td>
+                                              )}
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>
@@ -796,23 +878,50 @@ export default function PlombiersPage() {
                                           <th className="text-left py-2 px-3 font-medium text-gray-700">Date</th>
                                           <th className="text-right py-2 px-3 font-medium text-gray-700">Montant</th>
                                           <th className="text-center py-2 px-3 font-medium text-gray-700">Type</th>
+                                          {user?.role === 'admin' && (
+                                            <th className="text-center py-2 px-3 font-medium text-gray-700">Paiement</th>
+                                          )}
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {stat.depannages.map(depannage => (
-                                          <tr key={depannage.id} className="border-b border-gray-100 hover:bg-white">
-                                            <td className="py-2 px-3 font-medium text-gray-900">{depannage.description || 'Dépannage'}</td>
-                                            <td className="py-2 px-3 text-gray-600">{formatDate(depannage.date)}</td>
-                                            <td className="py-2 px-3 text-right font-medium text-gray-900">{formatCurrency(depannage.amount)}</td>
-                                            <td className="py-2 px-3 text-center">
-                                              {depannage.isBlackRevenue && (
-                                                <span className="px-2 py-1 rounded text-xs font-medium bg-gray-800 text-white">
-                                                  En noir
+                                        {stat.depannages.map(depannage => {
+                                          const plombierShare = depannage.amount * 0.6; // 60% sans facture
+                                          
+                                          return (
+                                            <tr key={depannage.id} className="border-b border-gray-100 hover:bg-white">
+                                              <td className="py-2 px-3 font-medium text-gray-900">{depannage.description || 'Dépannage'}</td>
+                                              <td className="py-2 px-3 text-gray-600">{formatDate(depannage.date)}</td>
+                                              <td className="py-2 px-3 text-right font-medium text-gray-900">
+                                                {formatCurrency(depannage.amount)}
+                                                <span className="text-xs text-gray-500 block">
+                                                  Part: {formatCurrency(plombierShare)}
                                                 </span>
+                                              </td>
+                                              <td className="py-2 px-3 text-center">
+                                                {depannage.isBlackRevenue && (
+                                                  <span className="px-2 py-1 rounded text-xs font-medium bg-gray-800 text-white">
+                                                    En noir
+                                                  </span>
+                                                )}
+                                              </td>
+                                              {user?.role === 'admin' && (
+                                                <td className="py-2 px-3 text-center">
+                                                  <button
+                                                    onClick={() => handleToggleDepannagePayment(depannage.id)}
+                                                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 mx-auto ${
+                                                      depannage.isPaidToPlombier
+                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                    }`}
+                                                    title={`${depannage.isPaidToPlombier ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(plombierShare)}`}
+                                                  >
+                                                    <span>{depannage.isPaidToPlombier ? '✓ Payé' : '○ Non payé'}</span>
+                                                  </button>
+                                                </td>
                                               )}
-                                            </td>
-                                          </tr>
-                                        ))}
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>

@@ -174,6 +174,7 @@ export default function ClientDetailPage() {
         id: doc.id,
         ...doc.data(),
         date: doc.data().date?.toDate() || new Date(),
+        isPaidToPlombier: doc.data().isPaidToPlombier || false,
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as ManualRevenue[];
@@ -630,50 +631,94 @@ export default function ClientDetailPage() {
                 </button>
               </div>
               <div className="space-y-3">
-                {manualRevenues.map((revenue) => (
-                  <div
-                    key={revenue.id}
-                    className="p-3 border border-gray-200 rounded-lg"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <p className="font-medium text-gray-900">
-                            {formatCurrency(revenue.amount)}
+                {manualRevenues.map((revenue) => {
+                  const plombier = revenue.plombierId ? allPlombiers.find(p => p.id === revenue.plombierId) : null;
+                  const plombierShare = revenue.amount * 0.6; // 60% pour le plombier (sans facture)
+                  
+                  return (
+                    <div
+                      key={revenue.id}
+                      className="p-3 border border-gray-200 rounded-lg"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 flex-wrap">
+                            <p className="font-medium text-gray-900">
+                              {formatCurrency(revenue.amount)}
+                            </p>
+                            {revenue.isBlackRevenue && (
+                              <span className="px-2 py-0.5 bg-gray-800 text-white text-xs rounded">
+                                En noir
+                              </span>
+                            )}
+                            {plombier && user?.role === 'admin' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await updateDoc(doc(db, 'manualRevenues', revenue.id), {
+                                      isPaidToPlombier: !revenue.isPaidToPlombier,
+                                      updatedAt: Timestamp.now(),
+                                    });
+                                    loadClientData();
+                                  } catch (error) {
+                                    console.error('Error updating payment status:', error);
+                                    alert('Erreur lors de la mise à jour');
+                                  }
+                                }}
+                                className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
+                                  revenue.isPaidToPlombier
+                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                                title={`${revenue.isPaidToPlombier ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${plombier.name} - ${formatCurrency(plombierShare)}`}
+                              >
+                                <span>{plombier.name}</span>
+                                <span className={revenue.isPaidToPlombier ? 'text-green-600' : 'text-gray-500'}>
+                                  {revenue.isPaidToPlombier ? '✓' : '○'}
+                                </span>
+                              </button>
+                            )}
+                            {plombier && revenue.isPaidToPlombier && (
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
+                                Payé
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">{revenue.description}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {formatDate(revenue.date)}
+                            {revenue.projectId && (
+                              <span> • Projet lié</span>
+                            )}
+                            {plombier && (
+                              <span> • {plombier.name}</span>
+                            )}
                           </p>
-                          {revenue.isBlackRevenue && (
-                            <span className="px-2 py-0.5 bg-gray-800 text-white text-xs rounded">
-                              En noir
-                            </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {user?.role === 'admin' && (
+                            <button
+                              onClick={async () => {
+                                if (confirm('Supprimer ce dépannage ?')) {
+                                  try {
+                                    await deleteDoc(doc(db, 'manualRevenues', revenue.id));
+                                    loadClientData();
+                                  } catch (error) {
+                                    console.error('Error deleting revenue:', error);
+                                    alert('Erreur lors de la suppression');
+                                  }
+                                }
+                              }}
+                              className="p-1 text-gray-600 hover:text-red-600"
+                            >
+                              <Trash2 size={18} />
+                            </button>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">{revenue.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatDate(revenue.date)}
-                          {revenue.projectId && (
-                            <span> • Projet lié</span>
-                          )}
-                        </p>
                       </div>
-                      <button
-                        onClick={async () => {
-                          if (confirm('Supprimer ce dépannage ?')) {
-                            try {
-                              await deleteDoc(doc(db, 'manualRevenues', revenue.id));
-                              loadClientData();
-                            } catch (error) {
-                              console.error('Error deleting revenue:', error);
-                              alert('Erreur lors de la suppression');
-                            }
-                          }
-                        }}
-                        className="p-1 text-gray-600 hover:text-red-600"
-                      >
-                        <Trash2 size={18} />
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {manualRevenues.length === 0 && (
                   <p className="text-sm text-gray-500 text-center py-4">
                     Aucun dépannage enregistré

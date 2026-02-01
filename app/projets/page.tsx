@@ -61,6 +61,7 @@ export default function ProjetsPage() {
         endDate: doc.data().endDate?.toDate(),
         amount: doc.data().amount || undefined,
         hasInvoice: doc.data().hasInvoice || false,
+        paidPlombierIds: doc.data().paidPlombierIds || [],
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
@@ -153,6 +154,32 @@ export default function ProjetsPage() {
       hasInvoice: project.hasInvoice || false,
     });
     setShowModal(true);
+  };
+
+  const handleTogglePlombierPayment = async (projectId: string, plombierId: string) => {
+    if (!user || user.role !== 'admin') return;
+    
+    try {
+      const project = projets.find(p => p.id === projectId);
+      if (!project) return;
+      
+      const currentPaidIds = project.paidPlombierIds || [];
+      const isPaid = currentPaidIds.includes(plombierId);
+      
+      const newPaidIds = isPaid
+        ? currentPaidIds.filter(id => id !== plombierId)
+        : [...currentPaidIds, plombierId];
+      
+      await updateDoc(doc(db, 'projects', projectId), {
+        paidPlombierIds: newPaidIds,
+        updatedAt: Timestamp.now(),
+      });
+      
+      loadData();
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      alert('Erreur lors de la mise à jour du statut de paiement');
+    }
   };
 
   const handleDelete = async (id: string) => {
