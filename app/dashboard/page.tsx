@@ -502,6 +502,7 @@ export default function DashboardPage() {
           // Vérifier si un projet lié a été payé
           const relatedProject = filteredProjects.find(p => 
             p.clientId === invoice.clientId && 
+            client.assignedPlombierId &&
             p.paidByPlombierIds?.includes(client.assignedPlombierId)
           );
           if (relatedProject) {
