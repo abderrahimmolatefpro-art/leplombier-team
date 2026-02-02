@@ -182,8 +182,12 @@ function DocumentsContent() {
 
     const newItems = [...formData.items, item];
     const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
-    // Calculer la TVA uniquement si includeTax est true (et uniquement pour les devis)
-    const tax = (formData.type === 'devis' && formData.includeTax) ? subtotal * 0.2 : 0;
+    // Calculer la TVA : toujours 20% pour factures et bons de commande, conditionnel pour devis
+    const tax = formData.type === 'facture' || formData.type === 'bon_commande' 
+      ? subtotal * 0.2 
+      : (formData.type === 'devis' && formData.includeTax) 
+        ? subtotal * 0.2 
+        : 0;
     const total = subtotal + tax;
 
     setFormData({
@@ -204,8 +208,12 @@ function DocumentsContent() {
   const removeItem = (index: number) => {
     const newItems = formData.items.filter((_, i) => i !== index);
     const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
-    // Calculer la TVA uniquement si includeTax est true (et uniquement pour les devis)
-    const tax = (formData.type === 'devis' && formData.includeTax) ? subtotal * 0.2 : 0;
+    // Calculer la TVA : toujours 20% pour factures et bons de commande, conditionnel pour devis
+    const tax = formData.type === 'facture' || formData.type === 'bon_commande' 
+      ? subtotal * 0.2 
+      : (formData.type === 'devis' && formData.includeTax) 
+        ? subtotal * 0.2 
+        : 0;
     const total = subtotal + tax;
 
     setFormData({
@@ -258,6 +266,15 @@ function DocumentsContent() {
 
   const handleEdit = (document: Document) => {
     setEditingDocument(document);
+    // Recalculer la TVA si nécessaire (pour les factures et bons de commande sans TVA)
+    const subtotal = document.items.reduce((sum, item) => sum + item.total, 0);
+    let tax = document.tax;
+    // Si c'est une facture ou bon de commande sans TVA, la recalculer à 20%
+    if ((document.type === 'facture' || document.type === 'bon_commande') && tax === 0 && subtotal > 0) {
+      tax = subtotal * 0.2;
+    }
+    const total = subtotal + tax;
+    
     setFormData({
       type: document.type,
       projectId: document.projectId || '',
@@ -267,9 +284,9 @@ function DocumentsContent() {
       date: formatDate(document.date).split('/').reverse().join('-'),
       dueDate: document.dueDate ? formatDate(document.dueDate).split('/').reverse().join('-') : '',
       items: document.items,
-      subtotal: document.subtotal,
-      tax: document.tax,
-      total: document.total,
+      subtotal,
+      tax,
+      total,
       includeTax: document.includeTax !== undefined ? document.includeTax : true, // Par défaut true pour rétrocompatibilité
       status: document.status,
       notes: document.notes || '',
@@ -514,9 +531,25 @@ function DocumentsContent() {
                       <select
                         required
                         value={formData.type}
-                        onChange={(e) =>
-                          setFormData({ ...formData, type: e.target.value as Document['type'] })
-                        }
+                        onChange={(e) => {
+                          const newType = e.target.value as Document['type'];
+                          const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
+                          // Recalculer la TVA selon le nouveau type : toujours 20% pour factures et bons de commande
+                          const tax = newType === 'facture' || newType === 'bon_commande' 
+                            ? subtotal * 0.2 
+                            : (newType === 'devis' && formData.includeTax) 
+                              ? subtotal * 0.2 
+                              : 0;
+                          const total = subtotal + tax;
+                          setFormData({ 
+                            ...formData, 
+                            type: newType,
+                            tax,
+                            total,
+                            // Réinitialiser includeTax si on passe à un devis
+                            includeTax: newType === 'devis' ? formData.includeTax : true
+                          });
+                        }}
                         className="input"
                       >
                         <option value="facture">Facture</option>
