@@ -480,12 +480,56 @@ export default function DashboardPage() {
     const plombierRevenue = totalPlombierShare;
     const companyRevenue = totalCompanyShare;
     
+    // Calculer les revenus SANS facture (exclure les projets et dépannages qui ont une facture)
+    // Identifier les projets et dépannages qui ont une facture associée
+    const projectsWithInvoice = new Set(
+      documents
+        .filter(d => d.type === 'facture' && d.projectId)
+        .map(d => d.projectId)
+        .filter((id): id is string => !!id)
+    );
+    const revenuesWithInvoice = new Set(
+      documents
+        .filter(d => d.type === 'facture' && d.manualRevenueId)
+        .map(d => d.manualRevenueId)
+        .filter((id): id is string => !!id)
+    );
+    
+    // Revenus des projets SANS facture
+    let revenueWithoutInvoice = 0;
+    let plombierRevenueWithoutInvoice = 0;
+    let companyRevenueWithoutInvoice = 0;
+    
+    filteredProjects.forEach(project => {
+      if (project.amount && project.amount > 0 && !projectsWithInvoice.has(project.id)) {
+        revenueWithoutInvoice += project.amount;
+        const plombierPercent = (project.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        plombierRevenueWithoutInvoice += project.amount * plombierPercent;
+        companyRevenueWithoutInvoice += project.amount * companyPercent;
+      }
+    });
+    
+    // Revenus des dépannages SANS facture
+    filteredManualRevenues.forEach(revenue => {
+      if (existingClientIds.has(revenue.clientId) && !revenuesWithInvoice.has(revenue.id)) {
+        revenueWithoutInvoice += revenue.amount;
+        const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+        const companyPercent = 1 - plombierPercent;
+        plombierRevenueWithoutInvoice += revenue.amount * plombierPercent;
+        companyRevenueWithoutInvoice += revenue.amount * companyPercent;
+      }
+    });
+    
     return {
       totalRevenue,
       comparisonRevenue,
       revenueChange,
       plombierRevenue,
       companyRevenue,
+      revenueWithoutInvoice,
+      plombierRevenueWithoutInvoice,
+      companyRevenueWithoutInvoice,
       totalProjects: filteredProjects.length,
       activeProjects: activeProjects.length,
       completedProjects: completedProjects.length,
@@ -1118,6 +1162,22 @@ export default function DashboardPage() {
               <TrendingUp className="text-blue-600 w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 truncate">{formatCurrency(kpis.companyRevenue)}</p>
+          </div>
+
+          {/* Revenus sans facture */}
+          <div className="card bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-orange-700 font-medium">Revenus sans facture</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-900 mt-1 truncate">{formatCurrency(kpis.revenueWithoutInvoice)}</p>
+                <p className="text-xs text-orange-600 mt-1">
+                  Plombier: {formatCurrency(kpis.plombierRevenueWithoutInvoice)} • Société: {formatCurrency(kpis.companyRevenueWithoutInvoice)}
+                </p>
+              </div>
+              <div className="p-1.5 sm:p-2 bg-orange-200 rounded-lg flex-shrink-0 ml-2">
+                <FileText className="text-orange-700 w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+            </div>
           </div>
 
           {/* Factures */}
