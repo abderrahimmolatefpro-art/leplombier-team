@@ -219,9 +219,24 @@ export default function DocumentView({ document, client, project, companyInfo }:
 
         {/* Signature */}
         <div className="mb-6">
-          <p className="text-sm text-gray-700 mb-8">Signature :</p>
-          <p className="text-xs text-gray-500 mt-4">Mentions Légales :</p>
-          <p className="text-xs text-gray-500">Art 89 – II – 1° - c, Code Général des Impôts.</p>
+          <div className="flex justify-between items-end">
+            <div className="flex-1">
+              <p className="text-sm text-gray-700 mb-8">Signature :</p>
+              <p className="text-xs text-gray-500 mt-4">Mentions Légales :</p>
+              <p className="text-xs text-gray-500">Art 89 – II – 1° - c, Code Général des Impôts.</p>
+            </div>
+            {/* Tampon - Uniquement pour les factures */}
+            {document.type === 'facture' && (
+              <div className="flex-shrink-0 ml-8">
+                <img
+                  src="/stamp.png"
+                  alt="Tampon"
+                  className="object-contain"
+                  style={{ width: '300px', height: '300px', maxWidth: '350px', maxHeight: '350px' }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Notes */}
