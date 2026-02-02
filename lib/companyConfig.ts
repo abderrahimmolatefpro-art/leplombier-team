@@ -18,7 +18,7 @@ export interface CompanyInfo {
 }
 
 export const companyInfo: CompanyInfo = {
-  name: 'Le Plombier.MA',
+  name: 'GROUPE OGINCE',
   address: 'Rue Essanaoubre - Immeuble 2 - 4ème Etage - Appt N°12 - Casablanca',
   phone: '+212 706 404 147',
   email: 'contact@leplombier.ma',
