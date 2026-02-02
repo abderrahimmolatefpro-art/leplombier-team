@@ -67,6 +67,7 @@ export interface Project {
   hasInvoice?: boolean; // Si le projet a une facture associée
   paidByPlombierIds?: string[]; // Liste des IDs des plombiers qui ont payé leur part à la société pour ce projet
   plombierPercentage?: number; // Pourcentage pour le plombier (par défaut 60, le reste va à la société)
+  companyAmount?: number; // Montant en MAD que la société reçoit (saisi manuellement)
   createdAt: Date;
   updatedAt: Date;
 }

@@ -37,6 +37,7 @@ export default function ProjetsPage() {
     amount: '',
     hasInvoice: false,
     plombierPercentage: 60, // Pourcentage par défaut 60%
+    companyAmount: '', // Montant société en MAD (saisi manuellement)
   });
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export default function ProjetsPage() {
         hasInvoice: doc.data().hasInvoice || false,
         paidByPlombierIds: doc.data().paidByPlombierIds || [],
         plombierPercentage: doc.data().plombierPercentage || 60,
+        companyAmount: doc.data().companyAmount || undefined,
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Project[];
@@ -118,6 +120,7 @@ export default function ProjetsPage() {
             amount: formData.amount ? parseFloat(formData.amount) : null,
             hasInvoice: formData.hasInvoice,
             plombierPercentage: formData.plombierPercentage || 60,
+            companyAmount: formData.companyAmount ? parseFloat(formData.companyAmount) : null,
             createdAt: editingProject ? editingProject.createdAt : Timestamp.now(),
             updatedAt: Timestamp.now(),
           };
@@ -156,6 +159,7 @@ export default function ProjetsPage() {
       amount: project.amount?.toString() || '',
       hasInvoice: project.hasInvoice || false,
       plombierPercentage: project.plombierPercentage || 60,
+      companyAmount: project.companyAmount?.toString() || '',
     });
     setShowModal(true);
   };
@@ -215,6 +219,7 @@ export default function ProjetsPage() {
       amount: '',
       hasInvoice: false,
       plombierPercentage: 60,
+      companyAmount: '',
     });
   };
 
@@ -536,7 +541,27 @@ export default function ProjetsPage() {
                         step="0.01"
                         min="0"
                         value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                        onChange={(e) => {
+                          const amount = e.target.value;
+                          // Si un montant société est déjà saisi, recalculer le pourcentage
+                          if (formData.companyAmount && parseFloat(formData.companyAmount) > 0 && amount && parseFloat(amount) > 0) {
+                            const totalAmount = parseFloat(amount);
+                            const companyAmountValue = parseFloat(formData.companyAmount);
+                            if (companyAmountValue > 0 && totalAmount > 0) {
+                              const companyPercentage = Math.round((companyAmountValue / totalAmount) * 100);
+                              const plombierPercentage = 100 - companyPercentage;
+                              setFormData({ 
+                                ...formData, 
+                                amount,
+                                plombierPercentage: Math.max(0, Math.min(100, plombierPercentage))
+                              });
+                            } else {
+                              setFormData({ ...formData, amount });
+                            }
+                          } else {
+                            setFormData({ ...formData, amount });
+                          }
+                        }}
                         className="input"
                         placeholder="0.00"
                       />
@@ -546,22 +571,70 @@ export default function ProjetsPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        % Plombier (défaut: 60%)
+                        % Société (défaut: 40%)
                       </label>
                       <input
                         type="number"
                         min="0"
                         max="100"
                         step="1"
-                        value={formData.plombierPercentage}
-                        onChange={(e) => setFormData({ ...formData, plombierPercentage: parseInt(e.target.value) || 60 })}
+                        value={100 - (formData.plombierPercentage || 60)}
+                        onChange={(e) => {
+                          const companyPercentage = parseInt(e.target.value) || 40;
+                          const plombierPercentage = 100 - companyPercentage;
+                          setFormData({ ...formData, plombierPercentage });
+                        }}
                         className="input"
-                        placeholder="60"
+                        placeholder="40"
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        Société: {100 - (formData.plombierPercentage || 60)}%
+                        Plombier: {formData.plombierPercentage || 60}%
                       </p>
                     </div>
+                  </div>
+
+                  {/* Montant Société */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Montant Société (MAD)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.companyAmount}
+                      onChange={(e) => {
+                        const companyAmount = e.target.value;
+                        // Si un montant total est saisi, recalculer le pourcentage société
+                        if (formData.amount && parseFloat(formData.amount) > 0 && companyAmount) {
+                          const totalAmount = parseFloat(formData.amount);
+                          const companyAmountValue = parseFloat(companyAmount);
+                          if (companyAmountValue > 0 && totalAmount > 0) {
+                            const companyPercentage = Math.round((companyAmountValue / totalAmount) * 100);
+                            const plombierPercentage = 100 - companyPercentage;
+                            setFormData({ 
+                              ...formData, 
+                              companyAmount,
+                              plombierPercentage: Math.max(0, Math.min(100, plombierPercentage))
+                            });
+                          } else {
+                            setFormData({ ...formData, companyAmount });
+                          }
+                        } else {
+                          setFormData({ ...formData, companyAmount });
+                        }
+                      }}
+                      className="input"
+                      placeholder="0.00"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Montant que la société reçoit pour ce projet (saisi manuellement)
+                    </p>
+                    {formData.amount && parseFloat(formData.amount) > 0 && formData.companyAmount && parseFloat(formData.companyAmount) > 0 && (
+                      <p className="text-xs text-blue-600 mt-1 font-medium">
+                        Pourcentage Société recalculé: {Math.round((parseFloat(formData.companyAmount) / parseFloat(formData.amount)) * 100)}%
+                      </p>
+                    )}
                   </div>
                   
                   <div className="flex items-center space-x-2">
