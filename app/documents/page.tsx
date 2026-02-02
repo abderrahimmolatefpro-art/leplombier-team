@@ -234,7 +234,8 @@ function DocumentsContent() {
         number: formData.number || generateDocumentNumber(formData.type),
         date: Timestamp.fromDate(new Date(formData.date || new Date())),
         dueDate: formData.dueDate ? Timestamp.fromDate(new Date(formData.dueDate)) : null,
-        includeTax: formData.type === 'devis' ? formData.includeTax : undefined, // Uniquement pour les devis
+        // includeTax uniquement pour les devis, omettre pour les autres types
+        ...(formData.type === 'devis' ? { includeTax: formData.includeTax ?? true } : {}),
         createdAt: editingDocument ? editingDocument.createdAt : Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
