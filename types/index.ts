@@ -139,4 +139,10 @@ export interface DocumentItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  unit?: 'piece' | 'm2' | 'm' | 'm3' | 'kg' | 'heure' | 'jour' | 'unite'; // Unité de mesure
+  length?: number; // Longueur (pour calculer m² ou m)
+  width?: number; // Largeur (pour calculer m²)
+  height?: number; // Hauteur (pour calculer m³)
+  area?: number; // Surface calculée (m²)
+  calculatedQuantity?: boolean; // Si la quantité est calculée automatiquement
 }

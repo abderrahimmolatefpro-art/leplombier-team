@@ -51,8 +51,12 @@ function DocumentsContent() {
   });
   const [currentItem, setCurrentItem] = useState({
     description: '',
-    quantity: 1,
+    quantity: '',
     unitPrice: 0,
+    unit: 'piece' as 'piece' | 'm2' | 'm' | 'm3' | 'kg' | 'heure' | 'jour' | 'unite',
+    length: '',
+    width: '',
+    height: '',
   });
 
   useEffect(() => {
@@ -168,16 +172,84 @@ function DocumentsContent() {
   };
 
   const addItem = () => {
-    if (!currentItem.description || currentItem.quantity <= 0 || currentItem.unitPrice < 0) {
-      alert('Veuillez remplir tous les champs de l\'article');
+    if (!currentItem.description || currentItem.unitPrice < 0) {
+      alert('Veuillez remplir la description et le prix unitaire');
       return;
+    }
+
+    // Calculer la quantité selon l'unité choisie
+    let calculatedQuantity = typeof currentItem.quantity === 'string' 
+      ? parseFloat(currentItem.quantity) || 0 
+      : currentItem.quantity;
+    let area: number | undefined;
+    let calculatedQuantityFlag = false;
+
+    if (currentItem.unit === 'm2') {
+      // Pour m², calculer à partir de longueur × largeur si fournis
+      if (currentItem.length && currentItem.width) {
+        const length = parseFloat(currentItem.length);
+        const width = parseFloat(currentItem.width);
+        if (length > 0 && width > 0) {
+          area = length * width;
+          calculatedQuantity = area;
+          calculatedQuantityFlag = true;
+        }
+      }
+      if (calculatedQuantity <= 0) {
+        alert('Veuillez saisir la longueur et la largeur pour calculer la surface en m²');
+        return;
+      }
+    } else if (currentItem.unit === 'm') {
+      // Pour m, utiliser la longueur si fournie
+      if (currentItem.length) {
+        const length = parseFloat(currentItem.length);
+        if (length > 0) {
+          calculatedQuantity = length;
+          calculatedQuantityFlag = true;
+        }
+      }
+      if (calculatedQuantity <= 0) {
+        alert('Veuillez saisir la longueur en mètres');
+        return;
+      }
+    } else if (currentItem.unit === 'm3') {
+      // Pour m³, calculer à partir de longueur × largeur × hauteur
+      if (currentItem.length && currentItem.width && currentItem.height) {
+        const length = parseFloat(currentItem.length);
+        const width = parseFloat(currentItem.width);
+        const height = parseFloat(currentItem.height);
+        if (length > 0 && width > 0 && height > 0) {
+          calculatedQuantity = length * width * height;
+          calculatedQuantityFlag = true;
+        }
+      }
+      if (calculatedQuantity <= 0) {
+        alert('Veuillez saisir la longueur, largeur et hauteur pour calculer le volume en m³');
+        return;
+      }
+    } else {
+      // Pour les autres unités (pièce, kg, heure, jour, unité), utiliser la quantité saisie
+      const qty = typeof currentItem.quantity === 'string' 
+        ? parseFloat(currentItem.quantity) 
+        : currentItem.quantity;
+      if (!qty || qty <= 0) {
+        alert('Veuillez saisir une quantité valide');
+        return;
+      }
+      calculatedQuantity = qty;
     }
 
     const item: DocumentItem = {
       description: currentItem.description,
-      quantity: currentItem.quantity,
+      quantity: calculatedQuantity,
       unitPrice: currentItem.unitPrice,
-      total: currentItem.quantity * currentItem.unitPrice,
+      total: calculatedQuantity * currentItem.unitPrice,
+      unit: currentItem.unit,
+      length: currentItem.length ? parseFloat(currentItem.length) : undefined,
+      width: currentItem.width ? parseFloat(currentItem.width) : undefined,
+      height: currentItem.height ? parseFloat(currentItem.height) : undefined,
+      area: area,
+      calculatedQuantity: calculatedQuantityFlag,
     };
 
     const newItems = [...formData.items, item];
@@ -200,8 +272,12 @@ function DocumentsContent() {
 
     setCurrentItem({
       description: '',
-      quantity: 1,
+      quantity: '',
       unitPrice: 0,
+      unit: 'piece',
+      length: '',
+      width: '',
+      height: '',
     });
   };
 
@@ -235,8 +311,29 @@ function DocumentsContent() {
     }
     
     try {
+      // Nettoyer les items pour supprimer les champs undefined (Firestore ne les accepte pas)
+      const cleanedItems = formData.items.map(item => {
+        const cleanedItem: any = {
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+        };
+        
+        // Ajouter les champs optionnels seulement s'ils ne sont pas undefined
+        if (item.unit !== undefined) cleanedItem.unit = item.unit;
+        if (item.length !== undefined) cleanedItem.length = item.length;
+        if (item.width !== undefined) cleanedItem.width = item.width;
+        if (item.height !== undefined) cleanedItem.height = item.height;
+        if (item.area !== undefined) cleanedItem.area = item.area;
+        if (item.calculatedQuantity !== undefined) cleanedItem.calculatedQuantity = item.calculatedQuantity;
+        
+        return cleanedItem;
+      });
+
       const documentData = {
         ...formData,
+        items: cleanedItems,
         projectId: formData.projectId || null,
         manualRevenueId: formData.manualRevenueId || null,
         number: formData.number || generateDocumentNumber(formData.type),
@@ -325,8 +422,12 @@ function DocumentsContent() {
     });
     setCurrentItem({
       description: '',
-      quantity: 1,
+      quantity: '',
       unitPrice: 0,
+      unit: 'piece',
+      length: '',
+      width: '',
+      height: '',
     });
   };
 
@@ -731,55 +832,235 @@ function DocumentsContent() {
                       Articles
                     </label>
                     <div className="border border-gray-300 rounded-lg p-4 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="md:col-span-2">
-                          <input
-                            type="text"
-                            placeholder="Description"
-                            value={currentItem.description}
-                            onChange={(e) =>
-                              setCurrentItem({ ...currentItem, description: e.target.value })
-                            }
-                            className="input"
-                          />
+                      <div className="space-y-4">
+                        {/* Ligne 1: Description et Unité */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="md:col-span-2">
+                            <input
+                              type="text"
+                              placeholder="Description"
+                              value={currentItem.description}
+                              onChange={(e) =>
+                                setCurrentItem({ ...currentItem, description: e.target.value })
+                              }
+                              className="input"
+                            />
+                          </div>
+                          <div>
+                            <select
+                              value={currentItem.unit}
+                              onChange={(e) =>
+                                setCurrentItem({
+                                  ...currentItem,
+                                  unit: e.target.value as typeof currentItem.unit,
+                                  length: '',
+                                  width: '',
+                                  height: '',
+                                })
+                              }
+                              className="input"
+                            >
+                              <option value="piece">Pièce</option>
+                              <option value="m2">m²</option>
+                              <option value="m">m (mètre linéaire)</option>
+                              <option value="m3">m³</option>
+                              <option value="kg">kg</option>
+                              <option value="heure">Heure</option>
+                              <option value="jour">Jour</option>
+                              <option value="unite">Unité</option>
+                            </select>
+                          </div>
                         </div>
-                        <div>
-                          <input
-                            type="number"
-                            placeholder="Quantité"
-                            min="1"
-                            value={currentItem.quantity}
-                            onChange={(e) =>
-                              setCurrentItem({
-                                ...currentItem,
-                                quantity: parseInt(e.target.value) || 1,
-                              })
-                            }
-                            className="input"
-                          />
-                        </div>
-                        <div className="flex space-x-2">
-                          <input
-                            type="number"
-                            placeholder="Prix unitaire"
-                            min="0"
-                            step="0.01"
-                            value={currentItem.unitPrice}
-                            onChange={(e) =>
-                              setCurrentItem({
-                                ...currentItem,
-                                unitPrice: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                            className="input"
-                          />
-                          <button
-                            type="button"
-                            onClick={addItem}
-                            className="btn btn-primary whitespace-nowrap"
-                          >
-                            Ajouter
-                          </button>
+
+                        {/* Ligne 2: Dimensions selon l'unité */}
+                        {currentItem.unit === 'm2' && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Longueur (m)</label>
+                              <input
+                                type="number"
+                                placeholder="Longueur"
+                                min="0"
+                                step="0.01"
+                                value={currentItem.length}
+                                onChange={(e) =>
+                                  setCurrentItem({ ...currentItem, length: e.target.value })
+                                }
+                                className="input"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Largeur (m)</label>
+                              <input
+                                type="number"
+                                placeholder="Largeur"
+                                min="0"
+                                step="0.01"
+                                value={currentItem.width}
+                                onChange={(e) =>
+                                  setCurrentItem({ ...currentItem, width: e.target.value })
+                                }
+                                className="input"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              {currentItem.length && currentItem.width && (
+                                <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded w-full">
+                                  Surface: {(
+                                    parseFloat(currentItem.length || '0') *
+                                    parseFloat(currentItem.width || '0')
+                                  ).toFixed(2)} m²
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {currentItem.unit === 'm' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Longueur (m)</label>
+                              <input
+                                type="number"
+                                placeholder="Longueur"
+                                min="0"
+                                step="0.01"
+                                value={currentItem.length}
+                                onChange={(e) =>
+                                  setCurrentItem({ ...currentItem, length: e.target.value })
+                                }
+                                className="input"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              {currentItem.length && (
+                                <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded w-full">
+                                  Longueur: {parseFloat(currentItem.length || '0').toFixed(2)} m
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {currentItem.unit === 'm3' && (
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Longueur (m)</label>
+                              <input
+                                type="number"
+                                placeholder="Longueur"
+                                min="0"
+                                step="0.01"
+                                value={currentItem.length}
+                                onChange={(e) =>
+                                  setCurrentItem({ ...currentItem, length: e.target.value })
+                                }
+                                className="input"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Largeur (m)</label>
+                              <input
+                                type="number"
+                                placeholder="Largeur"
+                                min="0"
+                                step="0.01"
+                                value={currentItem.width}
+                                onChange={(e) =>
+                                  setCurrentItem({ ...currentItem, width: e.target.value })
+                                }
+                                className="input"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Hauteur (m)</label>
+                              <input
+                                type="number"
+                                placeholder="Hauteur"
+                                min="0"
+                                step="0.01"
+                                value={currentItem.height}
+                                onChange={(e) =>
+                                  setCurrentItem({ ...currentItem, height: e.target.value })
+                                }
+                                className="input"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              {currentItem.length && currentItem.width && currentItem.height && (
+                                <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded w-full">
+                                  Volume: {(
+                                    parseFloat(currentItem.length || '0') *
+                                    parseFloat(currentItem.width || '0') *
+                                    parseFloat(currentItem.height || '0')
+                                  ).toFixed(2)} m³
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {(currentItem.unit === 'piece' || currentItem.unit === 'kg' || 
+                          currentItem.unit === 'heure' || currentItem.unit === 'jour' || 
+                          currentItem.unit === 'unite') && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Quantité
+                                {currentItem.unit === 'piece' && ' (pièces)'}
+                                {currentItem.unit === 'kg' && ' (kg)'}
+                                {currentItem.unit === 'heure' && ' (heures)'}
+                                {currentItem.unit === 'jour' && ' (jours)'}
+                                {currentItem.unit === 'unite' && ' (unités)'}
+                              </label>
+                              <input
+                                type="number"
+                                placeholder=""
+                                min="0"
+                                step={currentItem.unit === 'kg' ? '0.01' : '1'}
+                                value={currentItem.quantity}
+                                onChange={(e) =>
+                                  setCurrentItem({
+                                    ...currentItem,
+                                    quantity: e.target.value,
+                                  })
+                                }
+                                className="input"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Ligne 3: Prix unitaire et bouton */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Prix unitaire (MAD)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="Prix unitaire"
+                              min="0"
+                              step="0.01"
+                              value={currentItem.unitPrice}
+                              onChange={(e) =>
+                                setCurrentItem({
+                                  ...currentItem,
+                                  unitPrice: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              className="input"
+                            />
+                          </div>
+                          <div className="md:col-span-2 flex items-end">
+                            <button
+                              type="button"
+                              onClick={addItem}
+                              className="btn btn-primary whitespace-nowrap w-full md:w-auto"
+                            >
+                              Ajouter l&apos;article
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -806,29 +1087,60 @@ function DocumentsContent() {
                               </tr>
                             </thead>
                             <tbody>
-                              {formData.items.map((item, index) => (
-                                <tr key={index} className="border-b border-gray-100">
-                                  <td className="py-2 px-2 text-sm text-gray-900">{item.description}</td>
-                                  <td className="py-2 px-2 text-sm text-gray-600 text-right">
-                                    {item.quantity}
-                                  </td>
-                                  <td className="py-2 px-2 text-sm text-gray-600 text-right">
-                                    {formatCurrency(item.unitPrice)}
-                                  </td>
-                                  <td className="py-2 px-2 text-sm font-medium text-gray-900 text-right">
-                                    {formatCurrency(item.total)}
-                                  </td>
-                                  <td className="py-2 px-2 text-right">
-                                    <button
-                                      type="button"
-                                      onClick={() => removeItem(index)}
-                                      className="text-red-600 hover:text-red-800"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
+                              {formData.items.map((item, index) => {
+                                const getUnitLabel = (unit?: string) => {
+                                  const labels: Record<string, string> = {
+                                    piece: 'pièce',
+                                    m2: 'm²',
+                                    m: 'm',
+                                    m3: 'm³',
+                                    kg: 'kg',
+                                    heure: 'h',
+                                    jour: 'j',
+                                    unite: 'unité',
+                                  };
+                                  return labels[unit || 'piece'] || '';
+                                };
+
+                                const getQuantityDisplay = () => {
+                                  let qty = item.quantity.toFixed(2);
+                                  if (item.unit === 'm2' && item.length && item.width) {
+                                    return `${qty} m² (${item.length} × ${item.width} m)`;
+                                  } else if (item.unit === 'm' && item.length) {
+                                    return `${qty} m (${item.length} m)`;
+                                  } else if (item.unit === 'm3' && item.length && item.width && item.height) {
+                                    return `${qty} m³ (${item.length} × ${item.width} × ${item.height} m)`;
+                                  } else {
+                                    return qty;
+                                  }
+                                };
+
+                                return (
+                                  <tr key={index} className="border-b border-gray-100">
+                                    <td className="py-2 px-2 text-sm text-gray-900">
+                                      {item.description}
+                                    </td>
+                                    <td className="py-2 px-2 text-sm text-gray-600 text-right">
+                                      {getQuantityDisplay()}
+                                    </td>
+                                    <td className="py-2 px-2 text-sm text-gray-600 text-right">
+                                      {formatCurrency(item.unitPrice)}
+                                    </td>
+                                    <td className="py-2 px-2 text-sm font-medium text-gray-900 text-right">
+                                      {formatCurrency(item.total)}
+                                    </td>
+                                    <td className="py-2 px-2 text-right">
+                                      <button
+                                        type="button"
+                                        onClick={() => removeItem(index)}
+                                        className="text-red-600 hover:text-red-800"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                             <tfoot>
                               <tr>

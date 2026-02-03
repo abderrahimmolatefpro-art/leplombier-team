@@ -167,22 +167,51 @@ export default function DocumentView({ document, client, project, companyInfo }:
               </tr>
             </thead>
             <tbody>
-              {document.items.map((item, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
-                    {item.description}
-                  </td>
-                  <td className="border border-gray-300 px-4 py-3 text-center text-sm text-gray-600">
-                    {item.quantity}
-                  </td>
-                  <td className="border border-gray-300 px-4 py-3 text-right text-sm text-gray-600">
-                    {formatNumberFR(item.unitPrice)}
-                  </td>
-                  <td className="border border-gray-300 px-4 py-3 text-right text-sm font-medium text-gray-900">
-                    {formatNumberFR(item.total)}
-                  </td>
-                </tr>
-              ))}
+              {document.items.map((item, index) => {
+                const getUnitLabel = (unit?: string) => {
+                  const labels: Record<string, string> = {
+                    piece: 'pièce',
+                    m2: 'm²',
+                    m: 'm',
+                    m3: 'm³',
+                    kg: 'kg',
+                    heure: 'h',
+                    jour: 'j',
+                    unite: 'unité',
+                  };
+                  return labels[unit || 'piece'] || '';
+                };
+
+                const getQuantityDisplay = () => {
+                  let qty = formatNumberFR(item.quantity);
+                  if (item.unit === 'm2' && item.length && item.width) {
+                    return `${qty} m² (${item.length} × ${item.width} m)`;
+                  } else if (item.unit === 'm' && item.length) {
+                    return `${qty} m (${item.length} m)`;
+                  } else if (item.unit === 'm3' && item.length && item.width && item.height) {
+                    return `${qty} m³ (${item.length} × ${item.width} × ${item.height} m)`;
+                  } else {
+                    return qty;
+                  }
+                };
+
+                return (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
+                      {item.description}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-center text-sm text-gray-600">
+                      {getQuantityDisplay()}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-right text-sm text-gray-600">
+                      {formatNumberFR(item.unitPrice)} MAD
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                      {formatNumberFR(item.total)} MAD
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
