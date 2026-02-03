@@ -359,7 +359,7 @@ export default function AutoMessagesPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Délai d'envoi (heures) *
+                    Délai d&apos;envoi (heures) *
                   </label>
                   <input
                     type="number"
@@ -372,7 +372,7 @@ export default function AutoMessagesPage() {
                     className="input"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Le message sera envoyé X heures après la fin de l'intervention
+                    Le message sera envoyé X heures après la fin de l&apos;intervention
                   </p>
                 </div>
 

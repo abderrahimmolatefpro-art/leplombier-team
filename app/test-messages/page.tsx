@@ -125,7 +125,7 @@ export default function TestMessagesPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Test des messages</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
-            Tester l'envoi de SMS et emails pour vérifier la configuration
+            Tester l&apos;envoi de SMS et emails pour vérifier la configuration
           </p>
         </div>
 
@@ -184,7 +184,7 @@ export default function TestMessagesPage() {
                 ) : (
                   <>
                     <MessageSquare size={18} />
-                    <span>Tester l'envoi SMS</span>
+                    <span>Tester l&apos;envoi SMS</span>
                   </>
                 )}
               </button>
@@ -276,7 +276,7 @@ export default function TestMessagesPage() {
                 ) : (
                   <>
                     <Mail size={18} />
-                    <span>Tester l'envoi Email</span>
+                    <span>Tester l&apos;envoi Email</span>
                   </>
                 )}
               </button>
@@ -315,7 +315,7 @@ export default function TestMessagesPage() {
             <div>
               <h3 className="text-lg font-bold text-gray-900 mb-1">Test complet</h3>
               <p className="text-sm text-gray-600">
-                Tester l'envoi de SMS et Email en même temps
+                Tester l&apos;envoi de SMS et Email en même temps
               </p>
             </div>
             <button
@@ -355,7 +355,7 @@ export default function TestMessagesPage() {
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              💡 Les variables d'environnement sont vérifiées côté serveur. Si les tests échouent, vérifiez votre configuration dans Vercel ou .env.local
+              💡 Les variables d&apos;environnement sont vérifiées côté serveur. Si les tests échouent, vérifiez votre configuration dans Vercel ou .env.local
             </p>
           </div>
         </div>
