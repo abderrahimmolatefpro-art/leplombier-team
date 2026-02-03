@@ -16,6 +16,8 @@ import {
   X,
   UserPlus,
   Bell,
+  MessageSquare,
+  TestTube,
   X as XIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -44,7 +46,11 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/planning', label: 'Planning', icon: Calendar },
     { href: '/documents', label: 'Documents', icon: FileText },
     { href: '/plombiers', label: 'Plombiers', icon: Users },
-    ...(isAdmin ? [{ href: '/recrutements', label: 'Candidatures', icon: UserPlus }] : []),
+    ...(isAdmin ? [
+      { href: '/recrutements', label: 'Candidatures', icon: UserPlus },
+      { href: '/messages-automatiques', label: 'Messages auto', icon: MessageSquare },
+      { href: '/test-messages', label: 'Test messages', icon: TestTube },
+    ] : []),
   ];
 
   const handleLogout = async () => {

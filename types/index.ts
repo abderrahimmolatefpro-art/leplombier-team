@@ -146,3 +146,33 @@ export interface DocumentItem {
   area?: number; // Surface calculée (m²)
   calculatedQuantity?: boolean; // Si la quantité est calculée automatiquement
 }
+
+// Messages automatiques
+export interface AutoMessage {
+  id: string;
+  name: string; // Nom du message (ex: "Promotion 10%", "Avertissement garantie")
+  type: 'promotion' | 'warning'; // Type de message
+  smsEnabled: boolean; // Activer l'envoi SMS
+  emailEnabled: boolean; // Activer l'envoi email
+  smsContent: string; // Contenu du SMS
+  emailSubject: string; // Sujet de l'email
+  emailContent: string; // Contenu de l'email (HTML)
+  delayHours: number; // Délai en heures après la fin de l'intervention (par défaut 24)
+  enabled: boolean; // Activer/désactiver ce message
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Messages envoyés (historique)
+export interface SentMessage {
+  id: string;
+  autoMessageId: string; // ID du message automatique utilisé
+  clientId: string;
+  projectId?: string; // Si lié à un projet
+  manualRevenueId?: string; // Si lié à un dépannage
+  type: 'sms' | 'email';
+  status: 'sent' | 'failed';
+  sentAt: Date;
+  errorMessage?: string;
+  createdAt: Date;
+}

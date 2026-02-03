@@ -78,5 +78,18 @@ service cloud.firestore {
       allow create: if true; // Permet la création via l'API webhook (sans authentification)
       allow update, delete: if isAuthenticated() && isAdmin();
     }
+
+    // Collection autoMessages (messages automatiques)
+    match /autoMessages/{messageId} {
+      allow read: if isAuthenticated(); // Tous les utilisateurs authentifiés peuvent lire
+      allow create, update, delete: if isAuthenticated() && isAdmin(); // Seuls les admins peuvent modifier
+    }
+
+    // Collection sentMessages (historique des messages envoyés)
+    match /sentMessages/{sentMessageId} {
+      allow read: if isAuthenticated(); // Tous les utilisateurs authentifiés peuvent lire
+      allow create: if true; // Permet la création via l'API route (Firebase Admin SDK bypass les règles)
+      allow update, delete: if isAuthenticated() && isAdmin(); // Seuls les admins peuvent modifier/supprimer
+    }
   }
 }

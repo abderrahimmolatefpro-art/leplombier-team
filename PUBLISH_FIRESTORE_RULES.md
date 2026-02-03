@@ -88,6 +88,26 @@ service cloud.firestore {
       allow update: if isAuthenticated();
       allow delete: if isAuthenticated();
     }
+
+    // Collection recruitments (candidatures de recrutement)
+    match /recruitments/{recruitmentId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if true; // Permet la création via l'API webhook (sans authentification)
+      allow update, delete: if isAuthenticated() && isAdmin();
+    }
+
+    // Collection autoMessages (messages automatiques)
+    match /autoMessages/{messageId} {
+      allow read: if isAuthenticated(); // Tous les utilisateurs authentifiés peuvent lire
+      allow create, update, delete: if isAuthenticated() && isAdmin(); // Seuls les admins peuvent modifier
+    }
+
+    // Collection sentMessages (historique des messages envoyés)
+    match /sentMessages/{sentMessageId} {
+      allow read: if isAuthenticated(); // Tous les utilisateurs authentifiés peuvent lire
+      allow create: if true; // Permet la création via l'API route (Firebase Admin SDK bypass les règles)
+      allow update, delete: if isAuthenticated() && isAdmin(); // Seuls les admins peuvent modifier/supprimer
+    }
   }
 }
 ```
@@ -105,6 +125,7 @@ Après avoir publié, testez :
 1. Rechargez la page des clients → devrait fonctionner
 2. Ajoutez un revenu manuel → devrait fonctionner
 3. Créez un projet avec montant → devrait fonctionner
+4. Allez dans "Messages auto" → devrait fonctionner
 
 ## ⚠️ Si ça ne fonctionne toujours pas
 
