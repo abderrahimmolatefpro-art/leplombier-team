@@ -54,32 +54,63 @@ Pour que les messages soient envoyés automatiquement, vous devez configurer un 
 
 ### Option 1: Vercel Cron Jobs (Recommandé)
 
-1. Créer un fichier `vercel.json` à la racine du projet :
+1. Le fichier `vercel.json` est déjà configuré avec :
 
 ```json
 {
   "crons": [
     {
       "path": "/api/auto-messages/send",
-      "schedule": "0 */1 * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }
 ```
 
-Cela exécutera le script toutes les heures. Vous pouvez ajuster la fréquence :
-- `0 */1 * * *` : Toutes les heures
-- `0 */6 * * *` : Toutes les 6 heures
-- `0 0 * * *` : Une fois par jour à minuit
+**⚠️ Important - Plan Hobby :**
+- Sur le plan **Hobby** (gratuit), les cron jobs ne peuvent s'exécuter qu'**une fois par jour**
+- Le cron job est configuré pour s'exécuter **tous les jours à 2h du matin**
+- La précision est de ±59 minutes (peut s'exécuter entre 2h00 et 2h59)
+
+**Pour des exécutions plus fréquentes :**
+- Passez au plan **Pro** pour des exécutions toutes les heures ou toutes les minutes
+- Ou utilisez un service externe (voir Option 2)
+
+**Autres horaires possibles (une fois par jour) :**
+- `0 0 * * *` : Minuit (00h00)
+- `0 2 * * *` : 2h du matin (actuel)
+- `0 6 * * *` : 6h du matin
+- `0 12 * * *` : Midi (12h00)
 
 2. Déployer sur Vercel
 
-### Option 2: Service externe (cron-job.org, EasyCron, etc.)
+### Option 2: Service externe (Recommandé pour exécutions fréquentes)
 
-1. Créer un compte sur un service de cron job
-2. Configurer une tâche qui appelle : `https://votre-domaine.com/api/auto-messages/send`
-3. Méthode : POST
-4. Fréquence : Toutes les heures (ou selon vos besoins)
+Si vous voulez des exécutions **plus fréquentes** que une fois par jour, utilisez un service externe :
+
+**Avec cron-job.org (Gratuit) :**
+1. Créer un compte sur https://cron-job.org (gratuit)
+2. Cliquez sur "Create cronjob"
+3. Configurez :
+   - **Title** : "Messages automatiques CRM"
+   - **Address (URL)** : `https://votre-domaine.vercel.app/api/auto-messages/send`
+   - **Request method** : POST
+   - **Schedule** : 
+     - Toutes les heures : `0 * * * *`
+     - Toutes les 6 heures : `0 */6 * * *`
+     - Toutes les 12 heures : `0 */12 * * *`
+   - **Active** : Cocher
+4. Cliquez sur "Create cronjob"
+
+**Avec EasyCron :**
+1. Créer un compte sur https://www.easycron.com
+2. Configurer une tâche similaire avec la fréquence souhaitée
+
+**Avantages :**
+- ✅ Exécutions plus fréquentes que le plan Hobby Vercel
+- ✅ Plus de contrôle sur la fréquence
+- ✅ Gratuit pour des exécutions raisonnables
+- ✅ Logs et historique des exécutions
 
 ### Option 3: Test manuel
 
