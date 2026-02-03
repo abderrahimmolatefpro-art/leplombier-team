@@ -184,8 +184,8 @@ export default function DocumentView({ document, client, project, companyInfo }:
 
                 const getQuantityDisplay = () => {
                   let qty = formatNumberFR(item.quantity);
-                  if (item.unit === 'm2' && item.length && item.width) {
-                    return `${qty} m² (${item.length} × ${item.width} m)`;
+                  if (item.unit === 'm2') {
+                    return `${qty} m²`;
                   } else if (item.unit === 'm' && item.length) {
                     return `${qty} m (${item.length} m)`;
                   } else if (item.unit === 'm3' && item.length && item.width && item.height) {

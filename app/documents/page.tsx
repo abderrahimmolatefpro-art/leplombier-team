@@ -33,6 +33,8 @@ function DocumentsContent() {
   const [showModal, setShowModal] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [formData, setFormData] = useState({
     type: 'devis' as Document['type'],
     projectId: '',
@@ -74,11 +76,15 @@ function DocumentsContent() {
       if (clientIdFromUrl || typeFromUrl) {
         setEditingDocument(null);
         resetForm();
+        const clientId = clientIdFromUrl || '';
+        const clientName = clientId ? clients.find(c => c.id === clientId)?.name || '' : '';
+        setClientSearch(clientName);
+        setShowClientDropdown(false);
         setFormData({ 
           type: (typeFromUrl as Document['type']) || 'devis',
           projectId: '',
           manualRevenueId: '',
-          clientId: clientIdFromUrl || '',
+          clientId: clientId,
           number: '',
           date: new Date().toISOString().split('T')[0],
           dueDate: '',
@@ -185,18 +191,9 @@ function DocumentsContent() {
     let calculatedQuantityFlag = false;
 
     if (currentItem.unit === 'm2') {
-      // Pour m², calculer à partir de longueur × largeur si fournis
-      if (currentItem.length && currentItem.width) {
-        const length = parseFloat(currentItem.length);
-        const width = parseFloat(currentItem.width);
-        if (length > 0 && width > 0) {
-          area = length * width;
-          calculatedQuantity = area;
-          calculatedQuantityFlag = true;
-        }
-      }
-      if (calculatedQuantity <= 0) {
-        alert('Veuillez saisir la longueur et la largeur pour calculer la surface en m²');
+      // Pour m², utiliser directement la quantité saisie
+      if (!calculatedQuantity || calculatedQuantity <= 0) {
+        alert('Veuillez saisir une quantité en m²');
         return;
       }
     } else if (currentItem.unit === 'm') {
@@ -353,6 +350,8 @@ function DocumentsContent() {
 
       setShowModal(false);
       setEditingDocument(null);
+      setClientSearch('');
+      setShowClientDropdown(false);
       resetForm();
       loadData();
     } catch (error) {
@@ -371,6 +370,10 @@ function DocumentsContent() {
       tax = subtotal * 0.2;
     }
     const total = subtotal + tax;
+    
+    const clientName = getClientName(document.clientId);
+    setClientSearch(clientName !== 'Client inconnu' ? clientName : '');
+    setShowClientDropdown(false);
     
     setFormData({
       type: document.type,
@@ -420,6 +423,8 @@ function DocumentsContent() {
       status: 'brouillon',
       notes: '',
     });
+    setClientSearch('');
+    setShowClientDropdown(false);
     setCurrentItem({
       description: '',
       quantity: '',
@@ -674,29 +679,68 @@ function DocumentsContent() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                    <div className="relative">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Client *
                       </label>
-                      <select
+                      <input
+                        type="text"
                         required
-                        value={formData.clientId}
+                        value={clientSearch || (formData.clientId ? getClientName(formData.clientId) : '')}
                         onChange={(e) => {
-                          const selectedClientId = e.target.value;
-                          // #region agent log
-                          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'documents/page.tsx:clientSelect',message:'Client selected',data:{clientId:selectedClientId,projectsForClient:projects.filter(p=>p.clientId===selectedClientId).length,revenuesForClient:manualRevenues.filter(r=>r.clientId===selectedClientId).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                          // #endregion
-                          setFormData({ ...formData, clientId: selectedClientId });
+                          setClientSearch(e.target.value);
+                          setShowClientDropdown(true);
+                          if (!e.target.value) {
+                            setFormData({ ...formData, clientId: '' });
+                          }
                         }}
+                        onFocus={() => setShowClientDropdown(true)}
+                        onBlur={() => {
+                          // Délai pour permettre le clic sur un élément de la liste
+                          setTimeout(() => setShowClientDropdown(false), 200);
+                        }}
+                        placeholder="Rechercher un client..."
                         className="input"
-                      >
-                        <option value="">Sélectionner un client</option>
-                        {clients.map((client) => (
-                          <option key={client.id} value={client.id}>
-                            {client.name}
-                          </option>
-                        ))}
-                      </select>
+                      />
+                      {showClientDropdown && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                          {clients
+                            .filter((client) =>
+                              client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                              client.phone?.includes(clientSearch) ||
+                              client.email?.toLowerCase().includes(clientSearch.toLowerCase())
+                            )
+                            .slice(0, 10)
+                            .map((client) => (
+                              <div
+                                key={client.id}
+                                onClick={() => {
+                                  setFormData({ ...formData, clientId: client.id });
+                                  setClientSearch(client.name);
+                                  setShowClientDropdown(false);
+                                }}
+                                className="px-4 py-2 hover:bg-primary-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-gray-900">{client.name}</div>
+                                {client.phone && (
+                                  <div className="text-xs text-gray-500">{client.phone}</div>
+                                )}
+                                {client.email && (
+                                  <div className="text-xs text-gray-500">{client.email}</div>
+                                )}
+                              </div>
+                            ))}
+                          {clients.filter((client) =>
+                            client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                            client.phone?.includes(clientSearch) ||
+                            client.email?.toLowerCase().includes(clientSearch.toLowerCase())
+                          ).length === 0 && (
+                            <div className="px-4 py-2 text-sm text-gray-500 text-center">
+                              Aucun client trouvé
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -874,44 +918,25 @@ function DocumentsContent() {
 
                         {/* Ligne 2: Dimensions selon l'unité */}
                         {currentItem.unit === 'm2' && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-xs text-gray-600 mb-1">Longueur (m)</label>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Quantité (m²)
+                              </label>
                               <input
                                 type="number"
-                                placeholder="Longueur"
+                                placeholder=""
                                 min="0"
                                 step="0.01"
-                                value={currentItem.length}
+                                value={currentItem.quantity}
                                 onChange={(e) =>
-                                  setCurrentItem({ ...currentItem, length: e.target.value })
+                                  setCurrentItem({
+                                    ...currentItem,
+                                    quantity: e.target.value,
+                                  })
                                 }
                                 className="input"
                               />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-1">Largeur (m)</label>
-                              <input
-                                type="number"
-                                placeholder="Largeur"
-                                min="0"
-                                step="0.01"
-                                value={currentItem.width}
-                                onChange={(e) =>
-                                  setCurrentItem({ ...currentItem, width: e.target.value })
-                                }
-                                className="input"
-                              />
-                            </div>
-                            <div className="flex items-end">
-                              {currentItem.length && currentItem.width && (
-                                <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded w-full">
-                                  Surface: {(
-                                    parseFloat(currentItem.length || '0') *
-                                    parseFloat(currentItem.width || '0')
-                                  ).toFixed(2)} m²
-                                </div>
-                              )}
                             </div>
                           </div>
                         )}
@@ -1104,8 +1129,8 @@ function DocumentsContent() {
 
                                 const getQuantityDisplay = () => {
                                   let qty = item.quantity.toFixed(2);
-                                  if (item.unit === 'm2' && item.length && item.width) {
-                                    return `${qty} m² (${item.length} × ${item.width} m)`;
+                                  if (item.unit === 'm2') {
+                                    return `${qty} m²`;
                                   } else if (item.unit === 'm' && item.length) {
                                     return `${qty} m (${item.length} m)`;
                                   } else if (item.unit === 'm3' && item.length && item.width && item.height) {

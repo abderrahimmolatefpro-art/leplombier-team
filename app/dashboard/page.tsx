@@ -521,6 +521,11 @@ export default function DashboardPage() {
       }
     });
     
+    // Calculer les revenus AVEC facture (Revenus totaux - Revenus sans facture)
+    const revenueWithInvoice = totalRevenue - revenueWithoutInvoice;
+    const plombierRevenueWithInvoice = plombierRevenue - plombierRevenueWithoutInvoice;
+    const companyRevenueWithInvoice = companyRevenue - companyRevenueWithoutInvoice;
+    
     return {
       totalRevenue,
       comparisonRevenue,
@@ -530,6 +535,9 @@ export default function DashboardPage() {
       revenueWithoutInvoice,
       plombierRevenueWithoutInvoice,
       companyRevenueWithoutInvoice,
+      revenueWithInvoice,
+      plombierRevenueWithInvoice,
+      companyRevenueWithInvoice,
       totalProjects: filteredProjects.length,
       activeProjects: activeProjects.length,
       completedProjects: completedProjects.length,
@@ -1114,21 +1122,6 @@ export default function DashboardPage() {
 
           {/* Répartition revenus */}
 
-          {/* Projets actifs */}
-          <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm text-primary-700 font-medium">Projets actifs</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary-900 mt-1 sm:mt-2">{kpis.activeProjects}</p>
-                <p className="text-xs text-primary-600 mt-1">
-                  {kpis.completedProjects} terminés • {kpis.pendingProjects} en attente
-                </p>
-              </div>
-              <div className="p-1.5 sm:p-2 lg:p-3 bg-primary-200 rounded-lg flex-shrink-0">
-                <FolderKanban className="text-primary-700 w-4 h-4 sm:w-5 sm:h-5 lg:w-7 lg:h-7" />
-              </div>
-            </div>
-          </div>
 
           {/* Clients */}
           <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
@@ -1164,6 +1157,22 @@ export default function DashboardPage() {
             <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 truncate">{formatCurrency(kpis.companyRevenue)}</p>
           </div>
 
+          {/* Revenus avec facture */}
+          <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm text-green-700 font-medium">Revenus avec facture</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-900 mt-1 truncate">{formatCurrency(kpis.revenueWithInvoice)}</p>
+                <p className="text-xs text-green-600 mt-1">
+                  Plombier: {formatCurrency(kpis.plombierRevenueWithInvoice)} • Société: {formatCurrency(kpis.companyRevenueWithInvoice)}
+                </p>
+              </div>
+              <div className="p-1.5 sm:p-2 bg-green-200 rounded-lg flex-shrink-0 ml-2">
+                <FileText className="text-green-700 w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+            </div>
+          </div>
+
           {/* Revenus sans facture */}
           <div className="card bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
             <div className="flex items-center justify-between mb-2">
@@ -1180,32 +1189,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Factures */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs sm:text-sm text-gray-600 font-medium">Factures</p>
-              <FileText className="text-gray-600 w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{kpis.totalInvoices}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {kpis.paidInvoices} payées • {kpis.unpaidInvoices} impayées
-              {kpis.overdueInvoices > 0 && (
-                <span className="text-red-600 ml-1">• {kpis.overdueInvoices} en retard</span>
-              )}
-            </p>
-          </div>
 
-          {/* Taux de conversion */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs sm:text-sm text-gray-600 font-medium">Taux conversion</p>
-              <BarChart3 className="text-gray-600 w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{kpis.conversionRate.toFixed(1)}%</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {kpis.totalQuotes} devis • {Math.round(kpis.totalQuotes * kpis.conversionRate / 100)} convertis
-            </p>
-          </div>
         </div>
 
         {/* Statistiques de paiement aux plombiers */}
