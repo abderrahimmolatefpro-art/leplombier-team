@@ -161,11 +161,11 @@ export async function POST(request: NextRequest) {
 
           try {
             result = JSON.parse(responseText);
-          } catch (parseError) {
+          } catch (parseError: any) {
             // #region agent log
-            fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipParseError',message:'Failed to parse Infobip response as JSON',data:{responseText:responseText,parseError:parseError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipParseError',message:'Failed to parse Infobip response as JSON',data:{responseText:responseText,parseError:parseError?.message || String(parseError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
             // #endregion
-            result = { rawResponse: responseText, parseError: parseError?.message };
+            result = { rawResponse: responseText, parseError: parseError?.message || String(parseError) };
           }
         } catch (fetchError: any) {
           // #region agent log
