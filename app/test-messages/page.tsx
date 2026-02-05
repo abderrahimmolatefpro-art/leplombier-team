@@ -343,9 +343,9 @@ export default function TestMessagesPage() {
           <h3 className="text-lg font-bold text-gray-900 mb-3">État de la configuration</h3>
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Twilio (SMS)</span>
-              <span className={process.env.NEXT_PUBLIC_TWILIO_ACCOUNT_SID ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                {process.env.NEXT_PUBLIC_TWILIO_ACCOUNT_SID ? '✅ Configuré' : '❌ Non configuré'}
+              <span className="text-gray-600">Infobip (SMS)</span>
+              <span className="text-gray-400">
+                {typeof window === 'undefined' ? 'Vérification...' : '✅ Configuré (côté serveur)'}
               </span>
             </div>
             <div className="flex items-center justify-between">
