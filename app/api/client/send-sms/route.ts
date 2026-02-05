@@ -116,30 +116,66 @@ export async function POST(request: NextRequest) {
         const baseUrl = process.env.INFOBIP_BASE_URL.startsWith('http') 
           ? process.env.INFOBIP_BASE_URL 
           : `https://${process.env.INFOBIP_BASE_URL}`;
-        const apiUrl = `${baseUrl}/sms/2/text/single`;
+        // Essayer d'abord avec /sms/2/text/advanced (plus flexible)
+        const apiUrl = `${baseUrl}/sms/2/text/advanced`;
+
+        // Format pour /sms/2/text/advanced
+        const requestBody = {
+          messages: [
+            {
+              destinations: [{ to: normalizedPhone }],
+              from: process.env.INFOBIP_SENDER || 'CRM',
+              text: message,
+            },
+          ],
+        };
+
+        const requestHeaders = {
+          'Authorization': `App ${process.env.INFOBIP_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        };
 
         // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipRequest',message:'Infobip API request',data:{apiUrl:apiUrl,to:normalizedPhone},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipRequestBefore',message:'About to call Infobip API',data:{apiUrl:apiUrl,baseUrl:process.env.INFOBIP_BASE_URL,requestBody:requestBody,hasApiKey:!!process.env.INFOBIP_API_KEY,apiKeyPrefix:process.env.INFOBIP_API_KEY?.substring(0,10)+'...',hasSender:!!process.env.INFOBIP_SENDER,sender:process.env.INFOBIP_SENDER},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
 
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `App ${process.env.INFOBIP_API_KEY}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            from: process.env.INFOBIP_SENDER || 'CRM',
-            to: normalizedPhone,
-            text: message,
-          }),
-        });
+        let response;
+        let result;
+        try {
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: requestHeaders,
+            body: JSON.stringify(requestBody),
+          });
 
-        const result = await response.json();
+          // #region agent log
+          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchDone',message:'Infobip fetch completed',data:{status:response.status,statusText:response.statusText,headers:Object.fromEntries(response.headers.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+
+          const responseText = await response.text();
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipResponseText',message:'Infobip response text received',data:{responseText:responseText,responseTextLength:responseText.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+
+          try {
+            result = JSON.parse(responseText);
+          } catch (parseError) {
+            // #region agent log
+            fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipParseError',message:'Failed to parse Infobip response as JSON',data:{responseText:responseText,parseError:parseError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+            result = { rawResponse: responseText, parseError: parseError?.message };
+          }
+        } catch (fetchError: any) {
+          // #region agent log
+          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchError',message:'Infobip fetch failed',data:{fetchError:fetchError?.message,fetchErrorName:fetchError?.name,fetchErrorStack:fetchError?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+          throw fetchError;
+        }
 
         // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipResponse',message:'Infobip API response',data:{status:response.status,statusText:response.statusText,resultFull:JSON.stringify(result),resultMessages:result?.messages,resultRequestError:result?.requestError},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipResponse',message:'Infobip API response parsed',data:{status:response.status,statusText:response.statusText,resultFull:JSON.stringify(result),resultMessages:result?.messages,resultRequestError:result?.requestError,hasMessages:!!result?.messages,messageCount:result?.messages?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
 
         if (!response.ok) {
