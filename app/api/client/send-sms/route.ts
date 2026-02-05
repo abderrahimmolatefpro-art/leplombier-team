@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         const result = await response.json();
 
         // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipResponse',message:'Infobip API response',data:{status:response.status,statusText:response.statusText,result:result},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipResponse',message:'Infobip API response',data:{status:response.status,statusText:response.statusText,resultFull:JSON.stringify(result),resultMessages:result?.messages,resultRequestError:result?.requestError},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
 
         if (!response.ok) {
@@ -155,15 +155,44 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // Vérifier le statut du message dans la réponse (même si HTTP 200)
+        const messageStatus = result.messages?.[0]?.status;
+        const messageId = result.messages?.[0]?.messageId;
+        const messageError = result.messages?.[0]?.error;
+        
         // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipSuccess',message:'SMS sent successfully via Infobip',data:{messageId:result?.messages?.[0]?.messageId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipMessageStatus',message:'Infobip message status check',data:{messageStatus:messageStatus,messageId:messageId,messageError:messageError,fullMessage:result?.messages?.[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+
+        // Si le statut indique une erreur (REJECTED, UNDELIVERABLE, etc.)
+        if (messageStatus && ['REJECTED', 'UNDELIVERABLE', 'EXPIRED', 'CANCELED'].includes(messageStatus)) {
+          console.error('Infobip message rejected:', result.messages[0]);
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `SMS rejeté par Infobip: ${messageStatus}`,
+              details: messageError ? JSON.stringify(messageError, null, 2) : `Statut: ${messageStatus}. Message: ${result.messages[0]?.description || 'Aucune description'}`,
+              messageId: messageId,
+              status: messageStatus,
+            },
+            { status: 400 }
+          );
+        }
+
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipSuccess',message:'SMS sent successfully via Infobip',data:{messageId:messageId,messageStatus:messageStatus,fullResponse:JSON.stringify(result)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
 
         return NextResponse.json({
           success: true,
           message: 'SMS envoyé avec succès',
-          messageId: result.messages?.[0]?.messageId,
-          status: result.messages?.[0]?.status,
+          messageId: messageId,
+          status: messageStatus,
+          details: result.messages?.[0] ? {
+            to: result.messages[0].to,
+            status: result.messages[0].status,
+            description: result.messages[0].description,
+          } : undefined,
         });
       } catch (infobipError: any) {
         // #region agent log
