@@ -339,8 +339,20 @@ export async function POST(request: NextRequest) {
 
     // Option 2: WhatsApp Web (redirection)
     // On retourne une URL WhatsApp Web pour ouvrir dans le navigateur
+    console.log('⚠️ [SMS API] Infobip non configuré, fallback vers WhatsApp');
+    console.log('⚠️ [SMS API] Variables manquantes:', {
+      hasApiKey: !!process.env.INFOBIP_API_KEY,
+      hasBaseUrl: !!process.env.INFOBIP_BASE_URL,
+      apiKeyValue: process.env.INFOBIP_API_KEY ? `${process.env.INFOBIP_API_KEY.substring(0, 10)}...` : 'MANQUANT',
+      baseUrlValue: process.env.INFOBIP_BASE_URL || 'MANQUANT',
+      allInfobipVars: Object.keys(process.env).filter(k => k.includes('INFOBIP')),
+    });
+    
     const whatsappNumber = phone.replace(/[^0-9]/g, ''); // Nettoyer le numéro
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+
+    console.log('📱 [SMS API] Fallback WhatsApp:', { whatsappUrl });
+    console.log('🚀 [SMS API] ===== FIN APPEL API (WHATSAPP FALLBACK) =====');
 
     return NextResponse.json({
       success: true,
@@ -348,6 +360,14 @@ export async function POST(request: NextRequest) {
       whatsappUrl: whatsappUrl,
       // Note: Pour un vrai envoi SMS, configurez Infobip
       note: 'Pour envoyer de vrais SMS, configurez Infobip dans les variables d\'environnement (INFOBIP_API_KEY, INFOBIP_BASE_URL)',
+      debug: {
+        hasInfobipApiKey: !!process.env.INFOBIP_API_KEY,
+        hasInfobipBaseUrl: !!process.env.INFOBIP_BASE_URL,
+        missingVars: [
+          !process.env.INFOBIP_API_KEY && 'INFOBIP_API_KEY',
+          !process.env.INFOBIP_BASE_URL && 'INFOBIP_BASE_URL',
+        ].filter(Boolean),
+      },
     });
   } catch (error: any) {
     console.error('❌ [SMS API] Erreur générale:', {
