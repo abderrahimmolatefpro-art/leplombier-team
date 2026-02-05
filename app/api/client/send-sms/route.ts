@@ -70,6 +70,16 @@ function normalizePhoneNumber(phone: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 [SMS API] ===== DÉBUT APPEL API =====');
+  console.log('🚀 [SMS API] Variables d\'environnement:', {
+    hasInfobipApiKey: !!process.env.INFOBIP_API_KEY,
+    hasInfobipBaseUrl: !!process.env.INFOBIP_BASE_URL,
+    hasInfobipSender: !!process.env.INFOBIP_SENDER,
+    baseUrl: process.env.INFOBIP_BASE_URL,
+    sender: process.env.INFOBIP_SENDER,
+    apiKeyPrefix: process.env.INFOBIP_API_KEY?.substring(0, 15) + '...',
+  });
+
   try {
     // #region agent log
     fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:entry',message:'SMS API called',data:{hasInfobipApiKey:!!process.env.INFOBIP_API_KEY,hasInfobipBaseUrl:!!process.env.INFOBIP_BASE_URL},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
@@ -77,6 +87,12 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     const { phone, message } = body;
+
+    console.log('📞 [SMS API] Données reçues:', {
+      phone: phone?.substring(0, 10) + '...',
+      messageLength: message?.length,
+      phoneFull: phone,
+    });
 
     // #region agent log
     fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:bodyParsed',message:'Request body parsed',data:{phone:phone?.substring(0,10)+'...',messageLength:message?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
@@ -91,12 +107,18 @@ export async function POST(request: NextRequest) {
 
     // Option 1: Infobip (si configuré)
     if (process.env.INFOBIP_API_KEY && process.env.INFOBIP_BASE_URL) {
+      console.log('✅ [SMS API] Configuration Infobip détectée');
+      
       // #region agent log
       fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipConfig',message:'Infobip config detected',data:{baseUrl:process.env.INFOBIP_BASE_URL,apiKeyPrefix:process.env.INFOBIP_API_KEY?.substring(0,10)+'...'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
       
       // Normaliser le numéro de téléphone au format E.164 (avant le try pour être accessible dans le catch)
       const normalizedPhone = normalizePhoneNumber(phone);
+      console.log('📞 [SMS API] Numéro normalisé:', {
+        original: phone,
+        normalized: normalizedPhone,
+      });
       
       try {
         // #region agent log
@@ -134,6 +156,8 @@ export async function POST(request: NextRequest) {
         let response;
         let result;
         try {
+          console.log('⏳ [SMS API] Appel à Infobip en cours...');
+          
           // #region agent log
           fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchStart',message:'Starting Infobip fetch',data:{apiUrl:apiUrl,requestBody:JSON.stringify(requestBody),requestHeaders:JSON.stringify(requestHeaders)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
           // #endregion
@@ -144,11 +168,24 @@ export async function POST(request: NextRequest) {
             body: JSON.stringify(requestBody),
           });
 
+          console.log('📥 [SMS API] Réponse HTTP Infobip:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok,
+            headers: Object.fromEntries(response.headers.entries()),
+          });
+
           // #region agent log
           fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchDone',message:'Infobip fetch completed',data:{status:response.status,statusText:response.statusText,ok:response.ok,headers:Object.fromEntries(response.headers.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
           // #endregion
 
           const responseText = await response.text();
+          
+          console.log('📄 [SMS API] Réponse texte Infobip:', {
+            length: responseText.length,
+            preview: responseText.substring(0, 500),
+            full: responseText,
+          });
           
           // #region agent log
           fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipResponseText',message:'Infobip response text received',data:{responseText:responseText,responseTextLength:responseText.length,responseTextPreview:responseText.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
@@ -156,17 +193,25 @@ export async function POST(request: NextRequest) {
 
           try {
             result = JSON.parse(responseText);
+            console.log('✅ [SMS API] Réponse Infobip parsée:', result);
           } catch (parseError: any) {
+            console.error('❌ [SMS API] Erreur de parsing JSON:', parseError);
+            console.error('❌ [SMS API] Texte de réponse:', responseText);
             // #region agent log
             fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipParseError',message:'Failed to parse Infobip response as JSON',data:{responseText:responseText,parseError:parseError?.message || String(parseError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
             // #endregion
             result = { rawResponse: responseText, parseError: parseError?.message || String(parseError) };
           }
         } catch (fetchError: any) {
+          console.error('❌ [SMS API] Erreur fetch Infobip:', {
+            message: fetchError?.message,
+            name: fetchError?.name,
+            code: fetchError?.code,
+            stack: fetchError?.stack?.substring(0, 500),
+          });
           // #region agent log
           fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchError',message:'Infobip fetch failed',data:{fetchError:fetchError?.message,fetchErrorName:fetchError?.name,fetchErrorCode:fetchError?.code,fetchErrorStack:fetchError?.stack?.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
           // #endregion
-          console.error('Infobip fetch error:', fetchError);
           return NextResponse.json(
             { 
               success: false, 
@@ -182,7 +227,11 @@ export async function POST(request: NextRequest) {
         // #endregion
 
         if (!response.ok) {
-          console.error('Infobip error:', result);
+          console.error('❌ [SMS API] Erreur HTTP Infobip:', {
+            status: response.status,
+            result: result,
+            requestError: result.requestError,
+          });
           return NextResponse.json(
             { 
               success: false, 
@@ -199,13 +248,25 @@ export async function POST(request: NextRequest) {
         const messageId = result.messages?.[0]?.messageId;
         const messageError = result.messages?.[0]?.error;
         
+        console.log('📊 [SMS API] Statut du message Infobip:', {
+          messageStatus: messageStatus,
+          messageId: messageId,
+          messageError: messageError,
+          fullMessage: result?.messages?.[0],
+          allMessages: result?.messages,
+        });
+        
         // #region agent log
         fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipMessageStatus',message:'Infobip message status check',data:{messageStatus:messageStatus,messageId:messageId,messageError:messageError,fullMessage:result?.messages?.[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
         // #endregion
 
         // Si le statut indique une erreur (REJECTED, UNDELIVERABLE, etc.)
         if (messageStatus && ['REJECTED', 'UNDELIVERABLE', 'EXPIRED', 'CANCELED'].includes(messageStatus)) {
-          console.error('Infobip message rejected:', result.messages[0]);
+          console.error('❌ [SMS API] Message rejeté par Infobip:', {
+            status: messageStatus,
+            message: result.messages[0],
+            error: messageError,
+          });
           return NextResponse.json(
             { 
               success: false, 
@@ -218,10 +279,17 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        console.log('✅ [SMS API] SMS envoyé avec succès!', {
+          messageId: messageId,
+          status: messageStatus,
+          details: result.messages?.[0],
+        });
+
         // #region agent log
         fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipSuccess',message:'SMS sent successfully via Infobip',data:{messageId:messageId,messageStatus:messageStatus,fullResponse:JSON.stringify(result)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
 
+        console.log('🚀 [SMS API] ===== FIN APPEL API (SUCCÈS) =====');
         return NextResponse.json({
           success: true,
           message: 'SMS envoyé avec succès',

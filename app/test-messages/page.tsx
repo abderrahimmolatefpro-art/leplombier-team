@@ -42,17 +42,43 @@ export default function TestMessagesPage() {
     setTesting(true);
     setTestResults({});
 
+    console.log('📱 [TEST SMS] Début de l\'envoi SMS');
+    console.log('📱 [TEST SMS] Données:', { phone: formData.phone, messageLength: formData.smsMessage.length });
+
     try {
+      const requestBody = {
+        phone: formData.phone,
+        message: formData.smsMessage,
+      };
+      
+      console.log('📱 [TEST SMS] Envoi de la requête à /api/client/send-sms');
+      console.log('📱 [TEST SMS] Body:', requestBody);
+
       const response = await fetch('/api/client/send-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: formData.phone,
-          message: formData.smsMessage,
-        }),
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('📱 [TEST SMS] Réponse reçue:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
       });
 
       const data = await response.json();
+      console.log('📱 [TEST SMS] Données de la réponse:', data);
+
+      if (!data.success) {
+        console.error('❌ [TEST SMS] Erreur:', data.error);
+        console.error('❌ [TEST SMS] Détails:', data.details);
+        console.error('❌ [TEST SMS] Code:', data.code);
+        console.error('❌ [TEST SMS] More Info:', data.moreInfo);
+      } else {
+        console.log('✅ [TEST SMS] Succès! Message ID:', data.messageId);
+        console.log('✅ [TEST SMS] Statut:', data.status);
+        console.log('✅ [TEST SMS] Détails:', data.details);
+      }
 
       setTestResults((prev) => ({
         ...prev,
@@ -64,6 +90,10 @@ export default function TestMessagesPage() {
         },
       }));
     } catch (error: any) {
+      console.error('❌ [TEST SMS] Exception:', error);
+      console.error('❌ [TEST SMS] Message:', error.message);
+      console.error('❌ [TEST SMS] Stack:', error.stack);
+      
       setTestResults((prev) => ({
         ...prev,
         sms: {
@@ -73,6 +103,7 @@ export default function TestMessagesPage() {
       }));
     } finally {
       setTesting(false);
+      console.log('📱 [TEST SMS] Fin de l\'envoi SMS');
     }
   };
 
