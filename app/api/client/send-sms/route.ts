@@ -106,6 +106,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Option 1: Infobip (si configuré)
+    console.log('🔍 [SMS API] Vérification configuration Infobip:', {
+      INFOBIP_API_KEY: process.env.INFOBIP_API_KEY ? `${process.env.INFOBIP_API_KEY.substring(0, 15)}...` : '❌ MANQUANT',
+      INFOBIP_BASE_URL: process.env.INFOBIP_BASE_URL || '❌ MANQUANT',
+      INFOBIP_SENDER: process.env.INFOBIP_SENDER || '❌ MANQUANT (utilisera "CRM" par défaut)',
+      conditionMet: !!(process.env.INFOBIP_API_KEY && process.env.INFOBIP_BASE_URL),
+    });
+
     if (process.env.INFOBIP_API_KEY && process.env.INFOBIP_BASE_URL) {
       console.log('✅ [SMS API] Configuration Infobip détectée');
       
