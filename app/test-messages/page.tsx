@@ -399,9 +399,15 @@ export default function TestMessagesPage() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">SMTP (Email)</span>
-              <span className="text-gray-400">
-                {typeof window === 'undefined' ? 'Vérification...' : '✅ Configuré (côté serveur)'}
+              <span className="text-gray-600">Infobip (Email)</span>
+              <span className={process.env.NEXT_PUBLIC_INFOBIP_API_KEY ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                {process.env.NEXT_PUBLIC_INFOBIP_API_KEY ? '✅ Configuré' : '❌ Non configuré'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-gray-600 text-sm">SMTP (Fallback)</span>
+              <span className="text-gray-400 text-sm">
+                {typeof window === 'undefined' ? 'Vérification...' : '✅ Disponible (côté serveur)'}
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-3">
