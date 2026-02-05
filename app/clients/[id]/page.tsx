@@ -982,7 +982,7 @@ export default function ClientDetailPage() {
                     className="input bg-gray-50"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Note: Si Twilio n&apos;est pas configuré, WhatsApp Web sera ouvert
+                    Note: Si Infobip n&apos;est pas configuré, WhatsApp Web sera ouvert
                   </p>
                 </div>
 
