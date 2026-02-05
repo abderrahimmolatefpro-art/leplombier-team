@@ -69,15 +69,34 @@ export default function TestMessagesPage() {
       const data = await response.json();
       console.log('📱 [TEST SMS] Données de la réponse:', data);
 
+      // Afficher les infos de debug si présentes
+      if (data.debug) {
+        console.log('🔍 [TEST SMS] DEBUG - Variables d\'environnement:', {
+          hasInfobipApiKey: data.debug.hasInfobipApiKey,
+          hasInfobipBaseUrl: data.debug.hasInfobipBaseUrl,
+          missingVars: data.debug.missingVars,
+        });
+        
+        if (data.debug.missingVars && data.debug.missingVars.length > 0) {
+          console.error('❌ [TEST SMS] Variables manquantes:', data.debug.missingVars);
+          console.error('❌ [TEST SMS] Action requise: Ajoutez ces variables dans Vercel et redéployez');
+        }
+      }
+
       if (!data.success) {
         console.error('❌ [TEST SMS] Erreur:', data.error);
         console.error('❌ [TEST SMS] Détails:', data.details);
         console.error('❌ [TEST SMS] Code:', data.code);
         console.error('❌ [TEST SMS] More Info:', data.moreInfo);
       } else {
-        console.log('✅ [TEST SMS] Succès! Message ID:', data.messageId);
-        console.log('✅ [TEST SMS] Statut:', data.status);
-        console.log('✅ [TEST SMS] Détails:', data.details);
+        if (data.whatsappUrl) {
+          console.warn('⚠️ [TEST SMS] Fallback WhatsApp activé - Infobip non utilisé');
+          console.warn('⚠️ [TEST SMS] Raison: Variables d\'environnement Infobip non détectées');
+        } else {
+          console.log('✅ [TEST SMS] Succès! Message ID:', data.messageId);
+          console.log('✅ [TEST SMS] Statut:', data.status);
+          console.log('✅ [TEST SMS] Détails:', data.details);
+        }
       }
 
       setTestResults((prev) => ({

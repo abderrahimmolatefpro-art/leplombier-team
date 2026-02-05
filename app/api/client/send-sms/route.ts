@@ -106,11 +106,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Option 1: Infobip (si configuré)
+    const hasApiKey = !!process.env.INFOBIP_API_KEY;
+    const hasBaseUrl = !!process.env.INFOBIP_BASE_URL;
+    const apiKeyValue = process.env.INFOBIP_API_KEY;
+    const baseUrlValue = process.env.INFOBIP_BASE_URL;
+    
     console.log('🔍 [SMS API] Vérification configuration Infobip:', {
-      INFOBIP_API_KEY: process.env.INFOBIP_API_KEY ? `${process.env.INFOBIP_API_KEY.substring(0, 15)}...` : '❌ MANQUANT',
-      INFOBIP_BASE_URL: process.env.INFOBIP_BASE_URL || '❌ MANQUANT',
+      INFOBIP_API_KEY: apiKeyValue ? `${apiKeyValue.substring(0, 15)}... (${apiKeyValue.length} caractères)` : '❌ MANQUANT',
+      INFOBIP_BASE_URL: baseUrlValue || '❌ MANQUANT',
       INFOBIP_SENDER: process.env.INFOBIP_SENDER || '❌ MANQUANT (utilisera "CRM" par défaut)',
-      conditionMet: !!(process.env.INFOBIP_API_KEY && process.env.INFOBIP_BASE_URL),
+      hasApiKey: hasApiKey,
+      hasBaseUrl: hasBaseUrl,
+      conditionMet: hasApiKey && hasBaseUrl,
+      allEnvVars: Object.keys(process.env).filter(k => k.includes('INFOBIP') || k.includes('infobip')),
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV,
     });
 
     if (process.env.INFOBIP_API_KEY && process.env.INFOBIP_BASE_URL) {
