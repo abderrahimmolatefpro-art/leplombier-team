@@ -953,7 +953,7 @@ export default function ClientDetailPage() {
                       if (result.whatsappUrl) {
                         // Ouvrir WhatsApp Web dans un nouvel onglet
                         window.open(result.whatsappUrl, '_blank');
-                        alert('WhatsApp Web ouvert dans un nouvel onglet. Pour envoyer de vrais SMS, configurez Twilio dans les variables d\'environnement.');
+                        alert('WhatsApp Web ouvert dans un nouvel onglet. Pour envoyer de vrais SMS, configurez Infobip dans les variables d\'environnement.');
                       } else {
                         alert('SMS envoyé avec succès !');
                       }
