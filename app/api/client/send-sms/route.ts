@@ -132,6 +132,8 @@ export async function POST(request: NextRequest) {
           : `https://${process.env.INFOBIP_BASE_URL}`;
         const apiUrl = `${baseUrl}/sms/2/text/advanced`;
 
+        console.log('🌐 [SMS API] URL Infobip:', apiUrl);
+
         // Format pour /sms/2/text/advanced
         const requestBody = {
           messages: [
@@ -148,6 +150,16 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         };
+
+        console.log('📤 [SMS API] Requête Infobip:', {
+          url: apiUrl,
+          method: 'POST',
+          headers: {
+            ...requestHeaders,
+            Authorization: `App ${process.env.INFOBIP_API_KEY?.substring(0, 15)}...`,
+          },
+          body: requestBody,
+        });
 
         // #region agent log
         fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipRequestBefore',message:'About to call Infobip API',data:{apiUrl:apiUrl,baseUrl:process.env.INFOBIP_BASE_URL,requestBody:requestBody,hasApiKey:!!process.env.INFOBIP_API_KEY,apiKeyPrefix:process.env.INFOBIP_API_KEY?.substring(0,10)+'...',hasSender:!!process.env.INFOBIP_SENDER,sender:process.env.INFOBIP_SENDER},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
@@ -331,10 +343,17 @@ export async function POST(request: NextRequest) {
       note: 'Pour envoyer de vrais SMS, configurez Infobip dans les variables d\'environnement (INFOBIP_API_KEY, INFOBIP_BASE_URL)',
     });
   } catch (error: any) {
+    console.error('❌ [SMS API] Erreur générale:', {
+      message: error?.message,
+      name: error?.name,
+      stack: error?.stack?.substring(0, 500),
+    });
+    
     // #region agent log
     fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:error',message:'Error caught',data:{errorMessage:error?.message,errorName:error?.name,errorStack:error?.stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
     // #endregion
-    console.error('Error sending SMS:', error);
+    
+    console.log('🚀 [SMS API] ===== FIN APPEL API (ERREUR GÉNÉRALE) =====');
     return NextResponse.json(
       { success: false, error: error.message || 'Erreur lors de l\'envoi du SMS' },
       { status: 500 }
