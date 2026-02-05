@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Service SMS : Infobip
 // Alternative : WhatsApp Web (redirection)
 
-// Normaliser le numéro de téléphone au format E.164 (ex: +212612345678)
+// Normaliser le numéro de téléphone pour Infobip (sans le +, ex: 212612345678)
 function normalizePhoneNumber(phone: string): string {
   // #region agent log
   fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:entry',message:'Normalizing phone number',data:{originalPhone:phone},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
@@ -16,66 +16,57 @@ function normalizePhoneNumber(phone: string): string {
   fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:cleaned',message:'Phone cleaned',data:{cleaned:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
   // #endregion
   
-  // Si le numéro commence déjà par +, le retourner tel quel
+  // Si le numéro commence par +, retirer le + pour Infobip
   if (cleaned.startsWith('+')) {
+    cleaned = cleaned.substring(1);
     // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:alreadyPlus',message:'Phone already has + prefix',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:removedPlus',message:'Removed + prefix for Infobip',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
     return cleaned;
   }
   
-  // Si le numéro commence par 00, remplacer par +
+  // Si le numéro commence par 00, remplacer par rien (garder juste les chiffres après 00)
   if (cleaned.startsWith('00')) {
-    cleaned = '+' + cleaned.substring(2);
+    cleaned = cleaned.substring(2);
     // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:replaced00',message:'Replaced 00 with +',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:removed00',message:'Removed 00 prefix',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
     return cleaned;
   }
   
-  // Si le numéro commence par 0 (format local marocain), remplacer par +212
+  // Si le numéro commence par 0 (format local marocain), remplacer par 212
   if (cleaned.startsWith('0')) {
-    cleaned = '+212' + cleaned.substring(1);
+    cleaned = '212' + cleaned.substring(1);
     // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:replaced0',message:'Replaced 0 with +212',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:replaced0',message:'Replaced 0 with 212',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
     return cleaned;
   }
   
-  // Si le numéro commence par 212 (sans +), ajouter +
+  // Si le numéro commence déjà par 212, le retourner tel quel (sans +)
   if (cleaned.startsWith('212')) {
-    cleaned = '+' + cleaned;
     // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:addedPlus',message:'Added + to 212 prefix',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:already212',message:'Phone already has 212 prefix',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
     return cleaned;
   }
   
-  // Si aucun préfixe, supposer que c'est un numéro marocain et ajouter +212
+  // Si aucun préfixe, supposer que c'est un numéro marocain et ajouter 212
   // (format local sans 0 initial, ex: 612345678)
   if (cleaned.length >= 9 && cleaned.length <= 10) {
-    cleaned = '+212' + cleaned;
+    cleaned = '212' + cleaned;
     // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:added212',message:'Added +212 prefix to local number',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    return cleaned;
-  }
-  
-  // Si le numéro est déjà dans un format international mais sans +, l'ajouter
-  if (cleaned.length > 10) {
-    cleaned = '+' + cleaned;
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:addedPlusLong',message:'Added + to long number',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:added212',message:'Added 212 prefix to local number',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
     return cleaned;
   }
   
   // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:fallback',message:'Using original phone as fallback',data:{normalized:phone},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:normalizePhoneNumber:fallback',message:'Using cleaned phone as fallback',data:{normalized:cleaned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
   // #endregion
   
-  // Fallback : retourner le numéro original avec + si pas déjà présent
-  return phone.startsWith('+') ? phone : '+' + phone;
+  // Fallback : retourner le numéro nettoyé
+  return cleaned;
 }
 
 export async function POST(request: NextRequest) {
