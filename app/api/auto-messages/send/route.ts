@@ -60,7 +60,15 @@ async function sendEmail(to: string, subject: string, content: string) {
 // Fonction pour envoyer un SMS
 async function sendSMS(phone: string, message: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/client/send-sms`, {
+    // Utiliser l'URL absolue si disponible, sinon utiliser l'URL relative
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL || process.env.NEXT_PUBLIC_BASE_URL}`
+      : 'http://localhost:3000';
+    const apiUrl = `${baseUrl}/api/client/send-sms`;
+    
+    console.log('Sending SMS to:', apiUrl, 'Phone:', phone.substring(0, 10) + '...');
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -69,6 +77,7 @@ async function sendSMS(phone: string, message: string) {
       }),
     });
     const data = await response.json();
+    console.log('SMS response:', data);
     return data.success;
   } catch (error) {
     console.error('Error sending SMS:', error);

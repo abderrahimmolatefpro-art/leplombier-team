@@ -103,11 +103,11 @@ export async function POST(request: NextRequest) {
         fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipSend',message:'Sending SMS via Infobip',data:{toOriginal:phone,toNormalized:normalizedPhone,messageLength:message?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
 
-        // Construire l'URL complète (ajouter https:// si nécessaire)
+        // Construire l'URL complète
+        // Utiliser l'URL fournie par l'utilisateur (m9mmd2.api.infobip.com)
         const baseUrl = process.env.INFOBIP_BASE_URL.startsWith('http') 
           ? process.env.INFOBIP_BASE_URL 
           : `https://${process.env.INFOBIP_BASE_URL}`;
-        // Essayer d'abord avec /sms/2/text/advanced (plus flexible)
         const apiUrl = `${baseUrl}/sms/2/text/advanced`;
 
         // Format pour /sms/2/text/advanced
@@ -134,6 +134,10 @@ export async function POST(request: NextRequest) {
         let response;
         let result;
         try {
+          // #region agent log
+          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchStart',message:'Starting Infobip fetch',data:{apiUrl:apiUrl,requestBody:JSON.stringify(requestBody),requestHeaders:JSON.stringify(requestHeaders)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+
           response = await fetch(apiUrl, {
             method: 'POST',
             headers: requestHeaders,
@@ -141,13 +145,13 @@ export async function POST(request: NextRequest) {
           });
 
           // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchDone',message:'Infobip fetch completed',data:{status:response.status,statusText:response.statusText,headers:Object.fromEntries(response.headers.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchDone',message:'Infobip fetch completed',data:{status:response.status,statusText:response.statusText,ok:response.ok,headers:Object.fromEntries(response.headers.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
           // #endregion
 
           const responseText = await response.text();
           
           // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipResponseText',message:'Infobip response text received',data:{responseText:responseText,responseTextLength:responseText.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipResponseText',message:'Infobip response text received',data:{responseText:responseText,responseTextLength:responseText.length,responseTextPreview:responseText.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
           // #endregion
 
           try {
@@ -160,9 +164,17 @@ export async function POST(request: NextRequest) {
           }
         } catch (fetchError: any) {
           // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchError',message:'Infobip fetch failed',data:{fetchError:fetchError?.message,fetchErrorName:fetchError?.name,fetchErrorStack:fetchError?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-sms/route.ts:infobipFetchError',message:'Infobip fetch failed',data:{fetchError:fetchError?.message,fetchErrorName:fetchError?.name,fetchErrorCode:fetchError?.code,fetchErrorStack:fetchError?.stack?.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
           // #endregion
-          throw fetchError;
+          console.error('Infobip fetch error:', fetchError);
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `Erreur lors de l'appel à Infobip: ${fetchError?.message || 'Erreur inconnue'}`,
+              details: `Type: ${fetchError?.name || 'Unknown'}, Code: ${fetchError?.code || 'N/A'}`,
+            },
+            { status: 500 }
+          );
         }
 
         // #region agent log
