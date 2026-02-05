@@ -225,7 +225,12 @@ export async function POST(request: NextRequest) {
 
         // Envoyer SMS si activé
         if (autoMessage.smsEnabled && autoMessage.smsContent) {
-          const smsSuccess = await sendSMS(client.phone, autoMessage.smsContent);
+          // Remplacer les variables dynamiques
+          let smsContent = autoMessage.smsContent
+            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
+            .replace(/\{\{projectTitle\}\}/g, project.title || 'Intervention')
+            .replace(/\{\{amount\}\}/g, project.amount ? `${project.amount} MAD` : '');
+          const smsSuccess = await sendSMS(client.phone, smsContent);
           await recordSentMessage(
             autoMessage.id,
             client.id,
@@ -241,10 +246,19 @@ export async function POST(request: NextRequest) {
 
         // Envoyer Email si activé
         if (autoMessage.emailEnabled && autoMessage.emailSubject && autoMessage.emailContent && client.email) {
+          // Remplacer les variables dynamiques
+          let emailSubject = autoMessage.emailSubject
+            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
+            .replace(/\{\{projectTitle\}\}/g, project.title || 'Intervention')
+            .replace(/\{\{amount\}\}/g, project.amount ? `${project.amount} MAD` : '');
+          let emailContent = autoMessage.emailContent
+            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
+            .replace(/\{\{projectTitle\}\}/g, project.title || 'Intervention')
+            .replace(/\{\{amount\}\}/g, project.amount ? `${project.amount} MAD` : '');
           const emailSuccess = await sendEmail(
             client.email,
-            autoMessage.emailSubject,
-            autoMessage.emailContent
+            emailSubject,
+            emailContent
           );
           await recordSentMessage(
             autoMessage.id,
@@ -271,7 +285,11 @@ export async function POST(request: NextRequest) {
 
         // Envoyer SMS si activé
         if (autoMessage.smsEnabled && autoMessage.smsContent) {
-          const smsSuccess = await sendSMS(client.phone, autoMessage.smsContent);
+          // Remplacer les variables dynamiques
+          let smsContent = autoMessage.smsContent
+            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
+            .replace(/\{\{amount\}\}/g, revenue.amount ? `${revenue.amount} MAD` : '');
+          const smsSuccess = await sendSMS(client.phone, smsContent);
           await recordSentMessage(
             autoMessage.id,
             client.id,
@@ -287,10 +305,17 @@ export async function POST(request: NextRequest) {
 
         // Envoyer Email si activé
         if (autoMessage.emailEnabled && autoMessage.emailSubject && autoMessage.emailContent && client.email) {
+          // Remplacer les variables dynamiques
+          let emailSubject = autoMessage.emailSubject
+            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
+            .replace(/\{\{amount\}\}/g, revenue.amount ? `${revenue.amount} MAD` : '');
+          let emailContent = autoMessage.emailContent
+            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
+            .replace(/\{\{amount\}\}/g, revenue.amount ? `${revenue.amount} MAD` : '');
           const emailSuccess = await sendEmail(
             client.email,
-            autoMessage.emailSubject,
-            autoMessage.emailContent
+            emailSubject,
+            emailContent
           );
           await recordSentMessage(
             autoMessage.id,
