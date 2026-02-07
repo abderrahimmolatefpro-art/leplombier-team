@@ -3,7 +3,7 @@
 ## 🎯 Comment accéder à la console
 
 ### Chrome / Edge / Brave
-1. Ouvrez votre application : `https://dash.leplombier.ma/test-messages`
+1. Ouvrez votre application : `https://dash.leplombier.ma`
 2. Appuyez sur **F12** (ou **Cmd+Option+I** sur Mac)
 3. Cliquez sur l'onglet **Console**
 
@@ -19,12 +19,10 @@
 
 ## 📱 Tester l'envoi SMS
 
-1. Allez sur `/test-messages`
-2. **Ouvrez la console** (F12)
-3. Entrez un numéro de téléphone (ex: `0612345678`)
-4. Entrez un message de test
-5. Cliquez sur **"Tester l'envoi SMS"**
-6. **Regardez la console** - tous les logs apparaîtront en temps réel
+1. Allez sur le tableau de bord ou la section **Messages automatiques**
+2. **Ouvrez la console** du navigateur (F12) avant de déclencher un envoi
+3. Déclenchez un envoi SMS (message automatique ou action qui appelle l'API)
+4. **Regardez la console** - les logs liés à la requête apparaîtront en temps réel
 
 ## 📊 Logs que vous verrez
 

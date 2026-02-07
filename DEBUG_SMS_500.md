@@ -98,7 +98,7 @@ console.log('TWILIO_PHONE_NUMBER:', process.env.TWILIO_PHONE_NUMBER || '❌ Manq
 ## 🆘 Si le problème persiste
 
 1. **Consultez les logs Vercel** pour voir l'erreur exacte
-2. **Testez avec la page de test** (`/test-messages`) pour voir le message d'erreur détaillé
+2. **Consultez les logs Vercel** après un envoi SMS pour voir le message d'erreur détaillé
 3. **Vérifiez le dashboard Twilio** pour voir si des SMS ont été tentés
 4. **Contactez le support** avec les logs d'erreur
 

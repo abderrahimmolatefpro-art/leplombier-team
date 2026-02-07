@@ -72,7 +72,7 @@ Vercel redéploiera automatiquement.
 ### Étape 5 : Tester
 
 1. Allez sur votre site : `https://dash.leplombier.ma`
-2. Testez l'envoi d'un SMS depuis la page de test (`/test-messages`)
+2. Testez l'envoi d'un SMS (via les messages automatiques ou l'API)
 3. Vérifiez que ça fonctionne maintenant
 
 ## 🎯 Résumé visuel des étapes

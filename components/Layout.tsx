@@ -17,7 +17,6 @@ import {
   UserPlus,
   Bell,
   MessageSquare,
-  TestTube,
   X as XIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,7 +48,6 @@ export default function Layout({ children }: LayoutProps) {
     ...(isAdmin ? [
       { href: '/recrutements', label: 'Candidatures', icon: UserPlus },
       { href: '/messages-automatiques', label: 'Messages auto', icon: MessageSquare },
-      { href: '/test-messages', label: 'Test messages', icon: TestTube },
     ] : []),
   ];
 

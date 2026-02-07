@@ -94,11 +94,10 @@ Accept: application/json
 
 ### 6. Tests à effectuer
 
-1. **Test depuis `/test-messages`** :
-   - [ ] Entrez un numéro : `0612345678` ou `212612345678`
-   - [ ] Entrez un message de test
-   - [ ] Cliquez sur "Tester l'envoi SMS"
-   - [ ] Vérifiez la réponse (succès ou erreur)
+1. **Test d'envoi SMS** :
+   - [ ] Déclenchez un envoi (messages automatiques ou API `/api/client/send-sms`)
+   - [ ] Utilisez un numéro : `0612345678` ou `212612345678`
+   - [ ] Vérifiez la réponse (succès ou erreur dans les logs)
 
 2. **Vérifiez les logs Vercel** après le test (voir section 3)
 

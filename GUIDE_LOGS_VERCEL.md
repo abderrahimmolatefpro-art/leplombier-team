@@ -154,7 +154,7 @@ Vercel Dashboard
 - **Solution** : Vérifiez que vous êtes dans le bon projet Vercel
 
 ### Problème 3 : Les logs sont vides
-- **Solution** : Testez à nouveau l'envoi d'un SMS depuis `/test-messages`
+- **Solution** : Déclenchez à nouveau un envoi SMS (messages automatiques ou API) pour générer des logs
 - **Solution** : Vérifiez que la fonction a bien été appelée (regardez la liste des invocations)
 
 ### Problème 4 : Vous ne voyez pas les logs détaillés

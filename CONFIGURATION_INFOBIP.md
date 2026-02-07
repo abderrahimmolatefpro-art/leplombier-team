@@ -59,11 +59,10 @@ Ajoutez ces variables dans **Vercel → Settings → Environment Variables** :
 
 Pour tester la configuration :
 
-1. Allez sur votre application : `https://dash.leplombier.ma/test-messages`
-2. Entrez un numéro de téléphone marocain (ex: `0612345678` ou `+212612345678`)
-3. Entrez un message de test
-4. Cliquez sur **"Tester l'envoi SMS"**
-5. Vous devriez recevoir un SMS si la configuration est correcte
+1. Allez sur votre application (tableau de bord ou messages automatiques)
+2. Déclenchez un envoi SMS (message automatique ou appel API `/api/client/send-sms`)
+3. Utilisez un numéro marocain (ex: `0612345678` ou `+212612345678`)
+4. Vous devriez recevoir l'SMS si la configuration est correcte
 
 ## 🔍 Format des numéros de téléphone
 

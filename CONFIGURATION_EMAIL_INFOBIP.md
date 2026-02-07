@@ -86,13 +86,9 @@ Si vous voulez un fallback SMTP :
 
 ### Via l'interface de test
 
-1. Allez sur `https://dash.leplombier.ma/test-messages`
-2. Remplissez le formulaire "Test Email" :
-   - **Destinataire** : Votre adresse email
-   - **Sujet** : Test Email
-   - **Message** : Message de test
-3. Cliquez sur **"Tester l'envoi Email"**
-4. Vérifiez la console du navigateur (F12) pour les logs
+1. Déclenchez un envoi d'email depuis l'application (messages automatiques ou envoi manuel à un client)
+2. Utilisez votre adresse email comme destinataire pour le test
+3. Vérifiez la console du navigateur (F12) ou les logs Vercel pour les détails
 
 ### Vérifier les logs
 
@@ -182,5 +178,5 @@ L'application essaie d'envoyer les emails dans cet ordre :
 - [ ] Variable `INFOBIP_EMAIL_FROM` ajoutée (optionnel)
 - [ ] Variables SMTP ajoutées (optionnel, pour fallback)
 - [ ] **Redéploiement effectué** après avoir ajouté les variables
-- [ ] Test d'envoi effectué via `/test-messages`
+- [ ] Test d'envoi effectué (messages automatiques ou envoi manuel)
 - [ ] Email reçu dans la boîte de réception (vérifier aussi le spam)
