@@ -220,9 +220,6 @@ export default function ClientsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:163',message:'handleSubmit called',data:{actionType,isEditing:!!editingClient,hasPlombier:!!actionData.plombierId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     try {
       const clientData = {
         ...formData,
@@ -233,20 +230,11 @@ export default function ClientsPage() {
       let clientId: string;
       
       if (editingClient) {
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:175',message:'Updating existing client',data:{clientId:editingClient.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         await updateDoc(doc(db, 'clients', editingClient.id), clientData);
         clientId = editingClient.id;
       } else {
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:180',message:'Creating new client',data:{clientName:formData.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         const clientRef = await addDoc(collection(db, 'clients'), clientData);
         clientId = clientRef.id;
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:183',message:'Client created successfully',data:{clientId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
       }
 
       // Si une action est demandée et qu'on crée un nouveau client (pas en édition)
@@ -256,9 +244,6 @@ export default function ClientsPage() {
         // #endregion
         
         if (actionType === 'depannage') {
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:192',message:'Creating depannage revenue',data:{amount:actionData.amount,description:actionData.description},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
           // Créer un dépannage (revenu sans facture)
           const revenueRef = await addDoc(collection(db, 'manualRevenues'), {
             clientId,
@@ -271,9 +256,6 @@ export default function ClientsPage() {
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
           });
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:203',message:'Manual revenue created',data:{revenueId:revenueRef.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
 
           // Ajouter au planning du plombier
           const planningRef = await addDoc(collection(db, 'planning'), {
@@ -290,9 +272,6 @@ export default function ClientsPage() {
           // #endregion
 
         } else if (actionType === 'projet') {
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:217',message:'Creating project',data:{projectType:actionData.projectType,title:actionData.projectTitle},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
           // Créer un projet
           const projectRef = await addDoc(collection(db, 'projects'), {
             clientId,
@@ -312,9 +291,6 @@ export default function ClientsPage() {
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
           });
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:234',message:'Project created successfully',data:{projectId:projectRef.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
 
           // Ajouter au planning du plombier
           const planningRef = await addDoc(collection(db, 'planning'), {
@@ -327,9 +303,6 @@ export default function ClientsPage() {
             notes: actionData.projectDescription,
             createdAt: Timestamp.now(),
           });
-          // #region agent log
-          fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:245',message:'Planning entry created for project',data:{planningId:planningRef.id,projectId:projectRef.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
         }
       }
 
@@ -341,9 +314,6 @@ export default function ClientsPage() {
       fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:253',message:'handleSubmit completed successfully',data:{clientId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'clients/page.tsx:256',message:'Error in handleSubmit',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       console.error('Error saving client:', error);
       alert('Erreur lors de la sauvegarde');
     }

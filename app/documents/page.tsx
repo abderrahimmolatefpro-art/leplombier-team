@@ -157,10 +157,6 @@ function DocumentsContent() {
       })) as ManualRevenue[];
       setManualRevenues(revenuesData);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'documents/page.tsx:loadData',message:'Data loaded',data:{projectsCount:projectsData.length,revenuesCount:revenuesData.length,clientsCount:clientsData.length,projects:projectsData.map(p=>({id:p.id,title:p.title,clientId:p.clientId})),revenues:revenuesData.map(r=>({id:r.id,clientId:r.clientId,amount:r.amount}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      
       console.log('📊 Données chargées:', {
         projets: projectsData.length,
         revenus: revenuesData.length,
@@ -358,22 +354,26 @@ function DocumentsContent() {
       });
 
       const totalToSave = formData.manualTotal ?? formData.total;
-      const documentData = {
-        ...formData,
-        items: cleanedItems,
-        total: totalToSave,
-        footerDescriptions: formData.footerDescriptions?.length ? formData.footerDescriptions : undefined,
-        manualTotal: formData.manualTotal,
-        projectId: formData.projectId || null,
-        manualRevenueId: formData.manualRevenueId || null,
+      const documentData: Record<string, unknown> = {
+        type: formData.type,
+        clientId: formData.clientId,
         number: formData.number || generateDocumentNumber(formData.type),
         date: Timestamp.fromDate(new Date(formData.date || new Date())),
         dueDate: formData.dueDate ? Timestamp.fromDate(new Date(formData.dueDate)) : null,
-        // includeTax uniquement pour les devis, omettre pour les autres types
-        ...(formData.type === 'devis' ? { includeTax: formData.includeTax ?? true } : {}),
+        items: cleanedItems,
+        subtotal: formData.subtotal,
+        tax: formData.tax,
+        total: totalToSave,
+        status: formData.status,
+        notes: formData.notes || null,
+        projectId: formData.projectId || null,
+        manualRevenueId: formData.manualRevenueId || null,
         createdAt: editingDocument ? editingDocument.createdAt : Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
+      if (formData.type === 'devis') documentData.includeTax = formData.includeTax ?? true;
+      if (formData.footerDescriptions?.length) documentData.footerDescriptions = formData.footerDescriptions;
+      if (formData.manualTotal != null) documentData.manualTotal = formData.manualTotal;
 
       if (editingDocument) {
         await updateDoc(doc(db, 'documents', editingDocument.id), documentData);
