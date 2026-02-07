@@ -130,6 +130,10 @@ export interface Document {
   includeTax?: boolean; // Optionnel : inclure la TVA (uniquement pour les devis, par défaut true)
   status: 'brouillon' | 'envoye' | 'paye' | 'annule';
   notes?: string;
+  /** Descriptions affichées en bas du document sans prix (une ligne par entrée) */
+  footerDescriptions?: string[];
+  /** Total TTC saisi manuellement ; si défini, il remplace le total calculé */
+  manualTotal?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -139,6 +143,8 @@ export interface DocumentItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  /** Si true : ligne descriptive sans prix — afficher "—" pour qté, prix unitaire et total */
+  descriptionOnly?: boolean;
   unit?: 'piece' | 'm2' | 'm' | 'm3' | 'kg' | 'heure' | 'jour' | 'unite'; // Unité de mesure
   length?: number; // Longueur (pour calculer m² ou m)
   width?: number; // Largeur (pour calculer m²)

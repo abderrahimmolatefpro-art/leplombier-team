@@ -50,6 +50,8 @@ function DocumentsContent() {
     includeTax: true, // Par défaut, inclure la TVA
     status: 'brouillon' as Document['status'],
     notes: '',
+    footerDescriptions: [] as string[],
+    manualTotal: undefined as number | undefined,
   });
   const [currentItem, setCurrentItem] = useState({
     description: '',
@@ -59,6 +61,7 @@ function DocumentsContent() {
     length: '',
     width: '',
     height: '',
+    descriptionOnly: false,
   });
 
   useEffect(() => {
@@ -95,6 +98,8 @@ function DocumentsContent() {
           includeTax: true,
           status: 'brouillon',
           notes: '',
+          footerDescriptions: [],
+          manualTotal: undefined,
         });
         setShowModal(true);
         // Nettoyer l'URL après utilisation
@@ -178,8 +183,33 @@ function DocumentsContent() {
   };
 
   const addItem = () => {
-    if (!currentItem.description || currentItem.unitPrice < 0) {
-      alert('Veuillez remplir la description et le prix unitaire');
+    if (!currentItem.description.trim()) {
+      alert('Veuillez remplir la description');
+      return;
+    }
+
+    // Ligne descriptive sans prix : afficher "—" pour qté, prix unitaire, total
+    if (currentItem.descriptionOnly) {
+      const item: DocumentItem = {
+        description: currentItem.description.trim(),
+        quantity: 0,
+        unitPrice: 0,
+        total: 0,
+        descriptionOnly: true,
+      };
+      const newItems = [...formData.items, item];
+      const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
+      const tax = formData.type === 'facture' || formData.type === 'bon_commande'
+        ? subtotal * 0.2
+        : (formData.type === 'devis' && formData.includeTax) ? subtotal * 0.2 : 0;
+      const total = formData.manualTotal ?? (subtotal + tax);
+      setFormData({ ...formData, items: newItems, subtotal, tax, total });
+      setCurrentItem({ ...currentItem, description: '', descriptionOnly: false });
+      return;
+    }
+
+    if (currentItem.unitPrice < 0) {
+      alert('Veuillez remplir le prix unitaire (ou cocher "Ligne descriptive sans prix")');
       return;
     }
 
@@ -250,14 +280,13 @@ function DocumentsContent() {
     };
 
     const newItems = [...formData.items, item];
-    const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
-    // Calculer la TVA : toujours 20% pour factures et bons de commande, conditionnel pour devis
+    const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
     const tax = formData.type === 'facture' || formData.type === 'bon_commande' 
       ? subtotal * 0.2 
       : (formData.type === 'devis' && formData.includeTax) 
         ? subtotal * 0.2 
         : 0;
-    const total = subtotal + tax;
+    const total = formData.manualTotal ?? (subtotal + tax);
 
     setFormData({
       ...formData,
@@ -275,19 +304,19 @@ function DocumentsContent() {
       length: '',
       width: '',
       height: '',
+      descriptionOnly: false,
     });
   };
 
   const removeItem = (index: number) => {
     const newItems = formData.items.filter((_, i) => i !== index);
-    const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
-    // Calculer la TVA : toujours 20% pour factures et bons de commande, conditionnel pour devis
+    const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
     const tax = formData.type === 'facture' || formData.type === 'bon_commande' 
       ? subtotal * 0.2 
       : (formData.type === 'devis' && formData.includeTax) 
         ? subtotal * 0.2 
         : 0;
-    const total = subtotal + tax;
+    const total = formData.manualTotal ?? (subtotal + tax);
 
     setFormData({
       ...formData,
@@ -324,13 +353,17 @@ function DocumentsContent() {
         if (item.height !== undefined) cleanedItem.height = item.height;
         if (item.area !== undefined) cleanedItem.area = item.area;
         if (item.calculatedQuantity !== undefined) cleanedItem.calculatedQuantity = item.calculatedQuantity;
-        
+        if (item.descriptionOnly) cleanedItem.descriptionOnly = true;
         return cleanedItem;
       });
 
+      const totalToSave = formData.manualTotal ?? formData.total;
       const documentData = {
         ...formData,
         items: cleanedItems,
+        total: totalToSave,
+        footerDescriptions: formData.footerDescriptions?.length ? formData.footerDescriptions : undefined,
+        manualTotal: formData.manualTotal,
         projectId: formData.projectId || null,
         manualRevenueId: formData.manualRevenueId || null,
         number: formData.number || generateDocumentNumber(formData.type),
@@ -362,8 +395,7 @@ function DocumentsContent() {
 
   const handleEdit = (document: Document) => {
     setEditingDocument(document);
-    // Recalculer la TVA si nécessaire (pour les factures et bons de commande sans TVA)
-    const subtotal = document.items.reduce((sum, item) => sum + item.total, 0);
+    const subtotal = document.items.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
     let tax = document.tax;
     // Si c'est une facture ou bon de commande sans TVA, la recalculer à 20%
     if ((document.type === 'facture' || document.type === 'bon_commande') && tax === 0 && subtotal > 0) {
@@ -387,9 +419,11 @@ function DocumentsContent() {
       subtotal,
       tax,
       total,
-      includeTax: document.includeTax !== undefined ? document.includeTax : true, // Par défaut true pour rétrocompatibilité
+      includeTax: document.includeTax !== undefined ? document.includeTax : true,
       status: document.status,
       notes: document.notes || '',
+      footerDescriptions: document.footerDescriptions ?? [],
+      manualTotal: document.manualTotal,
     });
     setShowModal(true);
   };
@@ -422,6 +456,8 @@ function DocumentsContent() {
       includeTax: true,
       status: 'brouillon',
       notes: '',
+      footerDescriptions: [],
+      manualTotal: undefined,
     });
     setClientSearch('');
     setShowClientDropdown(false);
@@ -433,6 +469,7 @@ function DocumentsContent() {
       length: '',
       width: '',
       height: '',
+      descriptionOnly: false,
     });
   };
 
@@ -877,6 +914,21 @@ function DocumentsContent() {
                     </label>
                     <div className="border border-gray-300 rounded-lg p-4 space-y-4">
                       <div className="space-y-4">
+                        {/* Ligne descriptive sans prix */}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="descOnly"
+                            checked={currentItem.descriptionOnly}
+                            onChange={(e) =>
+                              setCurrentItem({ ...currentItem, descriptionOnly: e.target.checked })
+                            }
+                            className="rounded border-gray-300"
+                          />
+                          <label htmlFor="descOnly" className="text-sm text-gray-700">
+                            Ligne descriptive sans prix (afficher — pour qté, prix unit., total)
+                          </label>
+                        </div>
                         {/* Ligne 1: Description et Unité */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="md:col-span-2">
@@ -903,6 +955,7 @@ function DocumentsContent() {
                                 })
                               }
                               className="input"
+                              disabled={currentItem.descriptionOnly}
                             >
                               <option value="piece">Pièce</option>
                               <option value="m2">m²</option>
@@ -916,8 +969,8 @@ function DocumentsContent() {
                           </div>
                         </div>
 
-                        {/* Ligne 2: Dimensions selon l'unité */}
-                        {currentItem.unit === 'm2' && (
+                        {/* Ligne 2: Dimensions selon l'unité (masqué si ligne descriptive) */}
+                        {!currentItem.descriptionOnly && currentItem.unit === 'm2' && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-xs text-gray-600 mb-1">
@@ -941,7 +994,7 @@ function DocumentsContent() {
                           </div>
                         )}
 
-                        {currentItem.unit === 'm' && (
+                        {!currentItem.descriptionOnly && currentItem.unit === 'm' && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-xs text-gray-600 mb-1">Longueur (m)</label>
@@ -967,7 +1020,7 @@ function DocumentsContent() {
                           </div>
                         )}
 
-                        {currentItem.unit === 'm3' && (
+                        {!currentItem.descriptionOnly && currentItem.unit === 'm3' && (
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                               <label className="block text-xs text-gray-600 mb-1">Longueur (m)</label>
@@ -1025,8 +1078,8 @@ function DocumentsContent() {
                           </div>
                         )}
 
-                        {(currentItem.unit === 'piece' || currentItem.unit === 'kg' || 
-                          currentItem.unit === 'heure' || currentItem.unit === 'jour' || 
+                        {!currentItem.descriptionOnly && (currentItem.unit === 'piece' || currentItem.unit === 'kg' ||
+                          currentItem.unit === 'heure' || currentItem.unit === 'jour' ||
                           currentItem.unit === 'unite') && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -1056,34 +1109,36 @@ function DocumentsContent() {
                           </div>
                         )}
 
-                        {/* Ligne 3: Prix unitaire et bouton */}
+                        {/* Ligne 3: Prix unitaire et bouton (masqué si ligne descriptive) */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">
-                              Prix unitaire (MAD)
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="Prix unitaire"
-                              min="0"
-                              step="0.01"
-                              value={currentItem.unitPrice}
-                              onChange={(e) =>
-                                setCurrentItem({
-                                  ...currentItem,
-                                  unitPrice: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              className="input"
-                            />
-                          </div>
-                          <div className="md:col-span-2 flex items-end">
+                          {!currentItem.descriptionOnly && (
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Prix unitaire (MAD)
+                              </label>
+                              <input
+                                type="number"
+                                placeholder="Prix unitaire"
+                                min="0"
+                                step="0.01"
+                                value={currentItem.unitPrice}
+                                onChange={(e) =>
+                                  setCurrentItem({
+                                    ...currentItem,
+                                    unitPrice: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="input"
+                              />
+                            </div>
+                          )}
+                          <div className={currentItem.descriptionOnly ? 'flex items-end' : 'md:col-span-2 flex items-end'}>
                             <button
                               type="button"
                               onClick={addItem}
                               className="btn btn-primary whitespace-nowrap w-full md:w-auto"
                             >
-                              Ajouter l&apos;article
+                              {currentItem.descriptionOnly ? 'Ajouter la ligne descriptive' : "Ajouter l'article"}
                             </button>
                           </div>
                         </div>
@@ -1128,6 +1183,7 @@ function DocumentsContent() {
                                 };
 
                                 const getQuantityDisplay = () => {
+                                  if (item.descriptionOnly) return '—';
                                   let qty = item.quantity.toFixed(2);
                                   if (item.unit === 'm2') {
                                     return `${qty} m²`;
@@ -1149,10 +1205,10 @@ function DocumentsContent() {
                                       {getQuantityDisplay()}
                                     </td>
                                     <td className="py-2 px-2 text-sm text-gray-600 text-right">
-                                      {formatCurrency(item.unitPrice)}
+                                      {item.descriptionOnly ? '—' : formatCurrency(item.unitPrice)}
                                     </td>
                                     <td className="py-2 px-2 text-sm font-medium text-gray-900 text-right">
-                                      {formatCurrency(item.total)}
+                                      {item.descriptionOnly ? '—' : formatCurrency(item.total)}
                                     </td>
                                     <td className="py-2 px-2 text-right">
                                       <button
@@ -1191,10 +1247,10 @@ function DocumentsContent() {
                               )}
                               <tr className="border-t-2 border-gray-300">
                                 <td colSpan={3} className="py-2 px-2 text-right font-bold text-gray-900">
-                                  Total TTC
+                                  Total TTC {formData.manualTotal != null && formData.manualTotal !== '' ? '(saisi)' : ''}
                                 </td>
                                 <td className="py-2 px-2 text-right font-bold text-gray-900">
-                                  {formatCurrency(formData.total)}
+                                  {formatCurrency(formData.manualTotal ?? formData.total)}
                                 </td>
                                 <td></td>
                               </tr>
@@ -1202,6 +1258,47 @@ function DocumentsContent() {
                           </table>
                         </div>
                       )}
+
+                      {/* Descriptions supplémentaires (sans prix) + Total saisi manuellement */}
+                      <div className="mt-4 space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Descriptions supplémentaires en bas du document (sans prix, une ligne par description)
+                          </label>
+                          <textarea
+                            value={(formData.footerDescriptions ?? []).join('\n')}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                footerDescriptions: e.target.value ? e.target.value.split('\n').map(s => s.trim()).filter(Boolean) : [],
+                              })
+                            }
+                            placeholder={'Une description par ligne\nEx: Mention légale\nCondition de paiement'}
+                            className="input min-h-[80px]"
+                            rows={4}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Total TTC saisi manuellement (optionnel)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Laisser vide pour utiliser le total calculé"
+                            value={formData.manualTotal ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setFormData({
+                                ...formData,
+                                manualTotal: v === '' ? undefined : parseFloat(v) || 0,
+                              });
+                            }}
+                            className="input w-48"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 

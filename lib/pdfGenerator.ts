@@ -145,16 +145,15 @@ export function generatePDFFromData(
       yPos = margin;
     }
     
-    // Bordures
+    const isDescOnly = !!item.descriptionOnly;
     pdf.setDrawColor(200, 200, 200);
     pdf.rect(colX[0], yPos - 6, colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], 6, 'D');
     
-    // Contenu
     const descriptionLines = pdf.splitTextToSize(item.description, colWidths[0] - 4);
     pdf.text(descriptionLines[0], colX[0] + 2, yPos - 2);
-    pdf.text(item.quantity.toString(), colX[1] + 2, yPos - 2);
-    pdf.text(formatNumber(item.unitPrice), colX[2] + 2, yPos - 2);
-    pdf.text(formatNumber(item.total), colX[3] + 2, yPos - 2);
+    pdf.text(isDescOnly ? '—' : item.quantity.toString(), colX[1] + 2, yPos - 2);
+    pdf.text(isDescOnly ? '—' : formatNumber(item.unitPrice), colX[2] + 2, yPos - 2);
+    pdf.text(isDescOnly ? '—' : formatNumber(item.total), colX[3] + 2, yPos - 2);
     
     yPos += 8;
     if (descriptionLines.length > 1) {
@@ -162,21 +161,42 @@ export function generatePDFFromData(
     }
   });
 
+  // Descriptions supplémentaires (sans prix)
+  if (document.footerDescriptions && document.footerDescriptions.length > 0) {
+    yPos += 5;
+    document.footerDescriptions.forEach((line) => {
+      if (yPos > 250) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      const lines = pdf.splitTextToSize(line, pageWidth - 2 * margin);
+      lines.forEach((l: string) => {
+        pdf.text(l, margin, yPos);
+        yPos += 5;
+      });
+    });
+  }
+
   // Totaux
   yPos += 5;
   const totalsX = colX[2];
+  const displayTotal = document.manualTotal ?? document.total;
   pdf.setFontSize(10);
-  pdf.text(`Total HT :`, totalsX, yPos);
-  pdf.text(`${formatNumber(document.subtotal)} MAD`, colX[3], yPos, { align: 'right' });
-  yPos += 6;
-  pdf.text(`TVA (20%) :`, totalsX, yPos);
-  pdf.text(`${formatNumber(document.tax)} MAD`, colX[3], yPos, { align: 'right' });
-  yPos += 6;
+  if (document.manualTotal == null) {
+    pdf.text(`Total HT :`, totalsX, yPos);
+    pdf.text(`${formatNumber(document.subtotal)} MAD`, colX[3], yPos, { align: 'right' });
+    yPos += 6;
+    pdf.text(`TVA (20%) :`, totalsX, yPos);
+    pdf.text(`${formatNumber(document.tax)} MAD`, colX[3], yPos, { align: 'right' });
+    yPos += 6;
+  }
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(12);
-  pdf.text(`Total TTC :`, totalsX, yPos);
+  pdf.text(`Total TTC ${document.manualTotal != null ? '(saisi) ' : ''}:`, totalsX, yPos);
   pdf.setTextColor(0, 102, 204);
-  pdf.text(`${formatNumber(document.total)} MAD`, colX[3], yPos, { align: 'right' });
+  pdf.text(`${formatNumber(displayTotal)} MAD`, colX[3], yPos, { align: 'right' });
   pdf.setTextColor(0, 0, 0);
 
   // Signature et mentions légales

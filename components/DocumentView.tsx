@@ -183,6 +183,7 @@ export default function DocumentView({ document, client, project, companyInfo }:
                 };
 
                 const getQuantityDisplay = () => {
+                  if (item.descriptionOnly) return '—';
                   let qty = formatNumberFR(item.quantity);
                   if (item.unit === 'm2') {
                     return `${qty} m²`;
@@ -204,10 +205,10 @@ export default function DocumentView({ document, client, project, companyInfo }:
                       {getQuantityDisplay()}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-right text-sm text-gray-600">
-                      {formatNumberFR(item.unitPrice)} MAD
+                      {item.descriptionOnly ? '—' : `${formatNumberFR(item.unitPrice)} MAD`}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-right text-sm font-medium text-gray-900">
-                      {formatNumberFR(item.total)} MAD
+                      {item.descriptionOnly ? '—' : `${formatNumberFR(item.total)} MAD`}
                     </td>
                   </tr>
                 );
@@ -216,11 +217,19 @@ export default function DocumentView({ document, client, project, companyInfo }:
           </table>
         </div>
 
+        {/* Descriptions supplémentaires (sans prix) en bas du tableau */}
+        {document.footerDescriptions && document.footerDescriptions.length > 0 && (
+          <div className="mt-4 space-y-1">
+            {document.footerDescriptions.map((line, i) => (
+              <p key={i} className="text-sm text-gray-700">{line}</p>
+            ))}
+          </div>
+        )}
+
         {/* Totaux */}
-        <div className="flex justify-end mb-6">
+        <div className="flex justify-end mb-6 mt-4">
           <div className="w-80">
-            {/* Pour les devis sans TVA, on affiche directement le total sans ligne HT */}
-            {document.type === 'devis' && document.includeTax === false ? (
+            {document.type === 'devis' && document.includeTax === false && document.manualTotal == null ? (
               <>
                 <div className="flex justify-between py-3 border-t-2 border-gray-400 mt-2">
                   <span className="text-lg font-bold text-gray-900">Total TTC :</span>
@@ -229,17 +238,25 @@ export default function DocumentView({ document, client, project, companyInfo }:
               </>
             ) : (
               <>
-                <div className="flex justify-between py-2 border-b border-gray-300">
-                  <span className="text-sm text-gray-700 font-medium">Total HT :</span>
-                  <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.subtotal)} MAD</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-300">
-                  <span className="text-sm text-gray-700 font-medium">TVA (20%) :</span>
-                  <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.tax)} MAD</span>
-                </div>
+                {document.manualTotal == null && (
+                  <>
+                    <div className="flex justify-between py-2 border-b border-gray-300">
+                      <span className="text-sm text-gray-700 font-medium">Total HT :</span>
+                      <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.subtotal)} MAD</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-gray-300">
+                      <span className="text-sm text-gray-700 font-medium">TVA (20%) :</span>
+                      <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.tax)} MAD</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between py-3 border-t-2 border-gray-400 mt-2">
-                  <span className="text-lg font-bold text-gray-900">Total TTC :</span>
-                  <span className="text-lg font-bold text-primary-600">{formatNumberFR(document.total)} MAD</span>
+                  <span className="text-lg font-bold text-gray-900">
+                    Total TTC {document.manualTotal != null ? '(saisi)' : ''} :
+                  </span>
+                  <span className="text-lg font-bold text-primary-600">
+                    {formatNumberFR(document.manualTotal ?? document.total)} MAD
+                  </span>
                 </div>
               </>
             )}
