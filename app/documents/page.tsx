@@ -1247,7 +1247,7 @@ function DocumentsContent() {
                               )}
                               <tr className="border-t-2 border-gray-300">
                                 <td colSpan={3} className="py-2 px-2 text-right font-bold text-gray-900">
-                                  Total TTC {formData.manualTotal != null && formData.manualTotal !== '' ? '(saisi)' : ''}
+                                  Total TTC {formData.manualTotal != null ? '(saisi)' : ''}
                                 </td>
                                 <td className="py-2 px-2 text-right font-bold text-gray-900">
                                   {formatCurrency(formData.manualTotal ?? formData.total)}

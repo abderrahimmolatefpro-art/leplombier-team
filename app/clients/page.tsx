@@ -16,7 +16,7 @@ type SortDirection = 'asc' | 'desc';
 export default function ClientsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [clients, setClients] = useState<(Client & { _stats?: { totalRevenue: number; totalProjects: number; totalInvoices: number; plombierRevenue: number; companyRevenue: number } })[]>([]);
+  const [clients, setClients] = useState<(Client & { _stats?: { totalRevenue: number; totalProjects: number; totalInvoices: number; plombierRevenue: number; companyRevenue: number; clientPaid: boolean; plombierPaid: boolean; hasPrestation: boolean } })[]>([]);
   const [plombiers, setPlombiers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -54,6 +54,7 @@ export default function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPlombier, setFilterPlombier] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'particulier' | 'professionnel'>('all');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'plombier_paid' | 'plombier_unpaid'>('all');
   
   // Tri (par défaut : les plus récents en premier)
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -154,6 +155,22 @@ export default function ClientsPage() {
             // Total = part plombier + part société
             const totalRevenue = totalPlombierShare + totalCompanyShare;
 
+            // Client payé : aucune facture impayée (facture non payée et non annulée)
+            const allDocs = documentsSnapshot.docs.map(d => d.data());
+            const unpaidInvoices = allDocs.filter((d: { type?: string; status?: string }) => d.type === 'facture' && d.status !== 'paye' && d.status !== 'annule');
+            const clientPaid = unpaidInvoices.length === 0;
+
+            // Plombier payé : tous les projets ont les plombiers dans paidByPlombierIds, et tous les dépannages ont plombierHasPaid
+            const plombierPaidProjects = projectsData.every((p: { plombierIds?: string[]; paidByPlombierIds?: string[] }) => {
+              const ids = p.plombierIds || [];
+              if (ids.length === 0) return true;
+              const paid = p.paidByPlombierIds || [];
+              return ids.every((id: string) => paid.includes(id));
+            });
+            const plombierPaidRevenues = revenuesData.every((r: { plombierId?: string; plombierHasPaid?: boolean }) => !r.plombierId || r.plombierHasPaid);
+            const plombierPaid = plombierPaidProjects && plombierPaidRevenues;
+            const hasPrestation = (projectsSnapshot.size || 0) > 0 || (revenuesSnapshot.size || 0) > 0;
+
             return {
               ...clientData,
               _stats: {
@@ -162,6 +179,9 @@ export default function ClientsPage() {
                 totalInvoices: documentsSnapshot.size || 0,
                 plombierRevenue: totalPlombierShare,
                 companyRevenue: totalCompanyShare,
+                clientPaid,
+                plombierPaid,
+                hasPrestation,
               },
             };
           } catch (error) {
@@ -181,6 +201,9 @@ export default function ClientsPage() {
                 totalInvoices: 0,
                 plombierRevenue: 0,
                 companyRevenue: 0,
+                clientPaid: true,
+                plombierPaid: true,
+                hasPrestation: false,
               },
             };
           }
@@ -427,6 +450,17 @@ export default function ClientsPage() {
       filtered = filtered.filter(client => client.clientType === filterType);
     }
 
+    // Filtre par paiement plombier (uniquement les clients avec revenus > 0 MAD)
+    if (filterPayment !== 'all') {
+      filtered = filtered.filter(client => {
+        if ((client._stats?.totalRevenue ?? 0) <= 0) return false; // 0 MAD = on exclut du filtre
+        const plombierPaid = client._stats?.plombierPaid ?? true;
+        if (filterPayment === 'plombier_paid') return plombierPaid;
+        if (filterPayment === 'plombier_unpaid') return !plombierPaid;
+        return true;
+      });
+    }
+
     // Tri
     filtered.sort((a, b) => {
       let aValue: any;
@@ -463,7 +497,7 @@ export default function ClientsPage() {
     });
 
     return filtered;
-  }, [clients, searchQuery, filterPlombier, filterType, sortField, sortDirection]);
+  }, [clients, searchQuery, filterPlombier, filterType, filterPayment, sortField, sortDirection]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -582,15 +616,29 @@ export default function ClientsPage() {
                 <option value="professionnel">Professionnels</option>
               </select>
             </div>
+
+            {/* Filtre : plombier a payé ou non */}
+            <div>
+              <select
+                value={filterPayment}
+                onChange={(e) => setFilterPayment(e.target.value as typeof filterPayment)}
+                className="input"
+              >
+                <option value="all">Plombier : Tous</option>
+                <option value="plombier_paid">Plombier payé</option>
+                <option value="plombier_unpaid">Plombier non payé</option>
+              </select>
+            </div>
           </div>
 
           {/* Reset filters */}
-          {(searchQuery || filterPlombier || filterType !== 'all') && (
+          {(searchQuery || filterPlombier || filterType !== 'all' || filterPayment !== 'all') && (
             <button
               onClick={() => {
                 setSearchQuery('');
                 setFilterPlombier('');
                 setFilterType('all');
+                setFilterPayment('all');
               }}
               className="mt-3 text-sm text-primary-600 hover:underline"
             >
@@ -625,6 +673,9 @@ export default function ClientsPage() {
                     </th>
                     <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Plombier
+                    </th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Plombier payé
                     </th>
                     <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                         onClick={() => handleSort('totalRevenue')}>
@@ -718,6 +769,15 @@ export default function ClientsPage() {
                           </div>
                         ) : (
                           <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3">
+                        {(client._stats?.totalRevenue ?? 0) > 0 ? (
+                          <span title="Plombier a payé sa part à la société" className={client._stats?.plombierPaid ? 'text-green-600 font-medium' : 'text-orange-600 font-medium'}>
+                            {client._stats?.plombierPaid ? '✓ Payé' : '○ Non payé'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
                         )}
                       </td>
                       <td className="px-2 sm:px-4 py-2 sm:py-3">
