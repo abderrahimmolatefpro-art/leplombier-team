@@ -170,18 +170,18 @@ export interface DocumentItem {
   calculatedQuantity?: boolean; // Si la quantité est calculée automatiquement
 }
 
-// Messages automatiques
+// Modèles de messages (templates) pour envoi manuel
 export interface AutoMessage {
   id: string;
-  name: string; // Nom du message (ex: "Promotion 10%", "Avertissement garantie")
-  type: 'promotion' | 'warning'; // Type de message
-  smsEnabled: boolean; // Activer l'envoi SMS
-  emailEnabled: boolean; // Activer l'envoi email
-  smsContent: string; // Contenu du SMS
-  emailSubject: string; // Sujet de l'email
-  emailContent: string; // Contenu de l'email (HTML)
-  delayHours: number; // Délai en heures après la fin de l'intervention (par défaut 24)
-  enabled: boolean; // Activer/désactiver ce message
+  name: string;
+  type: 'promotion' | 'warning';
+  smsEnabled: boolean;
+  emailEnabled: boolean;
+  smsContent: string;
+  emailSubject: string;
+  emailContent: string;
+  delayHours?: number; // Obsolète, conservé pour compatibilité Firestore
+  enabled?: boolean; // Masquer ce modèle si false
   createdAt: Date;
   updatedAt: Date;
 }

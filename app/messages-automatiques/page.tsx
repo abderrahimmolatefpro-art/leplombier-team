@@ -6,8 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { AutoMessage, SentMessage } from '@/types';
-import { Plus, Edit, Trash2, Save, X, Mail, MessageSquare, Clock, Search, Filter, BarChart3, Eye, Copy, CheckCircle2, XCircle, Zap } from 'lucide-react';
+import { AutoMessage, SentMessage, Client } from '@/types';
+import { Plus, Edit, Trash2, Save, X, Mail, MessageSquare, Search, Eye, Copy, CheckCircle2, XCircle, Send } from 'lucide-react';
 
 // Templates pré-remplis
 const MESSAGE_TEMPLATES = {
@@ -81,9 +81,18 @@ export default function AutoMessagesPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [messages, setMessages] = useState<AutoMessage[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState<AutoMessage | null>(null);
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
+  const [sendChannels, setSendChannels] = useState({ sms: true, email: true });
+  const [sendClientSearch, setSendClientSearch] = useState('');
+  const [sendFilterPhone, setSendFilterPhone] = useState(false);
+  const [sendFilterEmail, setSendFilterEmail] = useState(false);
+  const [sending, setSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<{ type: 'sms' | 'email'; content: string; subject?: string } | null>(null);
   const [editingMessage, setEditingMessage] = useState<AutoMessage | null>(null);
@@ -98,7 +107,6 @@ export default function AutoMessagesPage() {
     smsContent: '',
     emailSubject: '',
     emailContent: '',
-    delayHours: 24,
     enabled: true,
   });
 
@@ -110,9 +118,25 @@ export default function AutoMessagesPage() {
 
     if (user) {
       loadMessages();
+      loadClients();
       loadSentMessages();
     }
   }, [user, authLoading, router]);
+
+  const loadClients = async () => {
+    try {
+      const clientsSnapshot = await getDocs(collection(db, 'clients'));
+      const clientsData = clientsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      })) as Client[];
+      setClients(clientsData);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  };
 
   const loadMessages = async () => {
     try {
@@ -167,6 +191,7 @@ export default function AutoMessagesPage() {
     try {
       const messageData = {
         ...formData,
+        delayHours: 24,
         createdAt: editingMessage ? editingMessage.createdAt : Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
@@ -197,10 +222,56 @@ export default function AutoMessagesPage() {
       smsContent: message.smsContent,
       emailSubject: message.emailSubject,
       emailContent: message.emailContent,
-      delayHours: message.delayHours,
-      enabled: message.enabled,
+      enabled: message.enabled ?? true,
     });
     setShowModal(true);
+  };
+
+  const handleOpenSendModal = (message: AutoMessage) => {
+    setSendingMessage(message);
+    setSelectedClientIds(new Set());
+    setSendChannels({
+      sms: Boolean(message.smsEnabled && message.smsContent),
+      email: Boolean(message.emailEnabled && message.emailSubject && message.emailContent),
+    });
+    setSendClientSearch('');
+    setSendFilterPhone(false);
+    setSendFilterEmail(false);
+    setShowSendModal(true);
+  };
+
+  const handleSendSubmit = async () => {
+    if (!sendingMessage || selectedClientIds.size === 0) return;
+    if (!sendChannels.sms && !sendChannels.email) {
+      alert('Sélectionnez au moins un canal (SMS ou Email)');
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch('/api/auto-messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId: sendingMessage.id,
+          clientIds: Array.from(selectedClientIds),
+          channels: sendChannels,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Envoi terminé: ${data.sent} message(s) envoyé(s), ${data.failed || 0} échec(s)`);
+        setShowSendModal(false);
+        setSendingMessage(null);
+        loadSentMessages();
+      } else {
+        alert('Erreur: ' + (data.error || 'Erreur inconnue'));
+      }
+    } catch (error) {
+      console.error('Error sending:', error);
+      alert('Erreur lors de l\'envoi');
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -260,10 +331,28 @@ export default function AutoMessagesPage() {
       smsContent: '',
       emailSubject: '',
       emailContent: '',
-      delayHours: 24,
       enabled: true,
     });
   };
+
+  const filteredClientsForSend = clients.filter((c) => {
+    const matchesSearch =
+      !sendClientSearch ||
+      c.name?.toLowerCase().includes(sendClientSearch.toLowerCase()) ||
+      c.email?.toLowerCase().includes(sendClientSearch.toLowerCase()) ||
+      c.phone?.includes(sendClientSearch);
+    const matchesPhone = !sendFilterPhone || (c.phone && c.phone.trim().length > 0);
+    const matchesEmail = !sendFilterEmail || (c.email && c.email.trim().length > 0);
+    return matchesSearch && matchesPhone && matchesEmail;
+  });
+
+  const smsCount = sendingMessage?.smsEnabled && sendChannels.sms
+    ? filteredClientsForSend.filter((c) => selectedClientIds.has(c.id) && c.phone).length
+    : 0;
+  const emailCount = sendingMessage?.emailEnabled && sendChannels.email
+    ? filteredClientsForSend.filter((c) => selectedClientIds.has(c.id) && c.email).length
+    : 0;
+  const previewClient = filteredClientsForSend.find((c) => selectedClientIds.has(c.id)) || filteredClientsForSend[0];
 
   const filteredMessages = messages.filter((message) => {
     const matchesSearch = message.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -271,8 +360,8 @@ export default function AutoMessagesPage() {
       message.emailSubject.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || message.type === filterType;
     const matchesEnabled = filterEnabled === 'all' ||
-      (filterEnabled === 'enabled' && message.enabled) ||
-      (filterEnabled === 'disabled' && !message.enabled);
+      (filterEnabled === 'enabled' && message.enabled !== false) ||
+      (filterEnabled === 'disabled' && message.enabled === false);
     return matchesSearch && matchesType && matchesEnabled;
   });
 
@@ -299,34 +388,12 @@ export default function AutoMessagesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Messages automatiques</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Envoi de messages</h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
-              Gérer les SMS et emails envoyés automatiquement après chaque intervention
+              Envoyer des SMS et emails à vos clients
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <button
-              onClick={async () => {
-                if (!confirm('Voulez-vous envoyer les messages automatiques maintenant ?')) return;
-                try {
-                  const response = await fetch('/api/auto-messages/send', { method: 'POST' });
-                  const data = await response.json();
-                  if (data.success) {
-                    alert(`Messages envoyés: ${data.sent}, Échecs: ${data.failed || 0}`);
-                    loadSentMessages();
-                  } else {
-                    alert('Erreur: ' + (data.error || 'Erreur inconnue'));
-                  }
-                } catch (error) {
-                  console.error('Error:', error);
-                  alert('Erreur lors de l\'envoi des messages');
-                }
-              }}
-              className="btn btn-secondary flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center"
-            >
-              <Zap size={18} className="sm:w-5 sm:h-5" />
-              <span>Envoyer maintenant</span>
-            </button>
             <button
               onClick={() => {
                 setEditingMessage(null);
@@ -427,7 +494,6 @@ export default function AutoMessagesPage() {
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Nom</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Type</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Canal</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Délai</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Statistiques</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Statut</th>
                 <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>
@@ -436,8 +502,8 @@ export default function AutoMessagesPage() {
             <tbody>
               {filteredMessages.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-500">
-                    {messages.length === 0 ? 'Aucun message automatique configuré' : 'Aucun résultat trouvé'}
+                  <td colSpan={6} className="text-center py-8 text-gray-500">
+                    {messages.length === 0 ? 'Aucun modèle de message configuré' : 'Aucun résultat trouvé'}
                   </td>
                 </tr>
               ) : (
@@ -479,12 +545,6 @@ export default function AutoMessagesPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Clock size={14} />
-                          {message.delayHours}h
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
                         <div className="text-xs text-gray-600">
                           <div>SMS: {stats.smsSent} ✓ {stats.smsFailed} ✗</div>
                           <div>Email: {stats.emailSent} ✓ {stats.emailFailed} ✗</div>
@@ -494,16 +554,23 @@ export default function AutoMessagesPage() {
                         <button
                           onClick={() => handleToggleEnabled(message)}
                           className={`px-2 py-1 text-xs rounded ${
-                            message.enabled
+                            message.enabled !== false
                               ? 'bg-green-100 text-green-700'
                               : 'bg-gray-100 text-gray-700'
                           }`}
                         >
-                          {message.enabled ? 'Actif' : 'Inactif'}
+                          {message.enabled !== false ? 'Visible' : 'Masqué'}
                         </button>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleOpenSendModal(message)}
+                            className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                            title="Envoyer"
+                          >
+                            <Send size={16} />
+                          </button>
                           <button
                             onClick={() => handleEdit(message)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
@@ -530,7 +597,7 @@ export default function AutoMessagesPage() {
 
         {messages.length === 0 && (
           <div className="card text-center py-12">
-            <p className="text-gray-500 mb-4">Aucun message automatique configuré</p>
+            <p className="text-gray-500 mb-4">Aucun modèle de message configuré</p>
             <button
               onClick={() => {
                 setEditingMessage(null);
@@ -621,25 +688,6 @@ export default function AutoMessagesPage() {
                       <option value="warning">Avertissement</option>
                     </select>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Délai d&apos;envoi (heures) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={formData.delayHours}
-                    onChange={(e) =>
-                      setFormData({ ...formData, delayHours: parseInt(e.target.value) || 24 })
-                    }
-                    className="input"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Le message sera envoyé X heures après la fin de l&apos;intervention
-                  </p>
                 </div>
 
                 <div className="flex items-center space-x-4">
@@ -752,7 +800,7 @@ export default function AutoMessagesPage() {
                     id="enabled"
                   />
                   <label htmlFor="enabled" className="text-sm font-medium text-gray-700">
-                    Activer ce message automatiquement
+                    Visible dans la liste (décocher pour masquer)
                   </label>
                 </div>
 
@@ -774,6 +822,224 @@ export default function AutoMessagesPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Envoyer le message */}
+        {showSendModal && sendingMessage && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Envoyer : {sendingMessage.name}</h2>
+                <button
+                  onClick={() => {
+                    setShowSendModal(false);
+                    setSendingMessage(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                {/* Recherche et filtres */}
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Rechercher par nom, email ou téléphone..."
+                    value={sendClientSearch}
+                    onChange={(e) => setSendClientSearch(e.target.value)}
+                    className="input w-full"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={sendFilterPhone}
+                        onChange={(e) => setSendFilterPhone(e.target.checked)}
+                        className="rounded"
+                      />
+                      Avec téléphone
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={sendFilterEmail}
+                        onChange={(e) => setSendFilterEmail(e.target.checked)}
+                        className="rounded"
+                      />
+                      Avec email
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const eligible = filteredClientsForSend.filter((c) => {
+                          const canSms = sendChannels.sms && c.phone;
+                          const canEmail = sendChannels.email && c.email;
+                          return canSms || canEmail;
+                        });
+                        const eligibleIds = new Set(eligible.map((c) => c.id));
+                        if (eligible.length > 0 && selectedClientIds.size === eligibleIds.size) {
+                          setSelectedClientIds(new Set());
+                        } else {
+                          setSelectedClientIds(eligibleIds);
+                        }
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      {(() => {
+                        const eligible = filteredClientsForSend.filter((c) => {
+                          const canSms = sendChannels.sms && c.phone;
+                          const canEmail = sendChannels.email && c.email;
+                          return canSms || canEmail;
+                        });
+                        const allSelected = eligible.length > 0 && selectedClientIds.size === eligible.length;
+                        return allSelected ? 'Tout désélectionner' : 'Tout sélectionner';
+                      })()}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Canaux */}
+                <div className="flex gap-4 border-b border-gray-200 pb-4">
+                  {sendingMessage.smsEnabled && sendingMessage.smsContent && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={sendChannels.sms}
+                        onChange={(e) => setSendChannels((c) => ({ ...c, sms: e.target.checked }))}
+                        className="rounded"
+                      />
+                      <MessageSquare size={16} />
+                      SMS
+                    </label>
+                  )}
+                  {sendingMessage.emailEnabled && sendingMessage.emailSubject && sendingMessage.emailContent && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={sendChannels.email}
+                        onChange={(e) => setSendChannels((c) => ({ ...c, email: e.target.checked }))}
+                        className="rounded"
+                      />
+                      <Mail size={16} />
+                      Email
+                    </label>
+                  )}
+                </div>
+
+                {/* Liste clients */}
+                <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                  {filteredClientsForSend.length === 0 ? (
+                    <p className="p-4 text-gray-500 text-sm">Aucun client trouvé</p>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {filteredClientsForSend.map((c) => {
+                        const canSms = sendChannels.sms && c.phone;
+                        const canEmail = sendChannels.email && c.email;
+                        const selectable = canSms || canEmail;
+                        return (
+                          <label
+                            key={c.id}
+                            className={`flex items-center gap-3 px-4 py-2 hover:bg-gray-50 ${!selectable ? 'opacity-50' : 'cursor-pointer'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedClientIds.has(c.id)}
+                              onChange={(e) => {
+                                if (!selectable) return;
+                                const next = new Set(selectedClientIds);
+                                if (e.target.checked) next.add(c.id);
+                                else next.delete(c.id);
+                                setSelectedClientIds(next);
+                              }}
+                              disabled={!selectable}
+                              className="rounded"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium text-gray-900">{c.name}</span>
+                              <div className="text-xs text-gray-500 truncate">
+                                {c.phone && <span className="mr-2">{c.phone}</span>}
+                                {c.email}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Aperçu */}
+                {previewClient && (sendChannels.sms || sendChannels.email) && (
+                  <div className="bg-gray-50 rounded-lg p-4 text-sm">
+                    <p className="font-medium text-gray-700 mb-2">Aperçu pour {previewClient.name} :</p>
+                    {sendChannels.sms && sendingMessage.smsContent && (
+                      <div className="mb-2">
+                        <span className="text-gray-500">SMS : </span>
+                        <span className="text-gray-900">
+                          {sendingMessage.smsContent
+                            .replace(/\{\{clientName\}\}/g, previewClient.name || 'Client')
+                            .replace(/\{\{projectTitle\}\}/g, 'Intervention')
+                            .replace(/\{\{amount\}\}/g, '')}
+                        </span>
+                      </div>
+                    )}
+                    {sendChannels.email && sendingMessage.emailSubject && (
+                      <div>
+                        <span className="text-gray-500">Sujet : </span>
+                        <span className="text-gray-900">
+                          {sendingMessage.emailSubject
+                            .replace(/\{\{clientName\}\}/g, previewClient.name || 'Client')
+                            .replace(/\{\{projectTitle\}\}/g, 'Intervention')
+                            .replace(/\{\{amount\}\}/g, '')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Récap et envoi */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <p className="text-sm text-gray-600">
+                    {selectedClientIds.size} client(s) sélectionné(s)
+                    {smsCount > 0 && ` • ${smsCount} SMS`}
+                    {emailCount > 0 && ` • ${emailCount} email(s)`}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSendModal(false);
+                        setSendingMessage(null);
+                      }}
+                      className="btn btn-secondary"
+                      disabled={sending}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendSubmit}
+                      disabled={sending || selectedClientIds.size === 0 || (!sendChannels.sms && !sendChannels.email)}
+                      className="btn btn-primary flex items-center gap-2"
+                    >
+                      {sending ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                          Envoi...
+                        </>
+                      ) : (
+                        <>
+                          <Send size={16} />
+                          Envoyer
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

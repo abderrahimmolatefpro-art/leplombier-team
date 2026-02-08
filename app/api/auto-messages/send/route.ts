@@ -1,53 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getFirestore, Firestore, FieldValue, Timestamp as AdminTimestamp } from 'firebase-admin/firestore';
-import { Project, ManualRevenue, AutoMessage, Client, SentMessage } from '@/types';
-
-// Initialize Firebase Admin SDK
-let adminApp: App;
-let adminDb: Firestore;
-
-if (!getApps().length) {
-  try {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      adminApp = initializeApp({
-        credential: cert(serviceAccount),
-      });
-      adminDb = getFirestore(adminApp);
-    } else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
-      adminApp = initializeApp({
-        credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        }),
-      });
-      adminDb = getFirestore(adminApp);
-    } else {
-      throw new Error('Firebase Admin credentials not found');
-    }
-  } catch (error) {
-    console.error('Firebase Admin initialization error:', error);
-    adminApp = initializeApp();
-    adminDb = getFirestore(adminApp);
-  }
-} else {
-  adminApp = getApps()[0];
-  adminDb = getFirestore(adminApp);
-}
+import { Timestamp as AdminTimestamp } from 'firebase-admin/firestore';
+import { getAdminDb } from '@/lib/firebase-admin';
+import { Project, ManualRevenue, AutoMessage, Client } from '@/types';
 
 // Fonction pour envoyer un email
 async function sendEmail(to: string, subject: string, content: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/client/send-email`, {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const response = await fetch(`${baseUrl}/api/client/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to,
-        subject,
-        message: content,
-      }),
+      body: JSON.stringify({ to, subject, message: content }),
     });
     const data = await response.json();
     return data.success;
@@ -60,53 +23,16 @@ async function sendEmail(to: string, subject: string, content: string) {
 // Fonction pour envoyer un SMS
 async function sendSMS(phone: string, message: string) {
   try {
-    // Utiliser l'URL absolue si disponible, sinon utiliser l'URL relative
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL || process.env.NEXT_PUBLIC_BASE_URL}`
-      : 'http://localhost:3000';
-    const apiUrl = `${baseUrl}/api/client/send-sms`;
-    
-    console.log('Sending SMS to:', apiUrl, 'Phone:', phone.substring(0, 10) + '...');
-    
-    const response = await fetch(apiUrl, {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const response = await fetch(`${baseUrl}/api/client/send-sms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phone,
-        message,
-      }),
+      body: JSON.stringify({ phone, message }),
     });
     const data = await response.json();
-    console.log('SMS response:', data);
     return data.success;
   } catch (error) {
     console.error('Error sending SMS:', error);
-    return false;
-  }
-}
-
-// Vérifier si un message a déjà été envoyé pour cette intervention
-async function hasMessageBeenSent(
-  autoMessageId: string,
-  clientId: string,
-  projectId?: string,
-  manualRevenueId?: string
-): Promise<boolean> {
-  try {
-    const sentMessagesSnapshot = await adminDb
-      .collection('sentMessages')
-      .where('autoMessageId', '==', autoMessageId)
-      .where('clientId', '==', clientId)
-      .get();
-    
-    return sentMessagesSnapshot.docs.some((doc) => {
-      const data = doc.data();
-      if (projectId && data.projectId === projectId) return true;
-      if (manualRevenueId && data.manualRevenueId === manualRevenueId) return true;
-      return false;
-    });
-  } catch (error) {
-    console.error('Error checking sent messages:', error);
     return false;
   }
 }
@@ -122,6 +48,7 @@ async function recordSentMessage(
   errorMessage?: string
 ) {
   try {
+    const adminDb = getAdminDb();
     await adminDb.collection('sentMessages').add({
       autoMessageId,
       clientId,
@@ -138,198 +65,143 @@ async function recordSentMessage(
   }
 }
 
+function substituteVariables(
+  text: string,
+  client: Client,
+  project?: Project | null,
+  revenue?: ManualRevenue | null
+): string {
+  return text
+    .replace(/\{\{clientName\}\}/g, client.name || 'Client')
+    .replace(/\{\{projectTitle\}\}/g, project?.title || 'Intervention')
+    .replace(/\{\{amount\}\}/g, project?.amount ? `${project.amount} MAD` : revenue?.amount ? `${revenue.amount} MAD` : '');
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Récupérer tous les messages automatiques activés
-    const autoMessagesSnapshot = await adminDb
-      .collection('autoMessages')
-      .where('enabled', '==', true)
-      .get();
-    const autoMessages = autoMessagesSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as AutoMessage[];
+    const body = await request.json();
+    const { messageId, clientIds, channels } = body as {
+      messageId?: string;
+      clientIds?: string[];
+      channels?: { sms?: boolean; email?: boolean };
+    };
 
-    if (autoMessages.length === 0) {
+    if (!messageId || !Array.isArray(clientIds) || !channels) {
+      return NextResponse.json(
+        { success: false, error: 'messageId, clientIds et channels requis' },
+        { status: 400 }
+      );
+    }
+
+    const adminDb = getAdminDb();
+
+    // Charger le message
+    const messageDoc = await adminDb.collection('autoMessages').doc(messageId).get();
+    if (!messageDoc.exists) {
+      return NextResponse.json({ success: false, error: 'Message non trouvé' }, { status: 404 });
+    }
+    const autoMessage = { id: messageDoc.id, ...messageDoc.data() } as AutoMessage;
+
+    // Charger les clients demandés
+    const uniqueClientIds = [...new Set(clientIds)];
+    const clients: Client[] = [];
+    for (const id of uniqueClientIds) {
+      const clientDoc = await adminDb.collection('clients').doc(id).get();
+      if (clientDoc.exists) {
+        clients.push({ id: clientDoc.id, ...clientDoc.data() } as Client);
+      }
+    }
+
+    if (clients.length === 0) {
       return NextResponse.json({
         success: true,
-        message: 'Aucun message automatique activé',
+        message: 'Aucun client valide à contacter',
         sent: 0,
+        failed: 0,
       });
     }
 
-    // Récupérer tous les clients
-    const clientsSnapshot = await adminDb.collection('clients').get();
-    const clients = clientsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Client[];
+    const sendSms = Boolean(channels.sms && autoMessage.smsEnabled && autoMessage.smsContent);
+    const sendEmailCh = Boolean(channels.email && autoMessage.emailEnabled && autoMessage.emailSubject && autoMessage.emailContent);
 
-    const clientsMap = new Map(clients.map((c) => [c.id, c]));
+    if (!sendSms && !sendEmailCh) {
+      return NextResponse.json(
+        { success: false, error: 'Aucun canal activé pour cet envoi (SMS ou Email)' },
+        { status: 400 }
+      );
+    }
 
     let totalSent = 0;
     let totalFailed = 0;
+    const details: { clientId: string; clientName: string; sms?: 'sent' | 'failed'; email?: 'sent' | 'failed' }[] = [];
 
-    // Pour chaque message automatique
-    for (const autoMessage of autoMessages) {
-      const delayMs = autoMessage.delayHours * 60 * 60 * 1000;
-      const targetDate = new Date(Date.now() - delayMs);
+    for (const client of clients) {
+      // Récupérer le dernier projet terminé et le dernier dépannage pour les variables
+      let lastProject: Project | null = null;
+      let lastRevenue: ManualRevenue | null = null;
 
-      // Vérifier les projets terminés
-      const projectsSnapshot = await adminDb
+      const projectsSnap = await adminDb
         .collection('projects')
+        .where('clientId', '==', client.id)
         .where('status', '==', 'termine')
         .get();
-      const projects = projectsSnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          endDate: data.endDate?.toDate(),
-          updatedAt: data.updatedAt?.toDate(),
-        };
-      }) as Project[];
+      const projectsSorted = projectsSnap.docs
+        .map((doc) => {
+          const d = doc.data();
+          return { id: doc.id, ...d, endDate: d.endDate?.toDate(), updatedAt: d.updatedAt?.toDate() } as Project;
+        })
+        .filter((p) => p.endDate)
+        .sort((a, b) => (b.endDate!.getTime() || 0) - (a.endDate!.getTime() || 0));
+      if (projectsSorted.length > 0) lastProject = projectsSorted[0];
 
-      // Filtrer les projets terminés il y a X heures
-      const eligibleProjects = projects.filter((project) => {
-        if (!project.endDate && !project.updatedAt) return false;
-        const completionDate = project.endDate || project.updatedAt;
-        return completionDate && completionDate <= targetDate;
-      });
+      const revenuesSnap = await adminDb.collection('manualRevenues').where('clientId', '==', client.id).get();
+      const revenuesSorted = revenuesSnap.docs
+        .map((doc) => {
+          const d = doc.data();
+          return { id: doc.id, ...d, date: d.date?.toDate(), createdAt: d.createdAt?.toDate(), updatedAt: d.updatedAt?.toDate() } as ManualRevenue;
+        })
+        .filter((r) => r.date)
+        .sort((a, b) => (b.date!.getTime() || 0) - (a.date!.getTime() || 0));
+      if (revenuesSorted.length > 0) lastRevenue = revenuesSorted[0];
 
-      // Vérifier les dépannages (manualRevenues) - on considère qu'ils sont "terminés" à leur date
-      const revenuesSnapshot = await adminDb.collection('manualRevenues').get();
-      const revenues = revenuesSnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          date: data.date?.toDate(),
-        };
-      }) as ManualRevenue[];
+      const clientDetail: (typeof details)[0] = { clientId: client.id, clientName: client.name || 'Client' };
 
-      // Filtrer les dépannages datant d'il y a X heures
-      const eligibleRevenues = revenues.filter((revenue) => {
-        if (!revenue.date) return false;
-        return revenue.date <= targetDate;
-      });
-
-      // Envoyer les messages pour les projets
-      for (const project of eligibleProjects) {
-        const client = clientsMap.get(project.clientId);
-        if (!client || !client.phone) continue;
-
-        // Vérifier si le message a déjà été envoyé
-        const alreadySent = await hasMessageBeenSent(autoMessage.id, client.id, project.id);
-        if (alreadySent) continue;
-
-        // Envoyer SMS si activé
-        if (autoMessage.smsEnabled && autoMessage.smsContent) {
-          // Remplacer les variables dynamiques
-          let smsContent = autoMessage.smsContent
-            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
-            .replace(/\{\{projectTitle\}\}/g, project.title || 'Intervention')
-            .replace(/\{\{amount\}\}/g, project.amount ? `${project.amount} MAD` : '');
-          const smsSuccess = await sendSMS(client.phone, smsContent);
-          await recordSentMessage(
-            autoMessage.id,
-            client.id,
-            'sms',
-            smsSuccess ? 'sent' : 'failed',
-            project.id,
-            undefined,
-            smsSuccess ? undefined : 'Erreur lors de l\'envoi SMS'
-          );
-          if (smsSuccess) totalSent++;
-          else totalFailed++;
-        }
-
-        // Envoyer Email si activé
-        if (autoMessage.emailEnabled && autoMessage.emailSubject && autoMessage.emailContent && client.email) {
-          // Remplacer les variables dynamiques
-          let emailSubject = autoMessage.emailSubject
-            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
-            .replace(/\{\{projectTitle\}\}/g, project.title || 'Intervention')
-            .replace(/\{\{amount\}\}/g, project.amount ? `${project.amount} MAD` : '');
-          let emailContent = autoMessage.emailContent
-            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
-            .replace(/\{\{projectTitle\}\}/g, project.title || 'Intervention')
-            .replace(/\{\{amount\}\}/g, project.amount ? `${project.amount} MAD` : '');
-          const emailSuccess = await sendEmail(
-            client.email,
-            emailSubject,
-            emailContent
-          );
-          await recordSentMessage(
-            autoMessage.id,
-            client.id,
-            'email',
-            emailSuccess ? 'sent' : 'failed',
-            project.id,
-            undefined,
-            emailSuccess ? undefined : 'Erreur lors de l\'envoi email'
-          );
-          if (emailSuccess) totalSent++;
-          else totalFailed++;
-        }
+      if (sendSms && client.phone) {
+        const smsContent = substituteVariables(autoMessage.smsContent, client, lastProject, lastRevenue);
+        const smsSuccess = await sendSMS(client.phone, smsContent);
+        await recordSentMessage(
+          autoMessage.id,
+          client.id,
+          'sms',
+          smsSuccess ? 'sent' : 'failed',
+          undefined,
+          undefined,
+          smsSuccess ? undefined : 'Erreur lors de l\'envoi SMS'
+        );
+        if (smsSuccess) totalSent++;
+        else totalFailed++;
+        clientDetail.sms = smsSuccess ? 'sent' : 'failed';
       }
 
-      // Envoyer les messages pour les dépannages
-      for (const revenue of eligibleRevenues) {
-        const client = clientsMap.get(revenue.clientId);
-        if (!client || !client.phone) continue;
-
-        // Vérifier si le message a déjà été envoyé
-        const alreadySent = await hasMessageBeenSent(autoMessage.id, client.id, undefined, revenue.id);
-        if (alreadySent) continue;
-
-        // Envoyer SMS si activé
-        if (autoMessage.smsEnabled && autoMessage.smsContent) {
-          // Remplacer les variables dynamiques
-          let smsContent = autoMessage.smsContent
-            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
-            .replace(/\{\{amount\}\}/g, revenue.amount ? `${revenue.amount} MAD` : '');
-          const smsSuccess = await sendSMS(client.phone, smsContent);
-          await recordSentMessage(
-            autoMessage.id,
-            client.id,
-            'sms',
-            smsSuccess ? 'sent' : 'failed',
-            undefined,
-            revenue.id,
-            smsSuccess ? undefined : 'Erreur lors de l\'envoi SMS'
-          );
-          if (smsSuccess) totalSent++;
-          else totalFailed++;
-        }
-
-        // Envoyer Email si activé
-        if (autoMessage.emailEnabled && autoMessage.emailSubject && autoMessage.emailContent && client.email) {
-          // Remplacer les variables dynamiques
-          let emailSubject = autoMessage.emailSubject
-            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
-            .replace(/\{\{amount\}\}/g, revenue.amount ? `${revenue.amount} MAD` : '');
-          let emailContent = autoMessage.emailContent
-            .replace(/\{\{clientName\}\}/g, client.name || 'Client')
-            .replace(/\{\{amount\}\}/g, revenue.amount ? `${revenue.amount} MAD` : '');
-          const emailSuccess = await sendEmail(
-            client.email,
-            emailSubject,
-            emailContent
-          );
-          await recordSentMessage(
-            autoMessage.id,
-            client.id,
-            'email',
-            emailSuccess ? 'sent' : 'failed',
-            undefined,
-            revenue.id,
-            emailSuccess ? undefined : 'Erreur lors de l\'envoi email'
-          );
-          if (emailSuccess) totalSent++;
-          else totalFailed++;
-        }
+      if (sendEmailCh && client.email) {
+        const emailSubject = substituteVariables(autoMessage.emailSubject!, client, lastProject, lastRevenue);
+        const emailContent = substituteVariables(autoMessage.emailContent!, client, lastProject, lastRevenue);
+        const emailSuccess = await sendEmail(client.email, emailSubject, emailContent);
+        await recordSentMessage(
+          autoMessage.id,
+          client.id,
+          'email',
+          emailSuccess ? 'sent' : 'failed',
+          undefined,
+          undefined,
+          emailSuccess ? undefined : 'Erreur lors de l\'envoi email'
+        );
+        if (emailSuccess) totalSent++;
+        else totalFailed++;
+        clientDetail.email = emailSuccess ? 'sent' : 'failed';
       }
+
+      details.push(clientDetail);
     }
 
     return NextResponse.json({
@@ -337,20 +209,20 @@ export async function POST(request: NextRequest) {
       message: `Messages envoyés: ${totalSent}, Échecs: ${totalFailed}`,
       sent: totalSent,
       failed: totalFailed,
+      details,
     });
   } catch (error: any) {
-    console.error('Error sending auto messages:', error);
+    console.error('Error sending messages:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Erreur lors de l\'envoi des messages automatiques' },
+      { success: false, error: error.message || 'Erreur lors de l\'envoi des messages' },
       { status: 500 }
     );
   }
 }
 
-// GET pour tester manuellement
 export async function GET() {
   return NextResponse.json({
-    message: 'Utilisez POST pour déclencher l\'envoi des messages automatiques',
+    message: 'Utilisez POST pour envoyer des messages. Body: { messageId, clientIds, channels: { sms, email } }',
     endpoint: '/api/auto-messages/send',
   });
 }

@@ -44,7 +44,7 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/documents', label: 'Documents', icon: FileText },
     { href: '/plombiers', label: 'Plombiers', icon: Users },
     { href: '/recrutements', label: 'Candidatures', icon: UserPlus },
-    { href: '/messages-automatiques', label: 'Messages auto', icon: MessageSquare },
+    { href: '/messages-automatiques', label: 'Messages', icon: MessageSquare },
   ];
 
   const handleLogout = async () => {
