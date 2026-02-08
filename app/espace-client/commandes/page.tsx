@@ -13,6 +13,11 @@ const TYPE_LABELS: Record<string, string> = {
   renovation_salle_bain: 'Rénovation salle de bain',
 };
 
+const getTypeLabel = (order: { type?: string; projectType?: string }) => {
+  if (order.type === 'depannage') return 'Dépannage';
+  return TYPE_LABELS[order.projectType || ''] || order.projectType || 'Intervention';
+};
+
 const STATUS_LABELS: Record<string, string> = {
   en_attente: 'En attente',
   en_cours: 'En cours',
@@ -86,7 +91,7 @@ export default function ClientCommandesPage() {
                   <div>
                     <h2 className="font-semibold text-gray-900">{order.title}</h2>
                     <p className="text-sm text-gray-500 mt-0.5">
-                      {TYPE_LABELS[order.type] || order.type} • {formatDate(order.startDate)}
+                      {getTypeLabel(order)} • {formatDate(order.startDate || order.createdAt)}
                     </p>
                   </div>
                   <span
@@ -106,7 +111,7 @@ export default function ClientCommandesPage() {
                 {order.description && (
                   <p className="text-sm text-gray-600 mt-2 line-clamp-2">{order.description}</p>
                 )}
-                {order.amount > 0 && (
+                {order.amount && order.amount > 0 && (
                   <p className="text-sm font-medium text-gray-900 mt-2">
                     {order.amount?.toLocaleString('fr-FR')} MAD
                   </p>

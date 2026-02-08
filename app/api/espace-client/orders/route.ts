@@ -17,28 +17,58 @@ export async function GET(request: NextRequest) {
     }
 
     const db = getAdminDb();
-    const snapshot = await db
+
+    // Charger les projets
+    const projectsSnap = await db
       .collection('projects')
       .where('clientId', '==', payload.clientId)
       .get();
 
-    const orders = snapshot.docs
-      .map((d) => {
+    const projects = projectsSnap.docs.map((d) => {
       const data = d.data();
       return {
         id: d.id,
-        ...data,
+        type: 'project' as const,
+        title: data.title || 'Projet',
+        description: data.description || '',
+        status: data.status || 'en_attente',
+        amount: data.amount || 0,
+        projectType: data.type,
         startDate: data.startDate?.toDate?.()?.toISOString?.() || null,
         endDate: data.endDate?.toDate?.()?.toISOString?.() || null,
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || null,
       };
-    })
-      .sort((a, b) => {
-        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return bDate - aDate;
-      });
+    });
+
+    // Charger les dépannages (manualRevenues)
+    const revenuesSnap = await db
+      .collection('manualRevenues')
+      .where('clientId', '==', payload.clientId)
+      .get();
+
+    const depannages = revenuesSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        type: 'depannage' as const,
+        title: data.description || 'Dépannage',
+        description: data.description || '',
+        status: 'termine' as const,
+        amount: data.amount || 0,
+        projectType: null,
+        startDate: data.date?.toDate?.()?.toISOString?.() || null,
+        endDate: data.date?.toDate?.()?.toISOString?.() || null,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || null,
+      };
+    });
+
+    const orders = [...projects, ...depannages].sort((a, b) => {
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bDate - aDate;
+    });
 
     return NextResponse.json({ orders });
   } catch (error) {
