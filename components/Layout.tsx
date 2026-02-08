@@ -36,8 +36,6 @@ export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
 
-  const isAdmin = user?.role === 'admin';
-
   const menuItems = [
     { href: '/dashboard', label: 'Tableau de bord', icon: Home },
     { href: '/clients', label: 'Clients', icon: Users },
@@ -45,10 +43,8 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/planning', label: 'Planning', icon: Calendar },
     { href: '/documents', label: 'Documents', icon: FileText },
     { href: '/plombiers', label: 'Plombiers', icon: Users },
-    ...(isAdmin ? [
-      { href: '/recrutements', label: 'Candidatures', icon: UserPlus },
-      { href: '/messages-automatiques', label: 'Messages auto', icon: MessageSquare },
-    ] : []),
+    { href: '/recrutements', label: 'Candidatures', icon: UserPlus },
+    { href: '/messages-automatiques', label: 'Messages auto', icon: MessageSquare },
   ];
 
   const handleLogout = async () => {
@@ -137,65 +133,78 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       <div className="flex">
-        {/* Sidebar */}
+        {/* Sidebar fixe - non scrollable */}
         <aside
           className={cn(
-            'fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0',
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+            'fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-white border-r border-gray-100 shadow-sm transform transition-transform duration-300 ease-in-out',
+            'lg:translate-x-0',
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
-          <div className="h-full flex flex-col">
-            <div className="p-4 md:p-6 border-b border-gray-200 hidden lg:block">
-              <div className="flex items-center justify-center">
-                <Image
-                  src="/logo.png"
-                  alt="CRM Plomberie"
-                  width={160}
-                  height={53}
-                  className="h-auto w-full max-w-[180px] object-contain"
-                  priority
-                />
-              </div>
+          {/* Logo - zone fixe */}
+          <div className="flex-shrink-0 p-5 border-b border-gray-100 hidden lg:block">
+            <div className="flex items-center justify-center">
+              <Image
+                src="/logo.png"
+                alt="CRM Plomberie"
+                width={160}
+                height={53}
+                className="h-auto w-full max-w-[180px] object-contain"
+                priority
+              />
             </div>
+          </div>
 
-            <nav className="flex-1 p-4 space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={cn(
-                      'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
-                      isActive
-                        ? 'bg-primary-50 text-primary-700 font-medium'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    )}
+          {/* Navigation - scrollable si beaucoup d'items */}
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-0.5 min-h-0">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                    isActive
+                      ? 'bg-primary-50 text-primary-700 [&_svg]:text-primary-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 [&_svg]:text-gray-400'
+                  )}
+                >
+                  <Icon size={18} className="flex-shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Bloc utilisateur - zone fixe en bas, hauteur réservée pour éviter le décalage au chargement */}
+          <div className="flex-shrink-0 p-4 pt-3 border-t border-gray-100 bg-gray-50/50">
+            <div className="min-h-[88px]">
+              {authLoading ? (
+                <div className="space-y-2 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  <div className="h-5 bg-gray-200 rounded w-16 mt-2" />
+                  <div className="h-9 bg-gray-200 rounded-lg mt-3" />
+                </div>
+              ) : (
+                <div className="animate-fade-in">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || '—'}</p>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">{user?.email || '—'}</p>
+                  <span className="inline-block mt-2 px-2.5 py-0.5 text-xs font-medium rounded-md bg-primary-100 text-primary-700 border border-primary-200/50">
+                    Admin
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-2 mt-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors"
                   >
-                    <Icon size={20} />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-
-            <div className="p-4 border-t border-gray-200">
-              <div className="px-4 py-2 mb-2">
-                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
-                <span className="inline-block mt-1 px-2 py-1 text-xs font-medium rounded bg-primary-100 text-primary-700">
-                  {isAdmin ? 'Admin' : 'Plombier'}
-                </span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <LogOut size={20} />
-                <span>Déconnexion</span>
-              </button>
+                    <LogOut size={16} />
+                    <span>Déconnexion</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -203,13 +212,13 @@ export default function Layout({ children }: LayoutProps) {
         {/* Overlay for mobile */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/40 z-40 lg:hidden backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* Main content */}
-        <main className="flex-1 lg:ml-0 min-h-screen w-full">
+        {/* Main content - marge pour sidebar fixe sur desktop */}
+        <main className="flex-1 min-h-screen w-full lg:ml-64">
           {/* Notification pour nouveau client */}
           {newClientNotification && (
             <div className="sticky top-0 z-50 px-2 sm:px-4 lg:px-8 pt-2 sm:pt-4">

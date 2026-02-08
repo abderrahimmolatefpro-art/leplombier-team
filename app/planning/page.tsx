@@ -82,13 +82,8 @@ export default function PlanningPage() {
 
   const loadData = async () => {
     try {
-      // Load planning entries - filtrer par plombier si nécessaire
-      let entriesQuery;
-      if (user?.role === 'plombier') {
-        entriesQuery = query(collection(db, 'planning'), where('plombierId', '==', user.id));
-      } else {
-        entriesQuery = query(collection(db, 'planning'));
-      }
+      // Load planning entries (toujours global)
+      const entriesQuery = query(collection(db, 'planning'));
       const entriesSnapshot = await getDocs(entriesQuery);
       const entriesData = entriesSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -131,10 +126,6 @@ export default function PlanningPage() {
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as User[];
       setPlombiers(plombiersData);
-
-      if (user?.role === 'plombier') {
-        setSelectedPlombier(user.id);
-      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -574,9 +565,7 @@ export default function PlanningPage() {
                         ? getClientName(entry.projectId)
                         : null;
                       const plombierName =
-                        user?.role === 'admin'
-                          ? getPlombierName(entry.plombierId)
-                          : null;
+                        getPlombierName(entry.plombierId);
                       const hasConflictEntry = hasConflict(entry);
 
                       return (
@@ -709,7 +698,7 @@ export default function PlanningPage() {
               .map((entry: PlanningEntry) => {
                 const projectName = entry.projectId ? getProjectName(entry.projectId) : null;
                 const clientName = entry.projectId ? getClientName(entry.projectId) : null;
-                const plombierName = user?.role === 'admin' ? getPlombierName(entry.plombierId) : null;
+                const plombierName = getPlombierName(entry.plombierId);
                 const hasConflictEntry = hasConflict(entry);
 
                 return (
@@ -820,7 +809,7 @@ export default function PlanningPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Planning</h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
-              {user?.role === 'admin' ? 'Planning global' : 'Votre planning'}
+              Planning global
             </p>
           </div>
           <button
@@ -1025,24 +1014,22 @@ export default function PlanningPage() {
           {/* Filtres */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {/* Plombier Filter (Admin only) */}
-              {user?.role === 'admin' && (
-                <div>
-                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">Plombier:</label>
-                  <select
-                    value={selectedPlombier}
-                    onChange={(e) => setSelectedPlombier(e.target.value)}
-                    className="input w-full text-sm md:text-base"
-                  >
-                    <option value="all">Tous les plombiers</option>
-                    {plombiers.map((plombier) => (
-                      <option key={plombier.id} value={plombier.id}>
-                        {plombier.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* Plombier Filter */}
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">Plombier:</label>
+                <select
+                  value={selectedPlombier}
+                  onChange={(e) => setSelectedPlombier(e.target.value)}
+                  className="input w-full text-sm md:text-base"
+                >
+                  <option value="all">Tous les plombiers</option>
+                  {plombiers.map((plombier) => (
+                    <option key={plombier.id} value={plombier.id}>
+                      {plombier.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               {/* Type Filter */}
               <div>
                 <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">Type:</label>
@@ -1157,26 +1144,24 @@ export default function PlanningPage() {
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
-                  {user?.role === 'admin' && (
-                    <div>
-                      <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                        Plombier *
-                      </label>
-                      <select
-                        required
-                        value={formData.plombierId}
-                        onChange={(e) => setFormData({ ...formData, plombierId: e.target.value })}
-                        className="input text-sm md:text-base"
-                      >
-                        <option value="">Sélectionner un plombier</option>
-                        {plombiers.map((plombier) => (
-                          <option key={plombier.id} value={plombier.id}>
-                            {plombier.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                      Plombier *
+                    </label>
+                    <select
+                      required
+                      value={formData.plombierId}
+                      onChange={(e) => setFormData({ ...formData, plombierId: e.target.value })}
+                      className="input text-sm md:text-base"
+                    >
+                      <option value="">Sélectionner un plombier</option>
+                      {plombiers.map((plombier) => (
+                        <option key={plombier.id} value={plombier.id}>
+                          {plombier.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   <div>
                     <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">

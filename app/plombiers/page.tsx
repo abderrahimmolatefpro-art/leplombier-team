@@ -90,12 +90,6 @@ export default function PlombiersPage() {
       return;
     }
 
-    // Si c'est un plombier, rediriger vers sa page personnelle
-    if (user && user.role === 'plombier') {
-      router.push(`/plombiers/${user.id}`);
-      return;
-    }
-
     if (user) {
       loadData();
     }
@@ -411,7 +405,7 @@ export default function PlombiersPage() {
   };
 
   const handleToggleProjectPayment = async (projectId: string, plombierId: string) => {
-    if (!user || user.role !== 'admin') return;
+    if (!user) return;
     
     try {
       const project = projects.find(p => p.id === projectId);
@@ -437,7 +431,7 @@ export default function PlombiersPage() {
   };
 
   const handleToggleDepannagePayment = async (depannageId: string) => {
-    if (!user || user.role !== 'admin') return;
+    if (!user) return;
     
     try {
       const depannage = manualRevenues.find(r => r.id === depannageId);
@@ -552,15 +546,13 @@ export default function PlombiersPage() {
             <h1 className="text-3xl font-bold text-gray-900">Prestations par plombier</h1>
             <p className="text-gray-600 mt-2">Détail des prestations et revenus par plombier</p>
           </div>
-          {user?.role === 'admin' && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn btn-primary flex items-center space-x-2"
-            >
-              <Plus size={20} />
-              <span>Ajouter un plombier</span>
-            </button>
-          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn btn-primary flex items-center space-x-2"
+          >
+            <Plus size={20} />
+            <span>Ajouter un plombier</span>
+          </button>
         </div>
 
         {/* Filtres */}
@@ -776,28 +768,24 @@ export default function PlombiersPage() {
                         </td>
                         <td className="text-center py-3 px-4">
                           <div className="flex items-center justify-center space-x-2">
-                            {user?.role === 'admin' && (
-                              <>
-                                <Link
-                                  href={`/plombiers/${stat.plombier.id}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="p-1 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded"
-                                  title="Modifier"
-                                >
-                                  <Edit size={18} />
-                                </Link>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeletePlombier(stat.plombier.id, stat.plombier.name);
-                                  }}
-                                  className="p-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded"
-                                  title="Supprimer"
-                                >
-                                  <Trash2 size={18} />
-                                </button>
-                              </>
-                            )}
+                            <Link
+                              href={`/plombiers/${stat.plombier.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded"
+                              title="Modifier"
+                            >
+                              <Edit size={18} />
+                            </Link>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePlombier(stat.plombier.id, stat.plombier.name);
+                              }}
+                              className="p-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded"
+                              title="Supprimer"
+                            >
+                              <Trash2 size={18} />
+                            </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -830,9 +818,7 @@ export default function PlombiersPage() {
                                           <th className="text-left py-2 px-3 font-medium text-gray-700">Date</th>
                                           <th className="text-right py-2 px-3 font-medium text-gray-700">Montant</th>
                                           <th className="text-center py-2 px-3 font-medium text-gray-700">Statut</th>
-                                          {user?.role === 'admin' && (
-                                            <th className="text-center py-2 px-3 font-medium text-gray-700">Paiement</th>
-                                          )}
+                                          <th className="text-center py-2 px-3 font-medium text-gray-700">Paiement</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -870,21 +856,19 @@ export default function PlombiersPage() {
                                                    project.status === 'en_attente' ? 'En attente' : project.status}
                                                 </span>
                                               </td>
-                                              {user?.role === 'admin' && (
-                                                <td className="py-2 px-3 text-center">
-                                                  <button
-                                                    onClick={() => handleToggleProjectPayment(project.id, stat.plombier.id)}
-                                                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 mx-auto ${
-                                                      hasPaid
-                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
-                                                    title={`${hasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(companyShare)}`}
-                                                  >
-                                                    <span>{hasPaid ? '✓ Payé' : '○ Non payé'}</span>
-                                                  </button>
-                                                </td>
-                                              )}
+                                              <td className="py-2 px-3 text-center">
+                                                <button
+                                                  onClick={() => handleToggleProjectPayment(project.id, stat.plombier.id)}
+                                                  className={`px-2 py-1 text-xs rounded flex items-center gap-1 mx-auto ${
+                                                    hasPaid
+                                                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                  }`}
+                                                  title={`${hasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(companyShare)}`}
+                                                >
+                                                  <span>{hasPaid ? '✓ Payé' : '○ Non payé'}</span>
+                                                </button>
+                                              </td>
                                             </tr>
                                           );
                                         })}
@@ -939,9 +923,7 @@ export default function PlombiersPage() {
                                           <th className="text-left py-2 px-3 font-medium text-gray-700">Date</th>
                                           <th className="text-right py-2 px-3 font-medium text-gray-700">Montant</th>
                                           <th className="text-center py-2 px-3 font-medium text-gray-700">Type</th>
-                                          {user?.role === 'admin' && (
-                                            <th className="text-center py-2 px-3 font-medium text-gray-700">Paiement</th>
-                                          )}
+                                          <th className="text-center py-2 px-3 font-medium text-gray-700">Paiement</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -968,21 +950,19 @@ export default function PlombiersPage() {
                                                   </span>
                                                 )}
                                               </td>
-                                              {user?.role === 'admin' && (
-                                                <td className="py-2 px-3 text-center">
-                                                  <button
-                                                    onClick={() => handleToggleDepannagePayment(depannage.id)}
-                                                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 mx-auto ${
-                                                      depannage.plombierHasPaid
-                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
-                                                    title={`${depannage.plombierHasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(companyShare)}`}
-                                                  >
-                                                    <span>{depannage.plombierHasPaid ? '✓ Payé' : '○ Non payé'}</span>
-                                                  </button>
-                                                </td>
-                                              )}
+                                              <td className="py-2 px-3 text-center">
+                                                <button
+                                                  onClick={() => handleToggleDepannagePayment(depannage.id)}
+                                                  className={`px-2 py-1 text-xs rounded flex items-center gap-1 mx-auto ${
+                                                    depannage.plombierHasPaid
+                                                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                  }`}
+                                                  title={`${depannage.plombierHasPaid ? 'Marquer comme non payé' : 'Marquer comme payé'}: ${formatCurrency(companyShare)}`}
+                                                >
+                                                  <span>{depannage.plombierHasPaid ? '✓ Payé' : '○ Non payé'}</span>
+                                                </button>
+                                              </td>
                                             </tr>
                                           );
                                         })}
@@ -1015,14 +995,12 @@ export default function PlombiersPage() {
           <div className="card text-center py-12">
             <Users className="mx-auto text-gray-400 mb-4" size={48} />
             <p className="text-gray-600">Aucun plombier trouvé</p>
-            {user?.role === 'admin' && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="btn btn-primary mt-4"
-              >
-                Ajouter un plombier
-              </button>
-            )}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn btn-primary mt-4"
+            >
+              Ajouter un plombier
+            </button>
           </div>
         )}
 

@@ -25,8 +25,25 @@ export interface Client {
   companyName?: string; // Nom de l'entreprise si client professionnel
   clientType?: 'particulier' | 'professionnel';
   source?: 'form' | 'manual'; // Source de création : formulaire web ou manuel
+  accessCodeHash?: string; // Hash du code d'accès espace client (SHA-256)
+  accessCodeSentAt?: Date; // Date d'envoi du dernier code
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Code promo activé par l'admin pour un client
+export interface ClientPromoCode {
+  id: string;
+  clientId: string;
+  code: string; // ex: "PROMO10"
+  label: string; // ex: "10% de réduction"
+  discountType: 'percent' | 'fixed';
+  discountValue: number; // 10 ou 50
+  activatedByAdminId: string;
+  activatedAt: Date;
+  expiresAt?: Date;
+  used: boolean;
+  usedAt?: Date;
 }
 
 // Statistiques client

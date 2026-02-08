@@ -108,11 +108,9 @@ export default function AutoMessagesPage() {
       return;
     }
 
-    if (user && user.role === 'admin') {
+    if (user) {
       loadMessages();
       loadSentMessages();
-    } else if (user) {
-      router.push('/dashboard');
     }
   }, [user, authLoading, router]);
 
@@ -286,10 +284,6 @@ export default function AutoMessagesPage() {
         </div>
       </Layout>
     );
-  }
-
-  if (user?.role !== 'admin') {
-    return null;
   }
 
   const totalStats = {

@@ -275,72 +275,31 @@ export default function DashboardPage() {
     [documents]
   );
 
-  // Filtrer les données selon le rôle de l'utilisateur
-  const isPlombier = user?.role === 'plombier';
-  const currentPlombierId = isPlombier ? user.id : null;
-
-  // Données filtrées par plombier (si plombier) et par période
+  // Données filtrées par période (toujours données globales)
   const filteredData = useMemo(() => {
     const { start, end } = getDateRange;
     const existingClientIds = new Set(clients.map(c => c.id));
     
-    // Filtrer les projets selon le plombier
-    let filteredProjectsByPlombier = projects;
-    if (isPlombier && currentPlombierId) {
-      filteredProjectsByPlombier = projects.filter(p => 
-        p.plombierIds?.includes(currentPlombierId) || p.teamLeaderId === currentPlombierId
-      );
-    }
-    
-    // Filtrer les clients selon le plombier
-    let filteredClientsByPlombier = clients;
-    if (isPlombier && currentPlombierId) {
-      filteredClientsByPlombier = clients.filter(c => 
-        c.assignedPlombierId === currentPlombierId
-      );
-      // Mettre à jour existingClientIds pour ne garder que les clients du plombier
-      const plombierClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
-      existingClientIds.clear();
-      plombierClientIds.forEach(id => existingClientIds.add(id));
-    }
-    
-    // Filtrer les factures selon le plombier (via le client assigné)
-    let filteredInvoicesByPlombier = paidInvoices;
-    if (isPlombier && currentPlombierId) {
-      filteredInvoicesByPlombier = paidInvoices.filter(d => {
-        const client = clients.find(c => c.id === d.clientId);
-        return client?.assignedPlombierId === currentPlombierId;
-      });
-    }
-    
-    // Filtrer les revenus manuels selon le plombier
-    let filteredManualRevenuesByPlombier = manualRevenues;
-    if (isPlombier && currentPlombierId) {
-      filteredManualRevenuesByPlombier = manualRevenues.filter(r => 
-        r.plombierId === currentPlombierId
-      );
-    }
-    
     // Factures payées dans la période ET client existant
-    const filteredInvoices = filteredInvoicesByPlombier.filter(d => {
+    const filteredInvoices = paidInvoices.filter(d => {
       const invoiceDate = d.date;
       return invoiceDate >= start && invoiceDate <= end && existingClientIds.has(d.clientId);
     });
     
     // Projets dans la période ET client existant
-    const filteredProjects = filteredProjectsByPlombier.filter(p => {
+    const filteredProjects = projects.filter(p => {
       const projectDate = p.createdAt || p.startDate;
       return projectDate >= start && projectDate <= end && existingClientIds.has(p.clientId);
     });
     
     // Revenus manuels dans la période ET client existant
-    const filteredManualRevenues = filteredManualRevenuesByPlombier.filter(r => {
+    const filteredManualRevenues = manualRevenues.filter(r => {
       const revenueDate = r.date;
       return revenueDate >= start && revenueDate <= end && existingClientIds.has(r.clientId);
     });
     
-    return { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier };
-  }, [paidInvoices, projects, manualRevenues, clients, getDateRange, isPlombier, currentPlombierId]);
+    return { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier: clients };
+  }, [paidInvoices, projects, manualRevenues, clients, getDateRange]);
 
   // Calcul des KPI avec filtres de date
   const kpis = useMemo(() => {
@@ -356,36 +315,20 @@ export default function DashboardPage() {
     const manualRevenue = filteredManualRevenues.reduce((sum, r) => sum + r.amount, 0);
     const totalRevenue = invoiceRevenue + projectRevenue + manualRevenue;
     
-    // Calcul de la comparaison (uniquement clients existants, filtrés par plombier si nécessaire)
+    // Calcul de la comparaison (uniquement clients existants)
     let comparisonRevenue = 0;
     if (comparisonRange) {
       const existingClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
       
-      // Filtrer les données de comparaison selon le plombier
-      let compInvoices = paidInvoices;
-      let compProjects = projects;
-      let compManual = manualRevenues;
-      
-      if (isPlombier && currentPlombierId) {
-        compInvoices = paidInvoices.filter(d => {
-          const client = clients.find(c => c.id === d.clientId);
-          return client?.assignedPlombierId === currentPlombierId;
-        });
-        compProjects = projects.filter(p => 
-          (p.plombierIds?.includes(currentPlombierId) || p.teamLeaderId === currentPlombierId)
-        );
-        compManual = manualRevenues.filter(r => r.plombierId === currentPlombierId);
-      }
-      
-      const compFilteredInvoices = compInvoices.filter(d => {
+      const compFilteredInvoices = paidInvoices.filter(d => {
         const invoiceDate = d.date;
         return invoiceDate >= comparisonRange.start && invoiceDate <= comparisonRange.end && existingClientIds.has(d.clientId);
       });
-      const compFilteredProjects = compProjects.filter(p => {
+      const compFilteredProjects = projects.filter(p => {
         const projectDate = p.createdAt || p.startDate;
         return projectDate >= comparisonRange.start && projectDate <= comparisonRange.end && existingClientIds.has(p.clientId);
       });
-      const compFilteredManual = compManual.filter(r => {
+      const compFilteredManual = manualRevenues.filter(r => {
         const revenueDate = r.date;
         return revenueDate >= comparisonRange.start && revenueDate <= comparisonRange.end && existingClientIds.has(r.clientId);
       });
@@ -405,20 +348,12 @@ export default function DashboardPage() {
     const completedProjects = filteredProjects.filter(p => p.status === 'termine');
     const pendingProjects = filteredProjects.filter(p => p.status === 'en_attente');
     
-    // Factures (uniquement clients existants, filtrés par plombier si nécessaire)
+    // Factures (uniquement clients existants)
     const existingClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
-    let filteredDocuments = documents.filter(d => {
+    const filteredDocuments = documents.filter(d => {
       const docDate = d.date;
       return docDate >= start && docDate <= end && existingClientIds.has(d.clientId);
     });
-    
-    // Filtrer les documents selon le plombier (via le client assigné)
-    if (isPlombier && currentPlombierId) {
-      filteredDocuments = filteredDocuments.filter(d => {
-        const client = clients.find(c => c.id === d.clientId);
-        return client?.assignedPlombierId === currentPlombierId;
-      });
-    }
     
     const totalInvoices = filteredDocuments.filter(d => d.type === 'facture');
     const unpaidInvoices = filteredDocuments.filter(d => 
@@ -551,7 +486,7 @@ export default function DashboardPage() {
       conversionRate,
       totalDocuments: filteredDocuments.length,
     };
-  }, [projects, clients, documents, manualRevenues, paidInvoices, getDateRange, getComparisonRange, filteredData, isPlombier, currentPlombierId]);
+  }, [projects, clients, documents, manualRevenues, paidInvoices, getDateRange, getComparisonRange, filteredData]);
 
   // Calcul des statistiques de paiement aux plombiers
   const paymentStats = useMemo(() => {
@@ -821,10 +756,8 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [filteredData]);
 
-  // Revenus par plombier (dans la période) - UNIQUEMENT pour les admins
+  // Revenus par plombier (dans la période)
   const revenueByPlombier = useMemo(() => {
-    if (isPlombier) return []; // Ne pas calculer pour les plombiers
-    
     const { filteredInvoices, filteredProjects, filteredManualRevenues } = filteredData;
     const plombierRevenue: { [key: string]: { name: string; revenue: number; projects: number; unpaid: number } } = {};
     
@@ -904,7 +837,7 @@ export default function DashboardPage() {
         projects: p.projects,
         unpaid: Math.round(p.unpaid),
       }));
-  }, [filteredData, clients, plombiers, isPlombier]);
+  }, [filteredData, clients, plombiers]);
 
   // Projets récents (filtrés par plombier si nécessaire)
   const recentProjects = useMemo(() => {
@@ -956,10 +889,10 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              {isPlombier ? 'Mon tableau de bord' : 'Tableau de bord'}
+              Tableau de bord
             </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
-              {isPlombier ? `Bienvenue ${user?.name}, voici vos statistiques personnelles` : `Bienvenue, ${user?.name}`}
+              Bienvenue, {user?.name}
             </p>
           </div>
           
@@ -1193,8 +1126,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Statistiques de paiement aux plombiers */}
-        {user?.role === 'admin' && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="card bg-green-50 border-green-200">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
@@ -1237,10 +1169,9 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        )}
 
         {/* Récapitulatif des plombiers non payés */}
-        {user?.role === 'admin' && paymentStats.unpaidByPlombier.length > 0 && (
+        {paymentStats.unpaidByPlombier.length > 0 && (
           <div className="card">
             <div className="mb-4">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Plombiers non payés</h2>
@@ -1432,8 +1363,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Revenus par plombier - UNIQUEMENT pour les admins */}
-        {!isPlombier && plombiers.length > 0 && revenueByPlombier.length > 0 && (
+        {/* Revenus par plombier */}
+        {plombiers.length > 0 && revenueByPlombier.length > 0 && (
           <div className="card">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
               <Users className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />

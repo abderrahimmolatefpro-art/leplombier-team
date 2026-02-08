@@ -91,5 +91,14 @@ service cloud.firestore {
       allow create: if true; // Permet la création via l'API route (Firebase Admin SDK bypass les règles)
       allow update, delete: if isAuthenticated() && isAdmin(); // Seuls les admins peuvent modifier/supprimer
     }
+
+    // Collection clientPromoCodes (codes promo activés par l'admin pour les clients)
+    // L'accès client passe par les API routes (Firebase Admin SDK)
+    match /clientPromoCodes/{promoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
   }
 }

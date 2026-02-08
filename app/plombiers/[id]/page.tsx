@@ -31,11 +31,6 @@ export default function PlombierDetailPage() {
       return;
     }
 
-    if (currentUser && currentUser.role !== 'admin') {
-      router.push('/dashboard');
-      return;
-    }
-
     if (plombierId) {
       loadPlombier();
     }

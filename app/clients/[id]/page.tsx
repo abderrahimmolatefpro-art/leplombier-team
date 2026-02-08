@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Client, Project, Document, DocumentItem, User, PlanningEntry, ClientStats, ManualRevenue } from '@/types';
+import { Client, Project, Document, DocumentItem, User, PlanningEntry, ClientStats, ManualRevenue, ClientPromoCode } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { 
   ArrowLeft, 
@@ -21,7 +21,9 @@ import {
   Edit,
   Plus,
   Trash2,
-  Send
+  Send,
+  Tag,
+  KeyRound
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -49,6 +51,16 @@ export default function ClientDetailPage() {
   const [smsData, setSmsData] = useState({ message: '' });
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendingSms, setSendingSms] = useState(false);
+  const [sendingAccessCode, setSendingAccessCode] = useState(false);
+  const [clientPromoCodes, setClientPromoCodes] = useState<ClientPromoCode[]>([]);
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [promoFormData, setPromoFormData] = useState({
+    code: '',
+    label: '',
+    discountType: 'percent' as 'percent' | 'fixed',
+    discountValue: 10,
+    expiresAt: '',
+  });
   const [documentFormData, setDocumentFormData] = useState({
     type: 'devis' as Document['type'],
     projectId: '',
@@ -179,6 +191,18 @@ export default function ClientDetailPage() {
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as ManualRevenue[];
       setManualRevenues(revenuesData);
+
+      // Charger les codes promo
+      const promosQuery = query(collection(db, 'clientPromoCodes'), where('clientId', '==', clientId));
+      const promosSnapshot = await getDocs(promosQuery);
+      const promosData = promosSnapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        activatedAt: d.data().activatedAt?.toDate() || new Date(),
+        usedAt: d.data().usedAt?.toDate(),
+        expiresAt: d.data().expiresAt?.toDate(),
+      })) as ClientPromoCode[];
+      setClientPromoCodes(promosData);
 
       // Calculer les statistiques
       const calculatedStats = calculateClientStats(projectsData, documentsData, appointmentsData, revenuesData);
@@ -450,6 +474,43 @@ export default function ClientDetailPage() {
                     <span className="text-sm text-gray-700 ml-2">{client.ice}</span>
                   </div>
                 )}
+                <div className="pt-3 border-t border-gray-200">
+                  <p className="text-xs text-gray-500 mb-2">Espace client</p>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Envoyer un code d&apos;accès par SMS pour que le client puisse se connecter à son espace.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      if (!client.phone) {
+                        alert('Ce client n\'a pas de numéro de téléphone.');
+                        return;
+                      }
+                      setSendingAccessCode(true);
+                      try {
+                        const res = await fetch('/api/espace-client/send-code', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ phone: client.phone }),
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          alert('Code envoyé par SMS avec succès.');
+                        } else {
+                          alert(data.error || 'Erreur lors de l\'envoi du code.');
+                        }
+                      } catch {
+                        alert('Erreur de connexion.');
+                      } finally {
+                        setSendingAccessCode(false);
+                      }
+                    }}
+                    disabled={sendingAccessCode || !client.phone}
+                    className="btn btn-secondary btn-sm flex items-center gap-2"
+                  >
+                    <KeyRound size={16} />
+                    {sendingAccessCode ? 'Envoi...' : 'Envoyer code d\'accès'}
+                  </button>
+                </div>
                 {assignedPlombier && (
                   <div className="pt-3 border-t border-gray-200">
                     <p className="text-xs text-gray-500 mb-1">Plombier assigné:</p>
@@ -673,7 +734,7 @@ export default function ClientDetailPage() {
                                 En noir
                               </span>
                             )}
-                            {plombier && user?.role === 'admin' && (
+                            {plombier && (
                               <button
                                 onClick={async () => {
                                   try {
@@ -718,24 +779,22 @@ export default function ClientDetailPage() {
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
-                          {user?.role === 'admin' && (
-                            <button
-                              onClick={async () => {
-                                if (confirm('Supprimer ce dépannage ?')) {
-                                  try {
-                                    await deleteDoc(doc(db, 'manualRevenues', revenue.id));
-                                    loadClientData();
-                                  } catch (error) {
-                                    console.error('Error deleting revenue:', error);
-                                    alert('Erreur lors de la suppression');
-                                  }
+                          <button
+                            onClick={async () => {
+                              if (confirm('Supprimer ce dépannage ?')) {
+                                try {
+                                  await deleteDoc(doc(db, 'manualRevenues', revenue.id));
+                                  loadClientData();
+                                } catch (error) {
+                                  console.error('Error deleting revenue:', error);
+                                  alert('Erreur lors de la suppression');
                                 }
-                              }}
-                              className="p-1 text-gray-600 hover:text-red-600"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          )}
+                              }
+                            }}
+                            className="p-1 text-gray-600 hover:text-red-600"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -744,6 +803,57 @@ export default function ClientDetailPage() {
                 {manualRevenues.length === 0 && (
                   <p className="text-sm text-gray-500 text-center py-4">
                     Aucun dépannage enregistré
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Codes promo */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Codes promo</h2>
+                <button
+                  onClick={() => {
+                    setPromoFormData({
+                      code: '',
+                      label: '',
+                      discountType: 'percent',
+                      discountValue: 10,
+                      expiresAt: '',
+                    });
+                    setShowPromoModal(true);
+                  }}
+                  className="btn btn-primary btn-sm flex items-center gap-1"
+                >
+                  <Tag size={16} />
+                  <span>Activer un code</span>
+                </button>
+              </div>
+              <div className="space-y-3">
+                {clientPromoCodes.map((p) => (
+                  <div
+                    key={p.id}
+                    className={`p-3 border rounded-lg flex items-center justify-between ${
+                      p.used ? 'bg-gray-50 border-gray-200' : 'border-primary-200 bg-primary-50/50'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-mono font-semibold text-primary-700">{p.code}</span>
+                      <span className="mx-2">•</span>
+                      <span className="text-sm text-gray-700">{p.label}</span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {p.discountType === 'percent'
+                          ? `${p.discountValue}% de réduction`
+                          : `${p.discountValue} MAD de réduction`}
+                        {p.used && ' • Utilisé'}
+                        {p.expiresAt && !p.used && ` • Expire le ${formatDate(p.expiresAt)}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {clientPromoCodes.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    Aucun code promo activé
                   </p>
                 )}
               </div>
@@ -1036,6 +1146,113 @@ export default function ClientDetailPage() {
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pour activer un code promo */}
+      {showPromoModal && user && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold mb-4">Activer un code promo</h3>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await addDoc(collection(db, 'clientPromoCodes'), {
+                    clientId,
+                    code: promoFormData.code.trim().toUpperCase(),
+                    label: promoFormData.label.trim(),
+                    discountType: promoFormData.discountType,
+                    discountValue: promoFormData.discountValue,
+                    activatedByAdminId: user.id,
+                    activatedAt: Timestamp.now(),
+                    expiresAt: promoFormData.expiresAt
+                      ? Timestamp.fromDate(new Date(promoFormData.expiresAt))
+                      : null,
+                    used: false,
+                  });
+                  await loadClientData();
+                  setShowPromoModal(false);
+                } catch (err: any) {
+                  alert(err?.message || 'Erreur lors de l\'activation.');
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+                <input
+                  type="text"
+                  required
+                  value={promoFormData.code}
+                  onChange={(e) => setPromoFormData((p) => ({ ...p, code: e.target.value }))}
+                  placeholder="ex: PROMO10"
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Libellé</label>
+                <input
+                  type="text"
+                  required
+                  value={promoFormData.label}
+                  onChange={(e) => setPromoFormData((p) => ({ ...p, label: e.target.value }))}
+                  placeholder="ex: 10% de réduction"
+                  className="input w-full"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    value={promoFormData.discountType}
+                    onChange={(e) =>
+                      setPromoFormData((p) => ({ ...p, discountType: e.target.value as 'percent' | 'fixed' }))
+                    }
+                    className="input w-full"
+                  >
+                    <option value="percent">Pourcentage</option>
+                    <option value="fixed">Montant fixe</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Valeur</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={promoFormData.discountType === 'percent' ? 100 : undefined}
+                    value={promoFormData.discountValue}
+                    onChange={(e) =>
+                      setPromoFormData((p) => ({ ...p, discountValue: Number(e.target.value) }))
+                    }
+                    className="input w-full"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date d&apos;expiration (optionnel)</label>
+                <input
+                  type="date"
+                  value={promoFormData.expiresAt}
+                  onChange={(e) => setPromoFormData((p) => ({ ...p, expiresAt: e.target.value }))}
+                  className="input w-full"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPromoModal(false)}
+                  className="btn btn-secondary"
+                >
+                  Annuler
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Activer
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

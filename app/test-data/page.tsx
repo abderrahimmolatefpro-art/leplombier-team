@@ -256,8 +256,8 @@ export default function TestDataPage() {
     );
   }
 
-  if (!user || user.role !== 'admin') {
-    router.push('/dashboard');
+  if (!user) {
+    router.push('/login');
     return null;
   }
 

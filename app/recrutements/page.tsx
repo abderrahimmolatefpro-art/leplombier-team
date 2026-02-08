@@ -49,11 +49,6 @@ export default function RecruitmentsPage() {
       return;
     }
 
-    if (user && user.role !== 'admin') {
-      router.push('/dashboard');
-      return;
-    }
-
     if (user) {
       loadRecruitments();
     }

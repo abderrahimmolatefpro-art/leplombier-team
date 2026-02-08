@@ -165,7 +165,7 @@ export default function ProjetsPage() {
   };
 
   const handleTogglePlombierPayment = async (projectId: string, plombierId: string) => {
-    if (!user || user.role !== 'admin') return;
+    if (!user) return;
     
     try {
       const project = projets.find(p => p.id === projectId);
