@@ -81,7 +81,7 @@ export default function ClientCodesPromoPage() {
                     <p className="text-sm text-gray-600 mt-1">{formatDiscount(p)}</p>
                     {p.expiresAt && (
                       <p className="text-xs text-gray-500 mt-2">
-                        Valable jusqu'au {new Date(p.expiresAt).toLocaleDateString('fr-FR')}
+                        Valable jusqu&apos;au {new Date(p.expiresAt).toLocaleDateString('fr-FR')}
                       </p>
                     )}
                   </div>
