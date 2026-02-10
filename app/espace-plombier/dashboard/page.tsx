@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
-import { FolderKanban, Calendar, DollarSign, LogOut } from 'lucide-react';
+import { FolderKanban, Calendar, DollarSign, LogOut, Zap } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatCurrency } from '@/lib/utils';
@@ -118,7 +118,16 @@ export default function PlombierDashboardPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Link
+            href="/espace-plombier/instant"
+            className="block p-6 bg-primary-50 rounded-xl shadow-sm border border-primary-100 hover:border-primary-200 hover:shadow-md transition-all"
+          >
+            <Zap className="w-10 h-10 text-primary-600 mb-3" />
+            <h2 className="font-semibold text-gray-900">Interventions instantanées</h2>
+            <p className="text-sm text-gray-500 mt-1">Accepter des missions en direct</p>
+          </Link>
+
           <Link
             href="/espace-plombier/projets"
             className="block p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:border-primary-200 hover:shadow-md transition-all"

@@ -6,6 +6,38 @@ export interface User {
   name: string;
   role: UserRole;
   phone?: string;
+  /** Toggle manuel : plombier disponible pour les interventions instantanées */
+  availableForInstant?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type InstantRequestStatus = 'en_attente' | 'accepte' | 'termine' | 'expire' | 'annule';
+
+export interface InstantRequest {
+  id: string;
+  clientId: string;
+  address: string;
+  description: string;
+  /** Budget en MAD proposé par le client (optionnel, style inDrive) */
+  clientProposedAmount?: number;
+  status: InstantRequestStatus;
+  plombierId?: string;
+  createdAt: Date;
+  acceptedAt?: Date;
+  expiresAt: Date;
+  updatedAt?: Date;
+}
+
+export type InstantOfferStatus = 'en_attente' | 'accepte' | 'refuse' | 'expire';
+
+export interface InstantOffer {
+  id: string;
+  requestId: string;
+  plombierId: string;
+  proposedAmount: number;
+  message?: string;
+  status: InstantOfferStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -102,6 +134,8 @@ export interface ManualRevenue {
   plombierHasPaid?: boolean; // Si le plombier a payé sa part à la société pour ce dépannage
   plombierPercentage?: number; // Pourcentage pour le plombier (par défaut 60, le reste va à la société)
   notes?: string;
+  /** Lien vers une demande instantanée (intervention instant) */
+  instantRequestId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

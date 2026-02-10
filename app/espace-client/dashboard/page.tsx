@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useClientAuth } from '@/hooks/useClientAuth';
-import { FolderKanban, FileText, Tag, LogOut } from 'lucide-react';
+import { FolderKanban, FileText, Tag, LogOut, Zap } from 'lucide-react';
 
 export default function ClientDashboardPage() {
   const { client, loading, token, logout } = useClientAuth();
@@ -56,7 +56,16 @@ export default function ClientDashboardPage() {
           <p className="text-gray-600 mt-1">Retrouvez vos commandes, documents et codes promo</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Link
+            href="/espace-client/commander"
+            className="block p-6 bg-primary-50 rounded-xl shadow-sm border border-primary-100 hover:border-primary-200 hover:shadow-md transition-all"
+          >
+            <Zap className="w-10 h-10 text-primary-600 mb-3" />
+            <h2 className="font-semibold text-gray-900">Commander un plombier</h2>
+            <p className="text-sm text-gray-500 mt-1">Intervention immédiate, disponible maintenant</p>
+          </Link>
+
           <Link
             href="/espace-client/commandes"
             className="block p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:border-primary-200 hover:shadow-md transition-all"

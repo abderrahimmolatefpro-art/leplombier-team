@@ -8,16 +8,16 @@ import { useClientAuth } from '@/hooks/useClientAuth';
 export default function ClientLoginPage() {
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
-  const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
   const { login } = useClientAuth();
   const router = useRouter();
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setSendingCode(true);
     try {
       const res = await fetch('/api/espace-client/send-code', {
         method: 'POST',
@@ -25,15 +25,15 @@ export default function ClientLoginPage() {
         body: JSON.stringify({ phone }),
       });
       const data = await res.json();
-      if (data.success) {
-        setStep('code');
-      } else {
+      if (!data.success) {
         setError(data.error || 'Erreur lors de l\'envoi du code');
+      } else {
+        setError('');
       }
     } catch {
       setError('Erreur de connexion');
     } finally {
-      setLoading(false);
+      setSendingCode(false);
     }
   };
 
@@ -78,85 +78,65 @@ export default function ClientLoginPage() {
             </div>
             <h1 className="text-xl font-bold text-gray-900">Espace Client</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Connectez-vous avec votre numéro de téléphone
+              Entrez votre numéro et le code reçu par SMS
             </p>
           </div>
 
-          {step === 'phone' ? (
-            <form onSubmit={handleSendCode} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Numéro de téléphone
-                </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  className="input"
-                  placeholder="06 12 34 56 78"
-                />
+          <form onSubmit={handleVerify} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
               </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary w-full"
-              >
-                {loading ? 'Envoi en cours...' : 'Envoyer le code par SMS'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerify} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-              <p className="text-sm text-gray-600">
-                Un code a été envoyé au <strong>{phone}</strong>
+            )}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                Numéro de téléphone
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                className="input"
+                placeholder="06 12 34 56 78"
+              />
+            </div>
+            <div>
+              <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
+                Code reçu par SMS
+              </label>
+              <input
+                id="code"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                required
+                className="input text-center text-lg tracking-widest"
+                placeholder="123456"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Pas encore de code ?{' '}
+                <button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={sendingCode || !phone.trim()}
+                  className="text-primary-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sendingCode ? 'Envoi en cours...' : 'Envoyer le code'}
+                </button>
               </p>
-              <div>
-                <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
-                  Code reçu par SMS
-                </label>
-                <input
-                  id="code"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                  required
-                  className="input text-center text-lg tracking-widest"
-                  placeholder="123456"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary w-full"
-              >
-                {loading ? 'Vérification...' : 'Se connecter'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('phone');
-                  setCode('');
-                  setError('');
-                }}
-                className="w-full text-sm text-gray-500 hover:text-gray-700"
-              >
-                Modifier le numéro
-              </button>
-            </form>
-          )}
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full"
+            >
+              {loading ? 'Vérification...' : 'Se connecter'}
+            </button>
+          </form>
         </div>
         <p className="text-center text-xs text-gray-500 mt-4">
           Pas encore client ? Contactez-nous pour vos travaux de plomberie.
