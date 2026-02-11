@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
+import { sendPushToPlombier } from '@/lib/fcm';
 
 const EXPIRE_MINUTES = 15;
 
@@ -47,6 +48,22 @@ export async function POST(request: NextRequest) {
     }
 
     const docRef = await db.collection('instantRequests').add(requestData);
+
+    // Push aux plombiers disponibles
+    const plombiersSnap = await db
+      .collection('users')
+      .where('role', '==', 'plombier')
+      .where('availableForInstant', '==', true)
+      .get();
+    const addr = address.trim().slice(0, 80);
+    console.log('[FCM] instant-request: plombiers disponibles:', plombiersSnap.docs.map((d) => ({ id: d.id, hasFcm: !!d.data().fcmToken })));
+    for (const doc of plombiersSnap.docs) {
+      await sendPushToPlombier(
+        doc.id,
+        'Nouvelle demande instantanée',
+        addr ? `– ${addr}` : 'Une nouvelle demande est disponible'
+      );
+    }
 
     // #region agent log
     fetch('http://127.0.0.1:7247/ingest/1e4b6d28-5f5e-432f-850b-6a10e26e4bd1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'instant-request/route.ts:after_add',message:'Instant request created',data:{id:docRef.id,status:'en_attente'},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});

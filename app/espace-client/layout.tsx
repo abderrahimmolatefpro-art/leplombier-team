@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { RegisterFcmTokenClient } from '@/components/RegisterFcmTokenClient';
 
 export const metadata: Metadata = {
   title: 'Espace Client - Le Plombier',
@@ -10,5 +11,10 @@ export default function EspaceClientLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <RegisterFcmTokenClient />
+      {children}
+    </>
+  );
 }

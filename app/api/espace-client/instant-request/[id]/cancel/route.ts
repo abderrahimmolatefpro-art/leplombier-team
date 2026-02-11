@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
+import { sendPushToPlombier } from '@/lib/fcm';
 
 export async function POST(
   request: NextRequest,
@@ -46,6 +47,21 @@ export async function POST(
       status: 'annule',
       updatedAt: now,
     });
+
+    const offersSnap = await db
+      .collection('instantOffers')
+      .where('requestId', '==', id)
+      .get();
+    for (const offerDoc of offersSnap.docs) {
+      const plombierId = offerDoc.data()?.plombierId;
+      if (plombierId) {
+        await sendPushToPlombier(
+          plombierId,
+          'Demande annulée',
+          'La demande a été annulée par le client'
+        );
+      }
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {

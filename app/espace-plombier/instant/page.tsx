@@ -265,13 +265,21 @@ export default function PlombierInstantPage() {
 
   const handleMarkMissionDone = async () => {
     if (!myMission?.id || !plombier?.id) return;
+    const user = auth.currentUser;
+    if (!user) return;
     setMarkingDoneId(myMission.id);
     setError('');
     try {
-      await updateDoc(doc(db, 'instantRequests', myMission.id), {
-        status: 'termine',
-        updatedAt: Timestamp.now(),
+      const idToken = await user.getIdToken();
+      const res = await fetch(`/api/espace-plombier/instant-request/${myMission.id}/complete`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Impossible de marquer la mission comme terminée');
+        return;
+      }
     } catch (err) {
       console.error(err);
       setError('Impossible de marquer la mission comme terminée');

@@ -1,0 +1,28 @@
+{
+  "name": "mobile-plombier",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Web assets in web/'",
+    "cap:init": "cap init",
+    "cap:add:ios": "cap add ios",
+    "cap:add:android": "cap add android",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  },
+  "capacitor": {
+    "platforms": ["ios", "android"]
+  }
+}

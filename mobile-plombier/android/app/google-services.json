@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "615998762684",
+    "project_id": "leplombier-team",
+    "storage_bucket": "leplombier-team.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:615998762684:android:3a3d97173379ddaf25eab9",
+        "android_client_info": {
+          "package_name": "com.leplombier.plombier"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsdWX6CoDdlCpz1zE_TdfB0OEzBSZAtMI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

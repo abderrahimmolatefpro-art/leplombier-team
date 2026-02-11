@@ -30,6 +30,7 @@ service cloud.firestore {
       );
       allow update: if isAuthenticated() && (isAdmin() || isOwner(userId));
       allow delete: if isAuthenticated() && isAdmin();
+      // fcmToken : mis à jour via API (Admin SDK) ou par le plombier lui-même
     }
     
     // Collection clients
@@ -38,6 +39,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
       allow delete: if isAuthenticated() && isAdmin();
+      // fcmToken : mis à jour via API (Admin SDK) uniquement
     }
     
     // Collection projects

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Le Plombier - Espace Plombier</string>
+    <string name="title_activity_main">Le Plombier - Espace Plombier</string>
+    <string name="package_name">com.leplombier.plombier</string>
+    <string name="custom_url_scheme">com.leplombier.plombier</string>
+</resources>
