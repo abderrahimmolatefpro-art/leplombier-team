@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 
@@ -27,10 +28,8 @@ export default function PlombierLoginPage() {
     try {
       await login(email, password);
       router.push('/espace-plombier/dashboard');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erreur de connexion';
-      setError(msg);
-      console.error('[Plombier login]', err);
+    } catch (err: any) {
+      setError(err.message || 'Erreur de connexion');
     } finally {
       setLoading(false);
     }
@@ -54,12 +53,13 @@ export default function PlombierLoginPage() {
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
-              <img
+              <Image
                 src="/logo.png"
                 alt="Le Plombier"
                 width={180}
                 height={60}
                 className="h-auto object-contain"
+                priority
               />
             </div>
             <h1 className="text-xl font-bold text-gray-900">Espace Plombier</h1>

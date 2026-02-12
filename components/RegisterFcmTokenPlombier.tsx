@@ -44,7 +44,6 @@ export function RegisterFcmTokenPlombier() {
     let listenerRemove: (() => Promise<void>) | undefined;
 
     waitForCapacitor().then((result) => {
-      try {
       if (cancelled || !result) return;
 
     const PushNotifications = result.push as {
@@ -89,9 +88,6 @@ export function RegisterFcmTokenPlombier() {
     }).then((r) => {
       listenerRemove = r.remove;
     });
-      } catch (err) {
-        console.error('[FCM Plombier] Setup error:', err);
-      }
     });
 
     return () => {
