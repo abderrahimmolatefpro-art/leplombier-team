@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
-import { ArrowLeft, FolderKanban } from 'lucide-react';
+import { FolderKanban } from 'lucide-react';
+import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -23,12 +23,25 @@ const STATUS_LABELS: Record<string, string> = {
   annule: 'Annulé',
 };
 
+const FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tous' },
+  { value: 'en_cours', label: 'En cours' },
+  { value: 'en_attente', label: 'En attente' },
+  { value: 'termine', label: 'Terminé' },
+];
+
 export default function PlombierProjetsPage() {
   const { plombier, loading: authLoading } = usePlombierAuth();
   const router = useRouter();
   const [projects, setProjects] = useState<any[]>([]);
   const [clients, setClients] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  const filteredProjects = useMemo(() => {
+    if (filterStatus === 'all') return projects.filter((p) => p.status !== 'annule');
+    return projects.filter((p) => p.status === filterStatus);
+  }, [projects, filterStatus]);
 
   useEffect(() => {
     if (!authLoading && !plombier) {
@@ -88,75 +101,92 @@ export default function PlombierProjetsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link
-            href="/espace-plombier/dashboard"
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft size={20} />
-          </Link>
+        <div className="max-w-4xl mx-auto">
           <h1 className="text-lg font-semibold text-gray-900">Mes projets</h1>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
-          </div>
-        ) : projects.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-            <FolderKanban className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Aucun projet assigné</p>
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <PlombierCardSkeleton key={i} />
+            ))}
           </div>
         ) : (
-          <div className="space-y-4">
-            {projects.map((p) => {
-              const plombierPercent = (p.plombierPercentage || 60) / 100;
-              const share = p.plombierIds?.length
-                ? ((p.amount || 0) * plombierPercent) / p.plombierIds.length
-                : 0;
-              return (
-                <div
-                  key={p.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6"
+          <>
+            <div className="flex gap-2 flex-wrap mb-6">
+              {FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setFilterStatus(opt.value)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium ${
+                    filterStatus === opt.value
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div>
-                      <h2 className="font-semibold text-gray-900">{p.title}</h2>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        {TYPE_LABELS[p.type] || p.type} • {clients[p.clientId] || '—'} • {formatDate(p.startDate)}
-                      </p>
-                    </div>
-                    <span
-                      className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                        p.status === 'termine'
-                          ? 'bg-green-100 text-green-700'
-                          : p.status === 'en_cours'
-                          ? 'bg-blue-100 text-blue-700'
-                          : p.status === 'en_attente'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {STATUS_LABELS[p.status] || p.status}
-                    </span>
-                  </div>
-                  {p.description && (
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">{p.description}</p>
-                  )}
-                  <div className="flex gap-4 mt-2 text-sm">
-                    {p.amount > 0 && (
-                      <span className="text-gray-700">Montant: {formatCurrency(p.amount)}</span>
-                    )}
-                    {share > 0 && (
-                      <span className="font-medium text-primary-600">Ma part: {formatCurrency(share)}</span>
-                    )}
-                  </div>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-4">
+              {filteredProjects.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
+                  <FolderKanban className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">
+                    {filterStatus === 'all' ? 'Aucun projet assigné' : 'Aucun projet pour ce filtre'}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+              ) : (
+                filteredProjects.map((p) => {
+                  const plombierPercent = (p.plombierPercentage || 60) / 100;
+                  const share = p.plombierIds?.length
+                    ? ((p.amount || 0) * plombierPercent) / p.plombierIds.length
+                    : 0;
+                  return (
+                    <div
+                      key={p.id}
+                      className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                          <h2 className="font-semibold text-gray-900">{p.title}</h2>
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            {TYPE_LABELS[p.type] || p.type} • {clients[p.clientId] || '—'} • {formatDate(p.startDate)}
+                          </p>
+                        </div>
+                        <span
+                          className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                            p.status === 'termine'
+                              ? 'bg-green-100 text-green-700'
+                              : p.status === 'en_cours'
+                              ? 'bg-blue-100 text-blue-700'
+                              : p.status === 'en_attente'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {STATUS_LABELS[p.status] || p.status}
+                        </span>
+                      </div>
+                      {p.description && (
+                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{p.description}</p>
+                      )}
+                      <div className="flex gap-4 mt-2 text-sm">
+                        {p.amount > 0 && (
+                          <span className="text-gray-700">Montant: {formatCurrency(p.amount)}</span>
+                        )}
+                        {share > 0 && (
+                          <span className="font-medium text-primary-600">Ma part: {formatCurrency(share)}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </>
         )}
       </main>
     </div>

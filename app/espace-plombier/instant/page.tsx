@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
-import { ArrowLeft, Zap, Phone, MapPin, CheckCircle } from 'lucide-react';
+import { Zap, Phone, MapPin, CheckCircle } from 'lucide-react';
 import {
   collection,
   query,
@@ -317,13 +316,7 @@ export default function PlombierInstantPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link
-            href="/espace-plombier/dashboard"
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft size={20} />
-          </Link>
+        <div className="max-w-4xl mx-auto">
           <h1 className="text-lg font-semibold text-gray-900">Interventions instantanées</h1>
         </div>
       </header>
@@ -389,14 +382,34 @@ export default function PlombierInstantPage() {
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={handleMarkMissionDone}
-              disabled={!!markingDoneId}
-              className="mt-4 py-2 px-4 bg-white border border-green-600 text-green-700 text-sm font-medium rounded-lg hover:bg-green-50 disabled:opacity-50"
-            >
-              {markingDoneId ? 'Enregistrement...' : 'Marquer comme terminée'}
-            </button>
+            <div className="flex flex-wrap gap-3 mt-4">
+              {clientInfo?.phone && (
+                <a
+                  href={`tel:${clientInfo.phone.replace(/\s/g, '')}`}
+                  className="inline-flex items-center justify-center gap-2 py-3 px-4 min-h-[44px] bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                >
+                  <Phone size={20} />
+                  Appeler
+                </a>
+              )}
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(myMission.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 py-3 px-4 min-h-[44px] bg-white border border-green-600 text-green-700 font-medium rounded-lg hover:bg-green-50"
+              >
+                <MapPin size={20} />
+                Itinéraire
+              </a>
+              <button
+                type="button"
+                onClick={handleMarkMissionDone}
+                disabled={!!markingDoneId}
+                className="py-3 px-4 min-h-[44px] bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                {markingDoneId ? 'Enregistrement...' : 'Marquer comme terminée'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -425,13 +438,24 @@ export default function PlombierInstantPage() {
                             <MapPin size={14} className="flex-shrink-0" />
                             <span className="truncate">{req.address}</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedRequestForMap(req)}
-                            className="flex-shrink-0 text-xs text-primary-600 hover:underline"
-                          >
-                            Voir sur la carte
-                          </button>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <a
+                              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(req.address)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 py-2 px-3 text-primary-600 font-medium text-sm rounded-lg border border-primary-200 hover:bg-primary-50"
+                            >
+                              <MapPin size={14} />
+                              Itinéraire
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRequestForMap(req)}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Voir sur la carte
+                            </button>
+                          </div>
                         </div>
                         <p className="text-gray-900">{req.description}</p>
                         {clientBudget > 0 && (
@@ -451,7 +475,7 @@ export default function PlombierInstantPage() {
                                 type="button"
                                 onClick={() => handleAcceptPrice(req)}
                                 disabled={!!sendingOfferRequestId}
-                                className="py-2 px-4 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="py-3 px-4 min-h-[44px] bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {sendingOfferRequestId === req.id ? 'Envoi...' : 'Accepter ce tarif'}
                               </button>
@@ -464,7 +488,7 @@ export default function PlombierInstantPage() {
                                 setCounterMessage('');
                               }}
                               disabled={!!sendingOfferRequestId}
-                              className="py-2 px-4 bg-white border border-primary-600 text-primary-600 text-sm font-medium rounded-lg hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="py-3 px-4 min-h-[44px] bg-white border border-primary-600 text-primary-600 text-sm font-medium rounded-lg hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Faire une contre-offre
                             </button>
@@ -537,6 +561,18 @@ export default function PlombierInstantPage() {
               <form onSubmit={handleCounterOfferSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Montant (MAD)</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {[200, 300, 400, 500].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setCounterAmount(String(amt))}
+                        className="py-2 px-4 min-h-[44px] rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50"
+                      >
+                        {amt} MAD
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -562,7 +598,7 @@ export default function PlombierInstantPage() {
                   <button
                     type="submit"
                     disabled={!!sendingOfferRequestId}
-                    className="flex-1 py-2 px-4 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                    className="flex-1 py-3 px-4 min-h-[44px] bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50"
                   >
                     Envoyer l&apos;offre
                   </button>

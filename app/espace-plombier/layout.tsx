@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { RegisterFcmTokenPlombier } from '@/components/RegisterFcmTokenPlombier';
+import PlombierLayoutClient from '@/components/PlombierLayoutClient';
 
 export const metadata: Metadata = {
   title: 'Espace Plombier - Le Plombier',
@@ -14,7 +15,7 @@ export default function EspacePlombierLayout({
   return (
     <>
       <RegisterFcmTokenPlombier />
-      {children}
+      <PlombierLayoutClient>{children}</PlombierLayoutClient>
     </>
   );
 }

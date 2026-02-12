@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
+import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatDate } from '@/lib/utils';
@@ -86,28 +86,24 @@ export default function PlombierPlanningPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link
-            href="/espace-plombier/dashboard"
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft size={20} />
-          </Link>
+        <div className="max-w-4xl mx-auto">
           <h1 className="text-lg font-semibold text-gray-900">Mon planning</h1>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <PlombierCardSkeleton key={i} />
+            ))}
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between mb-6">
               <button
                 onClick={() => setWeekStart((d) => subWeeks(d, 1))}
-                className="p-2 rounded-lg hover:bg-gray-100"
+                className="p-3 min-h-[44px] rounded-lg hover:bg-gray-100"
               >
                 ←
               </button>
@@ -116,7 +112,7 @@ export default function PlombierPlanningPage() {
               </h2>
               <button
                 onClick={() => setWeekStart((d) => addWeeks(d, 1))}
-                className="p-2 rounded-lg hover:bg-gray-100"
+                className="p-3 min-h-[44px] rounded-lg hover:bg-gray-100"
               >
                 →
               </button>

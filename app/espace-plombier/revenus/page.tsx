@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
-import { ArrowLeft, DollarSign } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
+import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
+import PlombierStatsSkeleton from '@/components/PlombierStatsSkeleton';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -73,22 +74,24 @@ export default function PlombierRevenusPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link
-            href="/espace-plombier/dashboard"
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft size={20} />
-          </Link>
+        <div className="max-w-4xl mx-auto">
           <h1 className="text-lg font-semibold text-gray-900">Mes revenus</h1>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
-          </div>
+          <>
+            <div className="mb-8">
+              <PlombierStatsSkeleton />
+            </div>
+            <h2 className="font-semibold text-gray-900 mb-4">Dépannages</h2>
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <PlombierCardSkeleton key={i} />
+              ))}
+            </div>
+          </>
         ) : (
           <>
             <div className="grid gap-4 sm:grid-cols-3 mb-8">
