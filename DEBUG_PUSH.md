@@ -1,5 +1,14 @@
 # Debug des notifications push
 
+## 0. Chrome mobile (web)
+
+Pour que les plombiers reçoivent des notifications sur **Chrome mobile** (site web, pas l'app native) :
+
+1. **Clé VAPID** : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
+2. Ajouter dans `.env.local` : `NEXT_PUBLIC_FIREBASE_VAPID_KEY=...` (la clé publique)
+3. Le plombier doit **autoriser les notifications** dans Chrome (icône cadenas → Notifications)
+4. Les notifications s'affichent même quand l'onglet est en arrière-plan
+
 ## 1. Vérifier le token FCM
 
 Sur l’émulateur / téléphone :
@@ -43,6 +52,11 @@ Si `fcmToken` est absent, le token n’a pas été enregistré par l’app.
 - [ ] Plombier **disponible** sur « Interventions instantanées »
 - [ ] `fcmToken` présent dans Firestore pour ce plombier
 - [ ] `google-services.json` dans `mobile-plombier/android/app/` et `mobile-client/android/app/`
+
+**Chrome mobile (web) :**
+- [ ] `NEXT_PUBLIC_FIREBASE_VAPID_KEY` dans .env.local
+- [ ] Plombier connecté sur le site (dash.leplombier.ma)
+- [ ] Notifications autorisées dans le navigateur
 
 ## 5. Test sur téléphone physique
 

@@ -7,7 +7,6 @@ import { useClientAuth } from '@/hooks/useClientAuth';
 import DocumentView from '@/components/DocumentView';
 import { companyInfo } from '@/lib/companyConfig';
 import { Document, Client, Project } from '@/types';
-import { ArrowLeft } from 'lucide-react';
 
 export default function ClientDocumentViewPage() {
   const { token, loading: authLoading } = useClientAuth();
@@ -93,7 +92,6 @@ export default function ClientDocumentViewPage() {
             href="/espace-client/documents"
             className="inline-flex items-center gap-2 text-primary-600 hover:underline mb-4"
           >
-            <ArrowLeft size={18} />
             Retour aux documents
           </Link>
           <div className="bg-white rounded-xl p-8 text-center">
@@ -107,13 +105,7 @@ export default function ClientDocumentViewPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link
-            href="/espace-client/documents"
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft size={20} />
-          </Link>
+        <div className="max-w-4xl mx-auto">
           <h1 className="text-lg font-semibold text-gray-900">
             {document.type} {document.number}
           </h1>

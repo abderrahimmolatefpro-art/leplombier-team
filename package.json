@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "mobile:plombier": "cd mobile-plombier && npx cap sync",
-    "mobile:client": "cd mobile-client && npx cap sync"
+    "mobile:client": "cd mobile-client && npx cap sync",
+    "mobile:icon": "node scripts/generate-app-icon.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -39,6 +40,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.4",
     "postcss": "^8.4.32",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.3.3"
   }

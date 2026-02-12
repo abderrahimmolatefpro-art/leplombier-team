@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useClientAuth } from '@/hooks/useClientAuth';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
 
 const TYPE_LABELS: Record<string, string> = {
   facture: 'Facture',
@@ -53,21 +54,17 @@ export default function ClientDocumentsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link
-            href="/espace-client/dashboard"
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft size={20} />
-          </Link>
+        <div className="max-w-4xl mx-auto">
           <h1 className="text-lg font-semibold text-gray-900">Mes documents</h1>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <PlombierCardSkeleton key={i} />
+            ))}
           </div>
         ) : documents.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border border-gray-100">

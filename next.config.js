@@ -4,6 +4,11 @@ const nextConfig = {
   images: {
     domains: [],
   },
+  async rewrites() {
+    return [
+      { source: '/firebase-messaging-sw.js', destination: '/api/firebase-messaging-sw' },
+    ];
+  },
 }
 
 module.exports = nextConfig

@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useClientAuth } from '@/hooks/useClientAuth';
-import { ArrowLeft, Zap, Phone, CheckCircle, XCircle } from 'lucide-react';
+import { Zap, Phone, CheckCircle, XCircle } from 'lucide-react';
 
 const POLL_INTERVAL_MS = 2500;
 const PLOMBIER_LOCATION_POLL_MS = 15000;
@@ -342,13 +341,7 @@ export default function CommanderPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link
-            href="/espace-client/dashboard"
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft size={20} />
-          </Link>
+        <div className="max-w-4xl mx-auto">
           <h1 className="text-lg font-semibold text-gray-900">Commander un plombier</h1>
         </div>
       </header>
@@ -382,6 +375,18 @@ export default function CommanderPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Budget proposé (MAD) <span className="text-gray-400 font-normal">optionnel</span>
                 </label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {[200, 300, 400, 500].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setClientProposedAmount(String(amt))}
+                      className="py-2 px-4 min-h-[44px] rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50"
+                    >
+                      {amt} MAD
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="number"
                   min="0"
@@ -409,7 +414,7 @@ export default function CommanderPage() {
               <button
                 type="submit"
                 disabled={state === 'submitting'}
-                className="w-full py-3 px-4 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 px-4 min-h-[44px] bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {state === 'submitting' ? 'Envoi en cours...' : 'Envoyer ma demande'}
               </button>
@@ -450,7 +455,7 @@ export default function CommanderPage() {
                         type="button"
                         onClick={() => handleAcceptOffer(offer.id)}
                         disabled={!!acceptingOfferId}
-                        className="py-2 px-4 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="py-2 px-4 min-h-[44px] bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {acceptingOfferId === offer.id ? 'Choisi...' : 'Choisir'}
                       </button>

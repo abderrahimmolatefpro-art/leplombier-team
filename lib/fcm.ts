@@ -4,7 +4,8 @@ import { getAdminDb } from './firebase-admin';
 export async function sendPushToPlombier(
   plombierId: string,
   title: string,
-  body: string
+  body: string,
+  data?: Record<string, string>
 ): Promise<void> {
   try {
     const db = getAdminDb();
@@ -15,10 +16,12 @@ export async function sendPushToPlombier(
       return;
     }
     const messaging = getMessaging();
-    await messaging.send({
+    const message: Parameters<typeof messaging.send>[0] = {
       token,
       notification: { title, body },
-    });
+    };
+    if (data) message.data = data;
+    await messaging.send(message);
     console.log('[FCM] sendPushToPlombier OK:', plombierId);
   } catch (err) {
     console.error('[FCM] sendPushToPlombier error:', plombierId, err);

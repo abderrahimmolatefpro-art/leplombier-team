@@ -49,20 +49,22 @@ export async function POST(request: NextRequest) {
 
     const docRef = await db.collection('instantRequests').add(requestData);
 
-    // Push aux plombiers disponibles
+    // Push aux plombiers disponibles (style InDrive)
     const plombiersSnap = await db
       .collection('users')
       .where('role', '==', 'plombier')
       .where('availableForInstant', '==', true)
       .get();
-    const addr = address.trim().slice(0, 80);
+    const addr = address.trim().slice(0, 100);
+    const amount = typeof clientProposedAmount === 'number' && clientProposedAmount >= 0 ? clientProposedAmount : null;
+    const bodyParts: string[] = [];
+    if (amount != null) bodyParts.push(`${amount} MAD`);
+    if (addr) bodyParts.push(addr);
+    const pushBody = bodyParts.length ? bodyParts.join(' · ') : 'Une nouvelle demande est disponible';
+    const pushTitle = 'Nouvelle demande — disponible maintenant';
     console.log('[FCM] instant-request: plombiers disponibles:', plombiersSnap.docs.map((d) => ({ id: d.id, hasFcm: !!d.data().fcmToken })));
-    for (const doc of plombiersSnap.docs) {
-      await sendPushToPlombier(
-        doc.id,
-        'Nouvelle demande instantanée',
-        addr ? `– ${addr}` : 'Une nouvelle demande est disponible'
-      );
+    for (const plombierDoc of plombiersSnap.docs) {
+      await sendPushToPlombier(plombierDoc.id, pushTitle, pushBody, { requestId: docRef.id });
     }
 
     // #region agent log
