@@ -4,7 +4,29 @@ import { useEffect, useRef, useCallback } from 'react';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { auth } from '@/lib/firebase';
 
-const DEBUG = true; // Mettre false en production
+const DEBUG = true;
+
+function waitForCapacitor(maxMs = 10000): Promise<{ cap: typeof window.Capacitor; push: unknown } | null> {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const check = () => {
+      const cap = typeof window !== 'undefined' ? window.Capacitor : undefined;
+      const push = cap?.Plugins?.PushNotifications;
+      const isNative = cap?.isNativePlatform?.();
+      if (cap && isNative && push) {
+        resolve({ cap, push });
+        return;
+      }
+      if (Date.now() - start > maxMs) {
+        if (DEBUG) console.log('[FCM Plombier] Timeout. Capacitor:', !!cap, 'isNative:', isNative, 'Push:', !!push);
+        resolve(null);
+        return;
+      }
+      setTimeout(check, 500);
+    };
+    check();
+  });
+}
 
 export function RegisterFcmTokenPlombier() {
   const { plombier } = usePlombierAuth();
@@ -18,14 +40,18 @@ export function RegisterFcmTokenPlombier() {
   useEffect(() => {
     if (!plombier || registered.current) return;
 
-    const cap = typeof window !== 'undefined' ? window.Capacitor : undefined;
-    if (!cap?.isNativePlatform?.() || !cap.Plugins?.PushNotifications) {
-      if (DEBUG) console.log('[FCM Plombier] Pas Capacitor ou PushNotifications absent');
-      return;
-    }
-
-    const PushNotifications = cap.Plugins.PushNotifications;
+    let cancelled = false;
     let listenerRemove: (() => Promise<void>) | undefined;
+
+    waitForCapacitor().then((result) => {
+      try {
+      if (cancelled || !result) return;
+
+    const PushNotifications = result.push as {
+      requestPermissions?: () => Promise<{ value: string }>;
+      register?: () => Promise<void>;
+      addListener?: (event: string, cb: (e: { value: string }) => void) => Promise<{ remove: () => Promise<void> }>;
+    };
 
     const registerToken = async (fcmToken: string) => {
       try {
@@ -63,8 +89,13 @@ export function RegisterFcmTokenPlombier() {
     }).then((r) => {
       listenerRemove = r.remove;
     });
+      } catch (err) {
+        console.error('[FCM Plombier] Setup error:', err);
+      }
+    });
 
     return () => {
+      cancelled = true;
       if (listenerRemove) void listenerRemove();
     };
   }, [plombier, getAuthToken]);

@@ -18,11 +18,13 @@ export function usePlombierAuth() {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             if (userData.role === 'plombier') {
+              const createdAt = userData.createdAt?.toDate?.() ?? new Date();
+              const updatedAt = userData.updatedAt?.toDate?.() ?? new Date();
               setPlombier({
                 id: userDoc.id,
                 ...userData,
-                createdAt: userData.createdAt?.toDate() || new Date(),
-                updatedAt: userData.updatedAt?.toDate() || new Date(),
+                createdAt,
+                updatedAt,
               } as User);
             } else {
               await signOut(auth);
