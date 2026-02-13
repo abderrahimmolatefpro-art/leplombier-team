@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { Zap, Phone, CheckCircle, XCircle, BadgeCheck } from 'lucide-react';
@@ -35,7 +35,7 @@ interface RequestData {
   createdAt?: string | null;
 }
 
-export default function CommanderPage() {
+function CommanderPageContent() {
   const { client, loading: authLoading, token } = useClientAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -779,5 +779,17 @@ export default function CommanderPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function CommanderPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+      </div>
+    }>
+      <CommanderPageContent />
+    </Suspense>
   );
 }

@@ -118,18 +118,11 @@ export default function ClientCommandesPage() {
                     isInstant &&
                     (order.status === 'en_attente' || order.status === 'en_cours') &&
                     order.instantRequestId;
-                  const CardWrapper = canOpenInstant ? Link : 'div';
-                  const cardProps = canOpenInstant
-                    ? { href: `/espace-client/commander?requestId=${order.instantRequestId}` }
-                    : {};
-                  return (
-                    <CardWrapper
-                      key={order.id}
-                      {...cardProps}
-                      className={`block bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 ${
-                        canOpenInstant ? 'hover:border-primary-200 transition-colors' : ''
-                      }`}
-                    >
+                  const cardClassName = `block bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 ${
+                    canOpenInstant ? 'hover:border-primary-200 transition-colors' : ''
+                  }`;
+                  const cardContent = (
+                    <>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <div className="flex items-start gap-2 min-w-0">
                           {isInstant && (
@@ -169,7 +162,20 @@ export default function ClientCommandesPage() {
                           Voir le détail →
                         </p>
                       )}
-                    </CardWrapper>
+                    </>
+                  );
+                  return (
+                    <div key={order.id}>
+                      {canOpenInstant ? (
+                        <Link href={`/espace-client/commander?requestId=${order.instantRequestId}`} className={cardClassName}>
+                          {cardContent}
+                        </Link>
+                      ) : (
+                        <div className={cardClassName}>
+                          {cardContent}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
