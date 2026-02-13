@@ -477,7 +477,7 @@ export default function ClientDetailPage() {
                 <div className="pt-3 border-t border-gray-200">
                   <p className="text-xs text-gray-500 mb-2">Espace client</p>
                   <p className="text-sm text-gray-600 mb-2">
-                    Envoyer un code d&apos;accès par SMS pour que le client puisse se connecter à son espace.
+                    Envoyer un code d&apos;accès par SMS pour que le client puisse se connecter. Utilisez ce bouton si le client a oublié son code.
                   </p>
                   <button
                     onClick={async () => {

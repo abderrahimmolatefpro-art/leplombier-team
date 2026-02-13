@@ -47,7 +47,8 @@ function hashCode(code: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone } = await request.json();
+    const body = await request.json();
+    const { phone } = body;
     if (!phone || typeof phone !== 'string') {
       return NextResponse.json({ success: false, error: 'Numéro de téléphone requis' }, { status: 400 });
     }
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     const normalizedInput = normalizePhoneNumber(phone);
 
     const snapshot = await db.collection('clients').get();
-    let clientDoc = snapshot.docs.find((d) => {
+    const clientDoc = snapshot.docs.find((d) => {
       const p = (d.data().phone || '').toString().trim();
       return normalizePhoneNumber(p) === normalizedInput;
     });
