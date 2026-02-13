@@ -3,7 +3,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { auth } from '@/lib/firebase';
-import { getToken, getMessaging, isSupported } from 'firebase/messaging';
 
 const DEBUG = true;
 
@@ -98,15 +97,19 @@ export function RegisterFcmTokenPlombier() {
 
       if (typeof window === 'undefined') return;
 
-      isSupported().then((supported) => {
-        if (cancelled || !supported) return;
-        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-        if (!vapidKey) {
-          if (DEBUG) console.log('[FCM Plombier] Pas de VAPID key pour web push');
-          return;
-        }
-        const messaging = getMessaging();
-        getToken(messaging, {
+      import('firebase/messaging')
+        .then(({ getToken, getMessaging, isSupported }) =>
+          isSupported().then((supported) => ({ getToken, getMessaging, supported }))
+        )
+        .then(({ getToken, getMessaging, supported }) => {
+          if (cancelled || !supported) return;
+          const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+          if (!vapidKey) {
+            if (DEBUG) console.log('[FCM Plombier] Pas de VAPID key pour web push');
+            return;
+          }
+          const messaging = getMessaging();
+          return getToken(messaging, {
           vapidKey,
           serviceWorkerRegistration: undefined,
         })

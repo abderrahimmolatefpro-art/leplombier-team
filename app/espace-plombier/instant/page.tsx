@@ -43,7 +43,7 @@ interface ClientDoc {
 
 export default function PlombierInstantPage() {
   const { plombier, loading: authLoading } = usePlombierAuth();
-  const { location: plombierLocation, loading: locationLoading, error: locationError, requestLocation } = usePlombierLocation();
+  const { location: plombierLocation, loading: locationLoading, error: locationError, requestLocation, openAppSettings, isNativeAndroid } = usePlombierLocation();
   const router = useRouter();
   const [available, setAvailable] = useState(false);
   const [loadingToggle, setLoadingToggle] = useState(false);
@@ -378,15 +378,17 @@ export default function PlombierInstantPage() {
             <p className="text-sm text-gray-600 mb-4">
               {locationLoading
                 ? 'Nous calculons les distances et temps de trajet vers les demandes.'
+                : isNativeAndroid
+                ? 'Ouvrez les paramètres de l\'app pour activer la localisation et voir les distances vers chaque intervention.'
                 : 'Autorisez la localisation pour voir les distances et temps de déplacement vers chaque intervention.'}
             </p>
             {locationError && (
               <button
                 type="button"
-                onClick={requestLocation}
+                onClick={isNativeAndroid ? openAppSettings : requestLocation}
                 className="py-2.5 px-4 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700"
               >
-                Réessayer
+                {isNativeAndroid ? 'Ouvrir les paramètres' : 'Réessayer'}
               </button>
             )}
           </div>

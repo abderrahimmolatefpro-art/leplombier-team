@@ -1,10 +1,16 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 interface Location {
   lat: number;
   lng: number;
+}
+
+function isNativeAndroid(): boolean {
+  if (typeof window === 'undefined') return false;
+  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } }).Capacitor;
+  return !!(cap?.isNativePlatform?.() && cap?.getPlatform?.() === 'android');
 }
 
 export function usePlombierLocation() {
@@ -39,9 +45,40 @@ export function usePlombierLocation() {
     );
   }, []);
 
+  const openedSettingsRef = useRef(false);
+
+  const openAppSettings = useCallback(async () => {
+    if (!isNativeAndroid()) {
+      requestLocation();
+      return;
+    }
+    try {
+      openedSettingsRef.current = true;
+      const { NativeSettings, AndroidSettings } = await import('capacitor-native-settings');
+      const result = await NativeSettings.openAndroid({ option: AndroidSettings.ApplicationDetails });
+      if (!result.status) {
+        requestLocation();
+      }
+    } catch {
+      requestLocation();
+    }
+  }, [requestLocation]);
+
   useEffect(() => {
     requestLocation();
   }, [requestLocation]);
 
-  return { location, loading, error, requestLocation };
+  useEffect(() => {
+    if (!isNativeAndroid()) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && openedSettingsRef.current) {
+        openedSettingsRef.current = false;
+        requestLocation();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [requestLocation]);
+
+  return { location, loading, error, requestLocation, openAppSettings, isNativeAndroid: isNativeAndroid() };
 }

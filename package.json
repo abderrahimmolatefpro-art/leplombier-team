@@ -14,6 +14,7 @@
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
     "@types/nodemailer": "^7.0.9",
+    "capacitor-native-settings": "^6.0.6",
     "clsx": "^2.1.0",
     "date-fns": "^3.0.6",
     "firebase": "^10.7.1",
