@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MapPin, X } from 'lucide-react';
 import { formatTimeAndDistance } from '@/lib/geo';
 
 interface InstantRequestDetailProps {
@@ -50,6 +50,7 @@ export default function InstantRequestDetail({
   const baseAmount = priceMad > 0 ? priceMad : 300;
   const [counterAmount, setCounterAmount] = useState(String(baseAmount));
   const [counterMessage, setCounterMessage] = useState('');
+  const [showCustomOffer, setShowCustomOffer] = useState(false);
   const quickAmounts = getQuickAmounts(priceMad);
 
   const handleCounterSubmit = (e: React.FormEvent) => {
@@ -60,35 +61,196 @@ export default function InstantRequestDetail({
     }
   };
 
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const [clientCoords, setClientCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [routeInfo, setRouteInfo] = useState<{ distanceKm: number; durationMin: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/geocode?address=${encodeURIComponent(address)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.lat && data.lng) {
+          setClientCoords({ lat: data.lat, lng: data.lng });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!key || !mapRef.current) return;
+
+    const center = clientCoords || plombierLocation || { lat: 33.5731, lng: -7.5898 };
+
+    const initMap = () => {
+      const g = (window as unknown as { google?: typeof google }).google;
+      if (!g?.maps?.Map || !mapRef.current) return;
+
+      if (!mapInstanceRef.current) {
+        const map = new g.maps.Map(mapRef.current, {
+          center,
+          zoom: 14,
+          gestureHandling: 'greedy',
+          zoomControl: true,
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: true,
+        });
+        mapInstanceRef.current = map;
+      }
+
+      const map = mapInstanceRef.current;
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+      directionsRendererRef.current?.setMap(null);
+      directionsRendererRef.current = null;
+
+      if (clientCoords) {
+        const clientMarker = new g.maps.Marker({
+          position: clientCoords,
+          map,
+          title: 'Client',
+        });
+        markersRef.current.push(clientMarker);
+      }
+      if (plombierLocation) {
+        const plombierMarker = new g.maps.Marker({
+          position: plombierLocation,
+          map,
+          title: 'Vous',
+        });
+        markersRef.current.push(plombierMarker);
+      }
+
+      if (clientCoords && plombierLocation) {
+        const directionsService = new g.maps.DirectionsService();
+        const directionsRenderer = new g.maps.DirectionsRenderer({
+          map,
+          suppressMarkers: true,
+        });
+        directionsRendererRef.current = directionsRenderer;
+        directionsService.route(
+          {
+            origin: plombierLocation,
+            destination: clientCoords,
+            travelMode: g.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === g.maps.DirectionsStatus.OK && result) {
+              directionsRenderer.setDirections(result);
+              const leg = result.routes[0]?.legs[0];
+              if (leg) {
+                const distKm = leg.distance?.value ? leg.distance.value / 1000 : 0;
+                const durMin = leg.duration?.value ? Math.round(leg.duration.value / 60) : 0;
+                setRouteInfo({ distanceKm: distKm, durationMin: durMin });
+              }
+              const bounds = new g.maps.LatLngBounds();
+              result.routes[0]?.legs.forEach((leg) => {
+                bounds.extend(leg.start_location);
+                bounds.extend(leg.end_location);
+              });
+              map.fitBounds(bounds);
+            } else {
+              setRouteInfo(null);
+              const bounds = new g.maps.LatLngBounds();
+              bounds.extend(clientCoords);
+              bounds.extend(plombierLocation);
+              map.fitBounds(bounds);
+            }
+          }
+        );
+      } else if (clientCoords) {
+        map.setCenter(clientCoords);
+        map.setZoom(16);
+        setRouteInfo(null);
+      } else if (plombierLocation) {
+        map.setCenter(plombierLocation);
+        map.setZoom(14);
+        setRouteInfo(null);
+      }
+    };
+
+    const run = () => {
+      const g = (window as unknown as { google?: typeof google }).google;
+      if (g?.maps?.Map) {
+        initMap();
+        return;
+      }
+      const existing = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existing) {
+        const check = () => {
+          const g2 = (window as unknown as { google?: typeof google }).google;
+          if (g2?.maps?.Map) {
+            initMap();
+            return;
+          }
+          setTimeout(check, 100);
+        };
+        check();
+        return;
+      }
+
+      const cbName = `__instantMapInit_${Date.now()}`;
+      (window as unknown as Record<string, () => void>)[cbName] = () => {
+        initMap();
+        delete (window as unknown as Record<string, unknown>)[cbName];
+      };
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&callback=${cbName}`;
+      script.async = true;
+      document.head.appendChild(script);
+    };
+
+    run();
+
+    return () => {
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+      directionsRendererRef.current?.setMap(null);
+      directionsRendererRef.current = null;
+      mapInstanceRef.current = null;
+      setRouteInfo(null);
+    };
+  }, [address, clientCoords, plombierLocation]);
+
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const mapUrl =
-    apiKey && plombierLocation
-      ? `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${plombierLocation.lat},${plombierLocation.lng}&destination=${encodeURIComponent(address)}&mode=driving`
-      : apiKey
-        ? `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodeURIComponent(address)}`
-        : null;
+
+  const handleQuickOffer = (amt: number) => {
+    onCounterOffer(amt);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white">
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="h-[40vh] min-h-[200px] flex-shrink-0 bg-gray-100">
-          {mapUrl ? (
-            <iframe
-              title="Carte adresse"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              src={mapUrl}
-            />
+    <div className="fixed inset-0 z-50 flex flex-col bg-white h-dvh">
+      <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+        <span className="text-sm font-medium text-gray-600">Détail de la demande</span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 -m-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          aria-label="Fermer"
+        >
+          <X size={22} />
+        </button>
+      </header>
+
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="h-[32vh] min-h-[160px] flex-shrink-0 bg-gray-100 relative">
+          {apiKey ? (
+            <div ref={mapRef} className="absolute inset-0 w-full h-full" />
           ) : (
             <div className="h-full flex items-center justify-center p-4">
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary-600 hover:underline"
+                className="text-primary-600 hover:underline text-sm"
               >
                 Ouvrir dans Google Maps
               </a>
@@ -96,106 +258,114 @@ export default function InstantRequestDetail({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-14 h-14 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-lg flex-shrink-0">
-              {getInitials(clientName)}
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">{clientName}</p>
-              <p className="text-sm text-gray-500">{timeAgo}</p>
-              {distanceKm != null && (
-                <p className="text-sm text-gray-600 font-medium">
-                  {formatTimeAndDistance(distanceKm)}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-6">
+          <div className="flex flex-col gap-3">
+            {(routeInfo || distanceKm != null) && (
+              <div className="p-2.5 rounded-lg bg-primary-50 border border-primary-100 flex-shrink-0">
+                <p className="text-xs text-primary-600 font-medium">Distance jusqu&apos;au client</p>
+                <p className="text-base font-bold text-primary-800">
+                  {routeInfo
+                    ? `${routeInfo.durationMin} min · ${routeInfo.distanceKm < 0.1 ? `${Math.round(routeInfo.distanceKm * 1000)} m` : `${routeInfo.distanceKm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`}`
+                    : formatTimeAndDistance(distanceKm!)}
                 </p>
-              )}
-            </div>
-            <div className="ml-auto text-right">
-              <p className="text-2xl font-bold text-gray-900">
-                {priceMad > 0 ? `${priceMad} MAD` : 'Non précisé'}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm flex-shrink-0">
+                {getInitials(clientName)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-gray-900 truncate">{clientName}</p>
+                <p className="text-xs text-gray-500">{timeAgo}</p>
+              </div>
+              <p className="text-xl font-bold text-gray-900 flex-shrink-0">
+                {priceMad > 0 ? `${priceMad} MAD` : '—'}
               </p>
             </div>
-          </div>
 
-          <div className="mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-1">Adresse</p>
-            <p className="text-gray-900 flex items-start gap-2">
-              <MapPin size={16} className="flex-shrink-0 mt-0.5" />
-              {address}
-            </p>
-          </div>
-
-          {description && (
-            <div className="mb-6">
-              <p className="text-sm font-medium text-gray-700 mb-1">Description</p>
-              <p className="text-gray-600">{description}</p>
+            <div className="flex items-start gap-2 flex-shrink-0 min-w-0">
+              <MapPin size={14} className="flex-shrink-0 mt-0.5 text-gray-400" />
+              <p className="text-sm text-gray-700 line-clamp-2">{address}</p>
             </div>
-          )}
 
-          {hasOffered ? (
-            <p className="text-green-600 font-medium mb-6">Offre envoyée</p>
-          ) : (
-            <>
-              {priceMad > 0 && (
-                <button
-                  type="button"
-                  onClick={onAccept}
-                  disabled={sendingOffer}
-                  className="w-full py-4 min-h-[48px] bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 mb-4"
-                >
-                  {sendingOffer ? 'Envoi...' : `Accepter pour ${priceMad} MAD`}
-                </button>
-              )}
-
-              <div className="mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Proposez votre prix</p>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {quickAmounts.map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setCounterAmount(String(amt))}
-                      className="py-2 px-4 min-h-[44px] rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50"
-                    >
-                      {amt} MAD
-                    </button>
-                  ))}
-                </div>
-                <form onSubmit={handleCounterSubmit} className="space-y-2">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={counterAmount}
-                    onChange={(e) => setCounterAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    placeholder="Ex: 350"
-                  />
-                  <textarea
-                    value={counterMessage}
-                    onChange={(e) => setCounterMessage(e.target.value)}
-                    rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    placeholder="Message (optionnel)"
-                  />
-                  <button
-                    type="submit"
-                    disabled={sendingOffer}
-                    className="w-full py-3 min-h-[44px] bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                  >
-                    Envoyer l&apos;offre
-                  </button>
-                </form>
+            {description ? (
+              <div className="flex-shrink-0">
+                <p className="text-xs font-medium text-gray-500 mb-0.5">Description</p>
+                <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
               </div>
-            </>
-          )}
+            ) : null}
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-3 min-h-[44px] bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200"
-          >
-            Fermer
-          </button>
+            {hasOffered ? (
+              <p className="text-green-600 font-medium text-sm py-2">Offre envoyée</p>
+            ) : (
+              <div className="flex flex-col gap-3 flex-shrink-0">
+                {priceMad > 0 && (
+                  <button
+                    type="button"
+                    onClick={onAccept}
+                    disabled={sendingOffer}
+                    className="w-full py-3.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 text-sm"
+                  >
+                    {sendingOffer ? 'Envoi...' : `Accepter pour ${priceMad} MAD`}
+                  </button>
+                )}
+
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-2">Proposez votre prix</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1 -mx-1">
+                    {quickAmounts.map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleQuickOffer(amt)}
+                        disabled={sendingOffer}
+                        className="flex-shrink-0 py-2 px-3.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {amt} MAD
+                      </button>
+                    ))}
+                  </div>
+                  {!showCustomOffer ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomOffer(true)}
+                      className="mt-2 text-sm text-primary-600 hover:underline"
+                    >
+                      Proposer un autre montant
+                    </button>
+                  ) : (
+                    <form onSubmit={handleCounterSubmit} className="mt-2 flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={counterAmount}
+                          onChange={(e) => setCounterAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+                          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          placeholder="Ex: 350"
+                        />
+                        <button
+                          type="submit"
+                          disabled={sendingOffer}
+                          className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          Envoyer
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={counterMessage}
+                        onChange={(e) => setCounterMessage(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        placeholder="Message (optionnel)"
+                      />
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

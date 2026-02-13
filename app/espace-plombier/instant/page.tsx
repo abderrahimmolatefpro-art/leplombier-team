@@ -60,6 +60,14 @@ export default function PlombierInstantPage() {
   const [selectedRequest, setSelectedRequest] = useState<InstantRequestDoc | null>(null);
 
   useEffect(() => {
+    if (!selectedRequest) return;
+    const stillAvailable = requests.some((r) => r.id === selectedRequest.id);
+    if (!stillAvailable) {
+      setSelectedRequest(null);
+    }
+  }, [requests, selectedRequest]);
+
+  useEffect(() => {
     if (!authLoading && !plombier) {
       router.replace('/espace-plombier/login');
     }

@@ -37,12 +37,17 @@ export async function GET(
     }
 
     const plombierId = data.plombierId || null;
-    let plombier = null;
+    let plombier: { id: string; name: string; phone?: string; certified?: boolean } | null = null;
     if (plombierId) {
       const userDoc = await db.collection('users').doc(plombierId).get();
       if (userDoc.exists) {
         const u = userDoc.data()!;
-        plombier = { id: userDoc.id, name: u.name, phone: u.phone };
+        plombier = {
+          id: userDoc.id,
+          name: (u.name as string) || '',
+          phone: u.phone as string | undefined,
+          certified: !!u.certified,
+        };
       }
     }
 
@@ -55,12 +60,15 @@ export async function GET(
       proposedAmount: number;
       message?: string;
       status: string;
+      certified?: boolean;
     }> = [];
     for (const o of offersSnap.docs) {
       const oData = o.data();
       if (oData.status !== 'en_attente') continue;
       const userDoc = await db.collection('users').doc(oData.plombierId).get();
-      const plombierName = userDoc.exists ? (userDoc.data()?.name as string) || '' : '';
+      const uData = userDoc.exists ? userDoc.data() : null;
+      const plombierName = (uData?.name as string) || '';
+      const certified = !!uData?.certified;
       offers.push({
         id: o.id,
         plombierId: oData.plombierId,
@@ -68,6 +76,7 @@ export async function GET(
         proposedAmount: oData.proposedAmount ?? 0,
         message: oData.message,
         status: oData.status,
+        certified,
       });
     }
 

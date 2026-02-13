@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useClientAuth } from '@/hooks/useClientAuth';
 
-const DEBUG = true;
+const DEBUG = typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
 
 export function RegisterFcmTokenClient() {
   const { client, token } = useClientAuth();
@@ -13,10 +13,7 @@ export function RegisterFcmTokenClient() {
     if (!client || !token || registered.current) return;
 
     const cap = typeof window !== 'undefined' ? window.Capacitor : undefined;
-    if (!cap?.isNativePlatform?.() || !cap.Plugins?.PushNotifications) {
-      if (DEBUG) console.log('[FCM Client] Pas Capacitor ou PushNotifications absent');
-      return;
-    }
+    if (!cap?.isNativePlatform?.() || !cap.Plugins?.PushNotifications) return;
 
     const PushNotifications = cap.Plugins.PushNotifications;
     let listenerRemove: (() => Promise<void>) | undefined;

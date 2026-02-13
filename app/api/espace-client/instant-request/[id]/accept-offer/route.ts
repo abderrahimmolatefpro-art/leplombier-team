@@ -116,11 +116,13 @@ export async function POST(
     });
 
     const userDoc = await db.collection('users').doc(plombierId).get();
-    const plombier = userDoc.exists
+    const uData = userDoc.exists ? userDoc.data() : null;
+    const plombier = userDoc.exists && uData
       ? {
           id: userDoc.id,
-          name: (userDoc.data()?.name as string) || '',
-          phone: (userDoc.data()?.phone as string) || undefined,
+          name: (uData.name as string) || '',
+          phone: (uData.phone as string) || undefined,
+          certified: !!uData.certified,
         }
       : null;
 

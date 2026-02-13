@@ -38,7 +38,7 @@ export default function InstantRequestCard({
       tabIndex={0}
       onClick={onPress}
       onKeyDown={(e) => e.key === 'Enter' && onPress()}
-      className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm active:bg-gray-50 flex items-center gap-3"
+      className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm active:bg-gray-50 flex items-stretch gap-3"
     >
       <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm">
         {getInitials(clientName)}
@@ -49,14 +49,9 @@ export default function InstantRequestCard({
             <p className="font-medium text-gray-900 truncate">{clientName}</p>
             <p className="text-sm text-gray-500">{timeAgo}</p>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 text-right">
-            {distanceKm != null && (
-              <span className="text-sm text-gray-600">{formatTimeAndDistance(distanceKm)}</span>
-            )}
-            <span className="font-bold text-lg text-gray-900">
-              {priceMad > 0 ? `${priceMad} MAD` : '—'}
-            </span>
-          </div>
+          {distanceKm != null && (
+            <span className="text-sm text-gray-600 flex-shrink-0">{formatTimeAndDistance(distanceKm)}</span>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-1">
           <MapPin size={14} className="flex-shrink-0 text-gray-400" />
@@ -66,19 +61,27 @@ export default function InstantRequestCard({
           <p className="text-sm text-green-600 font-medium mt-2">Offre envoyée</p>
         )}
       </div>
-      <div className="flex flex-col items-center gap-1 flex-shrink-0">
-        {itineraryUrl && (
-          <a
-            href={itineraryUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-xs text-primary-600 hover:underline"
-          >
-            Itinéraire
-          </a>
-        )}
-        <MoreVertical size={16} className="text-gray-400" />
+      <div className="flex flex-col items-end justify-between flex-shrink-0 gap-2">
+        <div className="bg-primary-50 border border-primary-200/60 rounded-lg px-3 py-2 text-center min-w-[72px]">
+          <p className="text-xl font-bold text-primary-700 leading-tight">
+            {priceMad > 0 ? priceMad : '—'}
+          </p>
+          <p className="text-xs font-medium text-primary-600">{priceMad > 0 ? 'MAD' : ''}</p>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          {itineraryUrl && (
+            <a
+              href={itineraryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs text-primary-600 hover:underline font-medium"
+            >
+              Itinéraire
+            </a>
+          )}
+          <MoreVertical size={16} className="text-gray-400" />
+        </div>
       </div>
     </div>
   );

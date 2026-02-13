@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Edit,
   Plus,
-  Trash2
+  Trash2,
+  BadgeCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -739,7 +740,15 @@ export default function PlombiersPage() {
                               <Users className="text-primary-600" size={16} />
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{stat.plombier.name}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-gray-900">{stat.plombier.name}</p>
+                                {stat.plombier.certified && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700" title="Certifié leplombier.ma">
+                                    <BadgeCheck className="w-3 h-3" />
+                                    Certifié
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-gray-500">{stat.plombier.email}</p>
                             </div>
                           </div>

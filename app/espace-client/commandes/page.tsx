@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useClientAuth } from '@/hooks/useClientAuth';
-import { FolderKanban } from 'lucide-react';
+import { FolderKanban, Zap } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
 
@@ -14,6 +15,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const getTypeLabel = (order: { type?: string; projectType?: string }) => {
+  if (order.type === 'intervention_instant') return 'Intervention instantanée';
   if (order.type === 'depannage') return 'Dépannage';
   return TYPE_LABELS[order.projectType || ''] || order.projectType || 'Intervention';
 };
@@ -110,42 +112,66 @@ export default function ClientCommandesPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredOrders.map((order) => (
-              <div
-                key={order.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div>
-                    <h2 className="font-semibold text-gray-900">{order.title}</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      {getTypeLabel(order)} • {formatDate(order.startDate || order.createdAt)}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                      order.status === 'termine'
-                        ? 'bg-green-100 text-green-700'
-                        : order.status === 'en_cours'
-                        ? 'bg-blue-100 text-blue-700'
-                        : order.status === 'en_attente'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {STATUS_LABELS[order.status] || order.status}
-                  </span>
-                </div>
-                {order.description && (
-                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">{order.description}</p>
-                )}
-                {order.amount && order.amount > 0 && (
-                  <p className="text-sm font-medium text-gray-900 mt-2">
-                    {order.amount?.toLocaleString('fr-FR')} MAD
-                  </p>
-                )}
-              </div>
-            ))}
+                {filteredOrders.map((order) => {
+                  const isInstant = order.type === 'intervention_instant';
+                  const canOpenInstant =
+                    isInstant &&
+                    (order.status === 'en_attente' || order.status === 'en_cours') &&
+                    order.instantRequestId;
+                  const CardWrapper = canOpenInstant ? Link : 'div';
+                  const cardProps = canOpenInstant
+                    ? { href: `/espace-client/commander?requestId=${order.instantRequestId}` }
+                    : {};
+                  return (
+                    <CardWrapper
+                      key={order.id}
+                      {...cardProps}
+                      className={`block bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 ${
+                        canOpenInstant ? 'hover:border-primary-200 transition-colors' : ''
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          {isInstant && (
+                            <Zap className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                          )}
+                          <div className="min-w-0">
+                            <h2 className="font-semibold text-gray-900 truncate">{order.title}</h2>
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              {getTypeLabel(order)} • {formatDate(order.startDate || order.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`inline-flex px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${
+                            order.status === 'termine'
+                              ? 'bg-green-100 text-green-700'
+                              : order.status === 'en_cours'
+                              ? 'bg-blue-100 text-blue-700'
+                              : order.status === 'en_attente'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {STATUS_LABELS[order.status] || order.status}
+                        </span>
+                      </div>
+                      {order.description && (
+                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{order.description}</p>
+                      )}
+                      {order.amount && order.amount > 0 && (
+                        <p className="text-sm font-medium text-gray-900 mt-2">
+                          {order.amount?.toLocaleString('fr-FR')} MAD
+                        </p>
+                      )}
+                      {canOpenInstant && (
+                        <p className="text-sm text-primary-600 mt-2 font-medium">
+                          Voir le détail →
+                        </p>
+                      )}
+                    </CardWrapper>
+                  );
+                })}
               </div>
             )}
           </>

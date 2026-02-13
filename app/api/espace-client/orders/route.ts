@@ -64,7 +64,34 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const orders = [...projects, ...depannages].sort((a, b) => {
+    // Charger les demandes instantanées (interventions immédiates)
+    const instantSnap = await db
+      .collection('instantRequests')
+      .where('clientId', '==', payload.clientId)
+      .get();
+
+    const instantRequests = instantSnap.docs.map((d) => {
+      const data = d.data();
+      const status = (data.status as string) || 'en_attente';
+      const displayStatus =
+        status === 'accepte' ? 'en_cours' : status === 'expire' ? 'termine' : status;
+      return {
+        id: d.id,
+        type: 'intervention_instant' as const,
+        title: data.address || 'Intervention instantanée',
+        description: data.description || '',
+        status: displayStatus,
+        amount: data.clientProposedAmount ?? 0,
+        projectType: null,
+        startDate: data.createdAt?.toDate?.()?.toISOString?.() || null,
+        endDate: data.acceptedAt?.toDate?.()?.toISOString?.() || null,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || null,
+        instantRequestId: d.id,
+      };
+    });
+
+    const orders = [...projects, ...depannages, ...instantRequests].sort((a, b) => {
       const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return bDate - aDate;

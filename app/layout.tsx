@@ -8,11 +8,6 @@ export const metadata: Metadata = {
   title: 'CRM Plomberie',
   description: 'Application de gestion de plomberie',
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'CRM Plomberie',
-  },
 };
 
 export const viewport: Viewport = {
@@ -30,6 +25,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
+      <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body className={inter.className}>{children}</body>
     </html>
   );

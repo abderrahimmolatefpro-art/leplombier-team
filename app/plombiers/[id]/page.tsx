@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User } from '@/types';
-import { ArrowLeft, Save, Users } from 'lucide-react';
+import { ArrowLeft, Save, Users, BadgeCheck } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PlombierDetailPage() {
@@ -23,6 +23,7 @@ export default function PlombierDetailPage() {
     name: '',
     email: '',
     phone: '',
+    certified: false,
   });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export default function PlombierDetailPage() {
         name: plombierData.name || '',
         email: plombierData.email || '',
         phone: plombierData.phone || '',
+        certified: !!plombierData.certified,
       });
     } catch (error) {
       console.error('Error loading plombier:', error);
@@ -81,6 +83,7 @@ export default function PlombierDetailPage() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone || null,
+        certified: formData.certified,
         updatedAt: Timestamp.now(),
       });
 
@@ -189,6 +192,23 @@ export default function PlombierDetailPage() {
                 placeholder="+212 6XX XXX XXX"
               />
             </div>
+
+            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <input
+                type="checkbox"
+                id="certified"
+                checked={formData.certified}
+                onChange={(e) => setFormData({ ...formData, certified: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor="certified" className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                <BadgeCheck className="w-4 h-4 text-primary-600" />
+                Plombier certifié leplombier.ma
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 -mt-2">
+              Le badge « certifié » est affiché au client lors du choix des offres.
+            </p>
 
             <div className="flex items-center justify-between pt-4 border-t border-gray-200">
               <div className="text-sm text-gray-600">

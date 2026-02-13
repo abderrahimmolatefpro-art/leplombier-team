@@ -8,6 +8,8 @@ export interface User {
   phone?: string;
   /** Toggle manuel : plombier disponible pour les interventions instantanées */
   availableForInstant?: boolean;
+  /** Plombier certifié leplombier.ma (badge affiché au client) – défini par l'admin */
+  certified?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
