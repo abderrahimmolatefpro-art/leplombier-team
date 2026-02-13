@@ -19,6 +19,13 @@ export async function sendPushToPlombier(
     const message: Parameters<typeof messaging.send>[0] = {
       token,
       notification: { title, body },
+      android: {
+        priority: 'high' as const,
+        notification: {
+          channelId: 'high_importance_channel',
+          priority: 'high' as const,
+        },
+      },
     };
     if (data) message.data = data;
     await messaging.send(message);
