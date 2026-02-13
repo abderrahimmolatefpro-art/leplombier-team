@@ -56,23 +56,39 @@ export async function POST(request: NextRequest) {
     const normalizedInput = normalizePhoneNumber(phone);
 
     const snapshot = await db.collection('clients').get();
-    const clientDoc = snapshot.docs.find((d) => {
+    let clientDoc = snapshot.docs.find((d) => {
       const p = (d.data().phone || '').toString().trim();
       return normalizePhoneNumber(p) === normalizedInput;
     });
 
-    if (!clientDoc) {
-      return NextResponse.json({ success: false, error: 'Numéro non reconnu' }, { status: 404 });
-    }
-
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const accessCodeHash = hashCode(code);
 
-    await db.collection('clients').doc(clientDoc.id).update({
-      accessCodeHash,
-      accessCodeSentAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    if (!clientDoc) {
+      const lastDigits = normalizedInput.slice(-4);
+      await db.collection('clients').add({
+        name: `Client ${lastDigits}`,
+        phone: normalizedInput,
+        email: '',
+        address: '',
+        city: '',
+        postalCode: '',
+        clientType: 'particulier',
+        companyName: '',
+        ice: '',
+        source: 'espace-client',
+        accessCodeHash,
+        accessCodeSentAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    } else {
+      await db.collection('clients').doc(clientDoc.id).update({
+        accessCodeHash,
+        accessCodeSentAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
 
     const message = `Votre code d'accès Le Plombier: ${code}. Utilisez ce code pour vous connecter.`;
     const sent = await sendSmsViaInfobip(phone, message);
