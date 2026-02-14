@@ -912,6 +912,7 @@ export default function DashboardPage() {
       });
     });
     return items
+      .filter((item) => item.status !== 'expire' && item.status !== 'annule')
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .slice(0, 10);
   }, [filteredData, clients]);
