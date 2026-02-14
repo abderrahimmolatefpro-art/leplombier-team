@@ -229,7 +229,7 @@ export default function DocumentView({ document, client, project, companyInfo }:
         {/* Totaux */}
         <div className="flex justify-end mb-6 mt-4">
           <div className="w-80">
-            {document.type === 'devis' && document.includeTax === false && document.manualTotal == null ? (
+            {((document.type === 'devis' || document.type === 'bon_commande') && document.includeTax === false && document.manualTotal == null) ? (
               <>
                 <div className="flex justify-between py-3 border-t-2 border-gray-400 mt-2">
                   <span className="text-lg font-bold text-gray-900">Total TTC :</span>

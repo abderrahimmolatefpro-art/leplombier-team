@@ -415,28 +415,32 @@ export default function DashboardPage() {
     const plombierRevenue = totalPlombierShare;
     const companyRevenue = totalCompanyShare;
     
-    // Calculer les revenus SANS facture (exclure les projets et dépannages qui ont une facture)
-    // Identifier les projets et dépannages qui ont une facture associée
-    const projectsWithInvoice = new Set(
+    // Calculer les revenus SANS facture : utiliser la case "Avec facture" / "Sans facture"
+    // avec repli sur le lien facture document si la case n'est pas définie
+    const projectsWithInvoiceDoc = new Set(
       documents
         .filter(d => d.type === 'facture' && d.projectId)
         .map(d => d.projectId)
         .filter((id): id is string => !!id)
     );
-    const revenuesWithInvoice = new Set(
+    const revenuesWithInvoiceDoc = new Set(
       documents
         .filter(d => d.type === 'facture' && d.manualRevenueId)
         .map(d => d.manualRevenueId)
         .filter((id): id is string => !!id)
     );
+
+    const isProjectSansFacture = (project: Project) =>
+      project.hasInvoice === false || (project.hasInvoice !== true && !projectsWithInvoiceDoc.has(project.id));
+    const isRevenueSansFacture = (revenue: ManualRevenue) =>
+      revenue.isBlackRevenue === true || (revenue.isBlackRevenue !== false && !revenuesWithInvoiceDoc.has(revenue.id));
     
-    // Revenus des projets SANS facture
     let revenueWithoutInvoice = 0;
     let plombierRevenueWithoutInvoice = 0;
     let companyRevenueWithoutInvoice = 0;
     
     filteredProjects.forEach(project => {
-      if (project.amount && project.amount > 0 && !projectsWithInvoice.has(project.id)) {
+      if (project.amount && project.amount > 0 && isProjectSansFacture(project)) {
         revenueWithoutInvoice += project.amount;
         const plombierPercent = (project.plombierPercentage || 60) / 100;
         const companyPercent = 1 - plombierPercent;
@@ -445,9 +449,8 @@ export default function DashboardPage() {
       }
     });
     
-    // Revenus des dépannages SANS facture
     filteredManualRevenues.forEach(revenue => {
-      if (existingClientIds.has(revenue.clientId) && !revenuesWithInvoice.has(revenue.id)) {
+      if (existingClientIds.has(revenue.clientId) && isRevenueSansFacture(revenue)) {
         revenueWithoutInvoice += revenue.amount;
         const plombierPercent = (revenue.plombierPercentage || 60) / 100;
         const companyPercent = 1 - plombierPercent;

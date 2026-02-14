@@ -954,8 +954,8 @@ export default function PlombiersPage() {
                                               </td>
                                               <td className="py-2 px-3 text-center">
                                                 {depannage.isBlackRevenue && (
-                                                  <span className="px-2 py-1 rounded text-xs font-medium bg-gray-800 text-white">
-                                                    En noir
+                                                  <span className="px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-700">
+                                                    Sans facture
                                                   </span>
                                                 )}
                                               </td>

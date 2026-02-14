@@ -646,7 +646,7 @@ export default function ProjetsPage() {
                       className="rounded"
                     />
                     <label htmlFor="hasInvoice" className="text-sm text-gray-700">
-                      A une facture associée
+                      Avec facture
                     </label>
                   </div>
 

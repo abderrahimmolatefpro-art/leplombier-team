@@ -115,7 +115,7 @@ export interface Project {
   progressStatus: ProgressStatus;
   address: string;
   amount?: number; // Montant du projet en DH (peut être saisi manuellement)
-  hasInvoice?: boolean; // Si le projet a une facture associée
+  hasInvoice?: boolean; // Avec facture (pour calcul revenus avec/sans facture au dashboard)
   paidByPlombierIds?: string[]; // Liste des IDs des plombiers qui ont payé leur part à la société pour ce projet
   plombierPercentage?: number; // Pourcentage pour le plombier (par défaut 60, le reste va à la société)
   companyAmount?: number; // Montant en MAD que la société reçoit (saisi manuellement)
@@ -132,7 +132,7 @@ export interface ManualRevenue {
   date: Date;
   description: string;
   plombierId?: string; // Plombier associé
-  isBlackRevenue?: boolean; // Revenu "en noir" (sans facture)
+  isBlackRevenue?: boolean; // Sans facture (pour calcul revenus avec/sans facture au dashboard)
   plombierHasPaid?: boolean; // Si le plombier a payé sa part à la société pour ce dépannage
   plombierPercentage?: number; // Pourcentage pour le plombier (par défaut 60, le reste va à la société)
   notes?: string;
@@ -180,7 +180,7 @@ export interface Document {
   subtotal: number;
   tax: number;
   total: number;
-  includeTax?: boolean; // Optionnel : inclure la TVA (uniquement pour les devis, par défaut true)
+  includeTax?: boolean; // Optionnel : inclure la TVA (devis et bons de commande, par défaut true)
   status: 'brouillon' | 'envoye' | 'paye' | 'annule';
   notes?: string;
   /** Descriptions affichées en bas du document sans prix (une ligne par entrée) */

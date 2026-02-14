@@ -194,9 +194,9 @@ function DocumentsContent() {
       };
       const newItems = [...formData.items, item];
       const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
-      const tax = formData.type === 'facture' || formData.type === 'bon_commande'
+      const tax = formData.type === 'facture'
         ? subtotal * 0.2
-        : (formData.type === 'devis' && formData.includeTax) ? subtotal * 0.2 : 0;
+        : ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax) ? subtotal * 0.2 : 0;
       const total = formData.manualTotal ?? (subtotal + tax);
       setFormData({ ...formData, items: newItems, subtotal, tax, total });
       setCurrentItem({ ...currentItem, description: '', descriptionOnly: false });
@@ -276,9 +276,9 @@ function DocumentsContent() {
 
     const newItems = [...formData.items, item];
     const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
-    const tax = formData.type === 'facture' || formData.type === 'bon_commande' 
+    const tax = formData.type === 'facture' 
       ? subtotal * 0.2 
-      : (formData.type === 'devis' && formData.includeTax) 
+      : ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax) 
         ? subtotal * 0.2 
         : 0;
     const total = formData.manualTotal ?? (subtotal + tax);
@@ -306,9 +306,9 @@ function DocumentsContent() {
   const removeItem = (index: number) => {
     const newItems = formData.items.filter((_, i) => i !== index);
     const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
-    const tax = formData.type === 'facture' || formData.type === 'bon_commande' 
+    const tax = formData.type === 'facture' 
       ? subtotal * 0.2 
-      : (formData.type === 'devis' && formData.includeTax) 
+      : ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax) 
         ? subtotal * 0.2 
         : 0;
     const total = formData.manualTotal ?? (subtotal + tax);
@@ -370,7 +370,7 @@ function DocumentsContent() {
         createdAt: editingDocument ? editingDocument.createdAt : Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
-      if (formData.type === 'devis') documentData.includeTax = formData.includeTax ?? true;
+      if (formData.type === 'devis' || formData.type === 'bon_commande') documentData.includeTax = formData.includeTax ?? true;
       if (formData.footerDescriptions?.length) documentData.footerDescriptions = formData.footerDescriptions;
       if (formData.manualTotal != null) documentData.manualTotal = formData.manualTotal;
 
@@ -396,8 +396,8 @@ function DocumentsContent() {
     setEditingDocument(document);
     const subtotal = document.items.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
     let tax = document.tax;
-    // Si c'est une facture ou bon de commande sans TVA, la recalculer à 20%
-    if ((document.type === 'facture' || document.type === 'bon_commande') && tax === 0 && subtotal > 0) {
+    // Si c'est une facture sans TVA, la recalculer à 20%
+    if (document.type === 'facture' && tax === 0 && subtotal > 0) {
       tax = subtotal * 0.2;
     }
     const total = subtotal + tax;
@@ -689,10 +689,10 @@ function DocumentsContent() {
                         onChange={(e) => {
                           const newType = e.target.value as Document['type'];
                           const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
-                          // Recalculer la TVA selon le nouveau type : toujours 20% pour factures et bons de commande
-                          const tax = newType === 'facture' || newType === 'bon_commande' 
+                          // Recalculer la TVA : facture toujours 20%, devis et bon de commande selon includeTax
+                          const tax = newType === 'facture' 
                             ? subtotal * 0.2 
-                            : (newType === 'devis' && formData.includeTax) 
+                            : ((newType === 'devis' || newType === 'bon_commande') && formData.includeTax) 
                               ? subtotal * 0.2 
                               : 0;
                           const total = subtotal + tax;
@@ -701,8 +701,7 @@ function DocumentsContent() {
                             type: newType,
                             tax,
                             total,
-                            // Réinitialiser includeTax si on passe à un devis
-                            includeTax: newType === 'devis' ? formData.includeTax : true
+                            includeTax: (newType === 'devis' || newType === 'bon_commande') ? formData.includeTax : true
                           });
                         }}
                         className="input"
@@ -865,8 +864,8 @@ function DocumentsContent() {
                     </div>
                   )}
 
-                  {/* Option TVA - Uniquement pour les devis */}
-                  {formData.type === 'devis' && (
+                  {/* Option TVA - Pour devis et bons de commande */}
+                  {(formData.type === 'devis' || formData.type === 'bon_commande') && (
                     <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <input
                         type="checkbox"
@@ -1245,8 +1244,8 @@ function DocumentsContent() {
                                 </td>
                                 <td></td>
                               </tr>
-                              {/* Afficher la TVA uniquement si elle est incluse (pour les devis) ou toujours pour factures/bons de commande */}
-                              {(formData.type !== 'devis' || formData.includeTax) && (
+                              {/* Afficher la TVA si incluse (devis/bon de commande) ou toujours pour factures */}
+                              {(formData.type === 'facture' || ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax)) && (
                                 <tr>
                                   <td colSpan={3} className="py-2 px-2 text-right font-medium text-gray-700">
                                     TVA (20%)

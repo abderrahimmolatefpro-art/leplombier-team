@@ -43,6 +43,7 @@ export default function ClientDetailPage() {
   const [allPlombiers, setAllPlombiers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRevenueModal, setShowRevenueModal] = useState(false);
+  const [editingRevenue, setEditingRevenue] = useState<ManualRevenue | null>(null);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showSmsModal, setShowSmsModal] = useState(false);
@@ -605,7 +606,7 @@ export default function ClientDetailPage() {
                           <p className="text-xs font-medium text-primary-600 mt-1">
                             {formatCurrency(project.amount)}
                             {!project.hasInvoice && (
-                              <span className="ml-2 px-1.5 py-0.5 bg-gray-800 text-white text-xs rounded">
+                              <span className="ml-2 px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">
                                 Sans facture
                               </span>
                             )}
@@ -703,7 +704,7 @@ export default function ClientDetailPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Dépannages</h2>
                 <button
-                  onClick={() => setShowRevenueModal(true)}
+                  onClick={() => { setEditingRevenue(null); setShowRevenueModal(true); }}
                   className="btn btn-primary flex items-center space-x-2"
                 >
                   <Plus size={20} />
@@ -730,8 +731,8 @@ export default function ClientDetailPage() {
                               {formatCurrency(revenue.amount)}
                             </p>
                             {revenue.isBlackRevenue && (
-                              <span className="px-2 py-0.5 bg-gray-800 text-white text-xs rounded">
-                                En noir
+                              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">
+                                Sans facture
                               </span>
                             )}
                             {plombier && (
@@ -780,6 +781,13 @@ export default function ClientDetailPage() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <button
+                            onClick={() => { setEditingRevenue(revenue); setShowRevenueModal(true); }}
+                            className="p-1 text-gray-600 hover:text-primary-600"
+                            title="Modifier"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
                             onClick={async () => {
                               if (confirm('Supprimer ce dépannage ?')) {
                                 try {
@@ -792,6 +800,7 @@ export default function ClientDetailPage() {
                               }
                             }}
                             className="p-1 text-gray-600 hover:text-red-600"
+                            title="Supprimer"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -868,7 +877,8 @@ export default function ClientDetailPage() {
           clientId={clientId}
           projects={projects}
           plombiers={allPlombiers}
-          onClose={() => setShowRevenueModal(false)}
+          editingRevenue={editingRevenue}
+          onClose={() => { setShowRevenueModal(false); setEditingRevenue(null); }}
           onSave={loadClientData}
         />
       )}
@@ -1260,47 +1270,86 @@ export default function ClientDetailPage() {
   );
 }
 
-// Composant modal pour ajouter un dépannage
+// Composant modal pour ajouter ou modifier un dépannage
 function RevenueModal({
   clientId,
   projects,
   plombiers,
+  editingRevenue,
   onClose,
   onSave,
 }: {
   clientId: string;
   projects: Project[];
   plombiers: User[];
+  editingRevenue: ManualRevenue | null;
   onClose: () => void;
   onSave: () => void;
 }) {
+  const isEdit = !!editingRevenue;
   const [formData, setFormData] = useState({
     amount: '',
     date: new Date().toISOString().split('T')[0],
     description: '',
     projectId: '',
     plombierId: '',
-    isBlackRevenue: false,
+    avecFacture: true,
     plombierPercentage: 60,
     notes: '',
   });
 
+  useEffect(() => {
+    if (editingRevenue) {
+      const d = editingRevenue.date;
+      const dateObj = d instanceof Date ? d : (d as { toDate?: () => Date })?.toDate?.() ?? new Date();
+      const dateStr = dateObj.toISOString().split('T')[0];
+      setFormData({
+        amount: String(editingRevenue.amount),
+        date: dateStr,
+        description: editingRevenue.description || '',
+        projectId: editingRevenue.projectId || '',
+        plombierId: editingRevenue.plombierId || '',
+        avecFacture: !editingRevenue.isBlackRevenue,
+        plombierPercentage: editingRevenue.plombierPercentage || 60,
+        notes: editingRevenue.notes || '',
+      });
+    } else {
+      setFormData({
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        projectId: '',
+        plombierId: '',
+        avecFacture: true,
+        plombierPercentage: 60,
+        notes: '',
+      });
+    }
+  }, [editingRevenue]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, 'manualRevenues'), {
-        clientId,
+      const revenueData = {
         amount: parseFloat(formData.amount),
         date: Timestamp.fromDate(new Date(formData.date)),
         description: formData.description,
         projectId: formData.projectId || null,
         plombierId: formData.plombierId || null,
-        isBlackRevenue: formData.isBlackRevenue,
+        isBlackRevenue: !formData.avecFacture,
         plombierPercentage: formData.plombierPercentage || 60,
         notes: formData.notes || '',
-        createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-      });
+      };
+      if (editingRevenue) {
+        await updateDoc(doc(db, 'manualRevenues', editingRevenue.id), revenueData);
+      } else {
+        await addDoc(collection(db, 'manualRevenues'), {
+          ...revenueData,
+          clientId,
+          createdAt: Timestamp.now(),
+        });
+      }
       onSave();
       onClose();
     } catch (error: any) {
@@ -1317,7 +1366,7 @@ function RevenueModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Ajouter un dépannage</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">{isEdit ? 'Modifier le dépannage' : 'Ajouter un dépannage'}</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -1401,17 +1450,17 @@ function RevenueModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
-                  id="isBlackRevenue"
-                  checked={formData.isBlackRevenue}
-                  onChange={(e) => setFormData({ ...formData, isBlackRevenue: e.target.checked })}
+                  id="avecFacture"
+                  checked={formData.avecFacture}
+                  onChange={(e) => setFormData({ ...formData, avecFacture: e.target.checked })}
                   className="rounded"
                 />
-                <label htmlFor="isBlackRevenue" className="text-sm text-gray-700">
-                  Revenu &quot;en noir&quot; (sans facture)
+                <label htmlFor="avecFacture" className="text-sm text-gray-700">
+                  Avec facture
                 </label>
               </div>
               <div>
