@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -20,11 +18,11 @@ export default function Home() {
         return;
       }
 
-      // Vérifier s'il y a un admin
+      // Vérifier s'il y a un admin (via API pour éviter les règles Firestore)
       try {
-        const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-        const snapshot = await getDocs(adminQuery);
-        const hasAdmin = !snapshot.empty;
+        const res = await fetch('/api/check-admin');
+        const data = await res.json();
+        const hasAdmin = data.hasAdmin === true;
 
         if (!hasAdmin) {
           router.push('/setup');

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getDocs, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
@@ -20,9 +20,9 @@ export default function SetupPage() {
 
   const checkAdminExists = async () => {
     try {
-      const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-      const snapshot = await getDocs(adminQuery);
-      return !snapshot.empty;
+      const res = await fetch('/api/check-admin');
+      const data = await res.json();
+      return data.hasAdmin === true;
     } catch (error) {
       console.error('Error checking admin:', error);
       return false;

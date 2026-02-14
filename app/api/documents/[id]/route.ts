@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getAdminDb } from '@/lib/firebase-admin';
+import { getAdminApp, getAdminDb } from '@/lib/firebase-admin';
 
 export async function DELETE(
   request: NextRequest,
@@ -14,9 +13,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    const app = getApps()[0];
-    if (!app) {
-      return NextResponse.json({ error: 'Configuration serveur' }, { status: 500 });
+    let app;
+    try {
+      app = getAdminApp();
+    } catch (initError) {
+      console.error('[api/documents] Firebase Admin init failed:', initError);
+      return NextResponse.json(
+        { error: 'Configuration Firebase manquante. Vérifiez les variables d\'environnement.' },
+        { status: 500 }
+      );
     }
 
     let decodedToken: { uid: string };
