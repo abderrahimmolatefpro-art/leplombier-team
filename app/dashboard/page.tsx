@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project, Client, Document, ManualRevenue, User } from '@/types';
+import { Project, Client, Document, ManualRevenue, User, InstantRequest } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { 
   FolderKanban, 
@@ -23,7 +23,8 @@ import {
   PieChart,
   ChevronDown,
   X,
-  Edit
+  Edit,
+  ShoppingCart
 } from 'lucide-react';
 import {
   LineChart,
@@ -60,6 +61,7 @@ export default function DashboardPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [manualRevenues, setManualRevenues] = useState<ManualRevenue[]>([]);
+  const [instantRequests, setInstantRequests] = useState<InstantRequest[]>([]);
   const [plombiers, setPlombiers] = useState<User[]>([]);
   
   // Filtres de date
@@ -160,6 +162,19 @@ export default function DashboardPage() {
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as ManualRevenue[];
       setManualRevenues(revenuesData);
+
+      // Charger les commandes instantanées
+      const instantQuery = query(collection(db, 'instantRequests'));
+      const instantSnapshot = await getDocs(instantQuery);
+      const instantData = instantSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        acceptedAt: doc.data().acceptedAt?.toDate(),
+        expiresAt: doc.data().expiresAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate(),
+      })) as InstantRequest[];
+      setInstantRequests(instantData);
 
       // Charger les plombiers
       const plombiersQuery = query(collection(db, 'users'), where('role', '==', 'plombier'));
@@ -297,9 +312,15 @@ export default function DashboardPage() {
       const revenueDate = r.date;
       return revenueDate >= start && revenueDate <= end && existingClientIds.has(r.clientId);
     });
+
+    // Commandes instantanées dans la période ET client existant
+    const filteredInstantRequests = instantRequests.filter(r => {
+      const reqDate = r.createdAt;
+      return reqDate >= start && reqDate <= end && existingClientIds.has(r.clientId);
+    });
     
-    return { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier: clients };
-  }, [paidInvoices, projects, manualRevenues, clients, getDateRange]);
+    return { filteredInvoices, filteredProjects, filteredManualRevenues, filteredInstantRequests, filteredClientsByPlombier: clients };
+  }, [paidInvoices, projects, manualRevenues, instantRequests, clients, getDateRange]);
 
   // Calcul des KPI avec filtres de date
   const kpis = useMemo(() => {
@@ -850,6 +871,51 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [filteredData]);
 
+  // Commandes récentes (projets + dépannages + interventions instantanées)
+  const recentCommandes = useMemo(() => {
+    const { filteredProjects, filteredManualRevenues, filteredInstantRequests } = filteredData;
+    const items: { id: string; clientId: string; type: string; name: string; clientName: string; status: string; amount: number; date: Date }[] = [];
+    filteredProjects.forEach((p) => {
+      items.push({
+        id: p.id,
+        clientId: p.clientId,
+        type: 'Projet',
+        name: p.title || 'Sans titre',
+        clientName: clients.find((c) => c.id === p.clientId)?.name || 'Inconnu',
+        status: p.status,
+        amount: p.amount || 0,
+        date: p.createdAt || p.startDate,
+      });
+    });
+    filteredManualRevenues.forEach((r) => {
+      items.push({
+        id: r.id,
+        clientId: r.clientId,
+        type: 'Dépannage',
+        name: r.description || 'Dépannage',
+        clientName: clients.find((c) => c.id === r.clientId)?.name || 'Inconnu',
+        status: 'termine',
+        amount: r.amount,
+        date: r.date,
+      });
+    });
+    filteredInstantRequests.forEach((r) => {
+      items.push({
+        id: r.id,
+        clientId: r.clientId,
+        type: 'Intervention instantanée',
+        name: r.address || r.description || 'Intervention',
+        clientName: clients.find((c) => c.id === r.clientId)?.name || 'Inconnu',
+        status: r.status,
+        amount: r.clientProposedAmount || 0,
+        date: r.createdAt,
+      });
+    });
+    return items
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 10);
+  }, [filteredData, clients]);
+
   // Format de la période
   const formatPeriodLabel = () => {
     const { start, end } = getDateRange;
@@ -1292,6 +1358,79 @@ export default function DashboardPage() {
                 <Bar dataKey="revenue" fill="#3B82F6" name="Revenus (MAD)" />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Commandes récentes */}
+          <div className="card">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
+              <ShoppingCart className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-sm sm:text-base">Commandes récentes</span>
+            </h2>
+            <div className="overflow-x-auto -mx-2 sm:mx-0">
+              <table className="w-full min-w-[400px] text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left">
+                    <th className="py-2 px-2 font-medium text-gray-600">Client</th>
+                    <th className="py-2 px-2 font-medium text-gray-600">Nom</th>
+                    <th className="py-2 px-2 font-medium text-gray-600">Type</th>
+                    <th className="py-2 px-2 font-medium text-gray-600">Statut</th>
+                    <th className="py-2 px-2 font-medium text-gray-600 text-right">Montant</th>
+                    <th className="py-2 px-2 font-medium text-gray-600">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentCommandes.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-gray-500">
+                        Aucune commande pour le moment
+                      </td>
+                    </tr>
+                  ) : (
+                    recentCommandes.map((cmd) => (
+                      <tr key={`${cmd.type}-${cmd.id}`} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-2 px-2">
+                          <Link href={`/clients/${cmd.clientId}`} className="text-primary-600 hover:underline truncate block max-w-[100px] sm:max-w-[120px]">
+                            {cmd.clientName}
+                          </Link>
+                        </td>
+                        <td className="py-2 px-2 font-medium text-gray-900 truncate max-w-[120px] sm:max-w-[150px]" title={cmd.name}>
+                          {cmd.type === 'Projet' ? (
+                            <Link href={`/projets/${cmd.id}`} className="text-primary-600 hover:underline">
+                              {cmd.name}
+                            </Link>
+                          ) : cmd.type === 'Dépannage' ? (
+                            <Link href={`/clients/${cmd.clientId}`} className="text-primary-600 hover:underline">
+                              {cmd.name}
+                            </Link>
+                          ) : (
+                            cmd.name
+                          )}
+                        </td>
+                        <td className="py-2 px-2 text-gray-600">{cmd.type}</td>
+                        <td className="py-2 px-2">
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            cmd.status === 'termine' ? 'bg-green-100 text-green-700' :
+                            cmd.status === 'accepte' ? 'bg-blue-100 text-blue-700' :
+                            cmd.status === 'en_attente' ? 'bg-yellow-100 text-yellow-700' :
+                            cmd.status === 'expire' || cmd.status === 'annule' ? 'bg-gray-100 text-gray-600' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {cmd.status === 'termine' && 'Terminé'}
+                            {cmd.status === 'accepte' && 'Accepté'}
+                            {cmd.status === 'en_attente' && 'En attente'}
+                            {cmd.status === 'expire' && 'Expiré'}
+                            {cmd.status === 'annule' && 'Annulé'}
+                            {cmd.status === 'en_cours' && 'En cours'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-right font-medium">{formatCurrency(cmd.amount)}</td>
+                        <td className="py-2 px-2 text-gray-500">{formatDate(cmd.date)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Projets récents */}
