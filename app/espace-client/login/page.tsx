@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, Suspense, useEffect } from 'react';
+import { useState, Suspense, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useClientAuth } from '@/hooks/useClientAuth';
+
+const MIN_PHONE_DIGITS = 9;
 
 const ALLOWED_REDIRECTS = [
   '/espace-client/commander',
@@ -24,16 +26,40 @@ function isEmbedMode(searchParams: URLSearchParams | null): boolean {
   return searchParams?.get('embed') === '1' || searchParams?.get('embed') === 'true';
 }
 
+type CodeSentStatus = 'idle' | 'checking' | 'sent' | 'not_sent';
+
 function ClientLoginContent() {
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
+  const [codeSentStatus, setCodeSentStatus] = useState<CodeSentStatus>('idle');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { login } = useClientAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const embed = isEmbedMode(searchParams);
+
+  const checkCodeSent = useCallback(async (phoneToCheck: string) => {
+    const digits = phoneToCheck.replace(/\D/g, '');
+    if (digits.length < MIN_PHONE_DIGITS) {
+      setCodeSentStatus('idle');
+      return;
+    }
+    setCodeSentStatus('checking');
+    try {
+      const res = await fetch('/api/espace-client/check-code-sent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneToCheck }),
+      });
+      const data = await res.json();
+      setCodeSentStatus(data.codeSent ? 'sent' : 'not_sent');
+    } catch {
+      setCodeSentStatus('not_sent');
+    }
+  }, []);
 
   useEffect(() => {
     if (!embed) return;
@@ -47,6 +73,19 @@ function ClientLoginContent() {
     };
   }, [embed]);
 
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < MIN_PHONE_DIGITS) {
+      setCodeSentStatus('idle');
+      return;
+    }
+    debounceRef.current = setTimeout(() => checkCodeSent(phone), 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [phone, checkCodeSent]);
+
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -59,9 +98,14 @@ function ClientLoginContent() {
       });
       const data = await res.json();
       if (!data.success) {
-        setError(data.error || 'Erreur lors de l\'envoi du code');
+        if (data.codeAlreadySent) {
+          setCodeSentStatus('sent');
+        } else {
+          setError(data.error || 'Erreur lors de l\'envoi du code');
+        }
       } else {
         setError('');
+        setCodeSentStatus('sent');
       }
     } catch {
       setError('Erreur de connexion');
@@ -112,17 +156,17 @@ function ClientLoginContent() {
           className={
             embed
               ? 'bg-transparent'
-              : 'bg-white rounded-xl shadow-lg p-8'
+              : 'bg-white rounded-xl shadow-lg p-6'
           }
         >
-          <div className={embed ? 'text-center mb-4' : 'text-center mb-8'}>
+          <div className={embed ? 'text-center mb-4' : 'text-center mb-6'}>
             {!embed && (
               <div className="flex justify-center mb-4">
                 <Image
                   src="/logo.png"
                   alt="Le Plombier"
-                  width={180}
-                  height={60}
+                  width={160}
+                  height={53}
                   className="h-auto object-contain"
                   priority
                 />
@@ -133,36 +177,39 @@ function ClientLoginContent() {
                 <Image
                   src="/logo.png"
                   alt="Le Plombier"
-                  width={100}
-                  height={34}
+                  width={90}
+                  height={30}
                   className="h-8 w-auto object-contain opacity-90"
                   priority
                 />
               </div>
             )}
-            <h1 className={embed ? 'text-base font-semibold text-gray-800 mb-1' : 'text-xl font-bold text-gray-900'}>
-              {embed ? 'Connectez-vous pour commander' : 'Espace Client'}
+            <h1 className={embed ? 'text-base font-semibold text-gray-800' : 'text-lg font-bold text-gray-900'}>
+              {embed ? 'Connexion' : 'Espace Client'}
             </h1>
-            <p className="text-sm text-gray-600">
-              Nouveau ou déjà client ? Entrez votre numéro pour recevoir un code d&apos;accès par SMS.
+            <p className="text-xs text-gray-500 mt-1">
+              Nouveau ? Votre compte sera créé automatiquement.
             </p>
           </div>
 
-          <form onSubmit={handleVerify} className={embed ? 'space-y-3' : 'space-y-6'}>
+          <form onSubmit={handleVerify} className={embed ? 'space-y-3' : 'space-y-5'}>
             {error && (
-              <div className="bg-red-50/90 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
                 {error}
               </div>
             )}
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Numéro de téléphone
+                Téléphone
               </label>
               <input
                 id="phone"
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setError('');
+                }}
                 required
                 className={
                   embed
@@ -174,7 +221,7 @@ function ClientLoginContent() {
             </div>
             <div>
               <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
-                Code reçu par SMS
+                Code SMS
               </label>
               <input
                 id="code"
@@ -191,17 +238,29 @@ function ClientLoginContent() {
                 }
                 placeholder="123456"
               />
-              <p className="text-xs text-gray-600 mt-1">
-                Pas encore de code ?{' '}
-                <button
-                  type="button"
-                  onClick={handleSendCode}
-                  disabled={sendingCode || !phone.trim()}
-                  className="text-primary-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {sendingCode ? 'Envoi en cours...' : 'Envoyer le code'}
-                </button>
-              </p>
+              <div className="mt-1 min-h-[1.25rem]">
+                {codeSentStatus === 'checking' && (
+                  <span className="text-xs text-gray-500">Vérification...</span>
+                )}
+                {codeSentStatus === 'not_sent' && (
+                  <button
+                    type="button"
+                    onClick={handleSendCode}
+                    disabled={sendingCode || !phone.trim()}
+                    className="text-xs text-primary-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingCode ? 'Envoi...' : 'Envoyer le code'}
+                  </button>
+                )}
+                {codeSentStatus === 'sent' && (
+                  <p className="text-xs text-gray-600">
+                    Consultez vos SMS pour retrouver le code envoyé.{' '}
+                    <a href="https://leplombier.ma/contact" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
+                      Code oublié ? Contactez-nous
+                    </a>
+                  </p>
+                )}
+              </div>
             </div>
             <button
               type="submit"
@@ -216,11 +275,6 @@ function ClientLoginContent() {
             </button>
           </form>
         </div>
-        <p className="text-center text-xs text-gray-600 mt-2">
-          {embed
-            ? 'En cliquant sur Envoyer le code, un compte sera créé automatiquement si vous êtes nouveau.'
-            : 'Nouveau ? Entrez votre numéro et cliquez sur Envoyer le code pour créer votre compte.'}
-        </p>
       </div>
     </div>
   );

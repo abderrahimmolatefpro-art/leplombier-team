@@ -48,7 +48,7 @@ function hashCode(code: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone } = body;
+    const { phone, forceResend } = body;
     if (!phone || typeof phone !== 'string') {
       return NextResponse.json({ success: false, error: 'Numéro de téléphone requis' }, { status: 400 });
     }
@@ -61,6 +61,17 @@ export async function POST(request: NextRequest) {
       const p = (d.data().phone || '').toString().trim();
       return normalizePhoneNumber(p) === normalizedInput;
     });
+
+    if (clientDoc && !forceResend) {
+      const data = clientDoc.data();
+      if (data.accessCodeSentAt) {
+        return NextResponse.json({
+          success: false,
+          codeAlreadySent: true,
+          error: 'Un code vous a déjà été envoyé. Consultez vos SMS pour le retrouver.',
+        });
+      }
+    }
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const accessCodeHash = hashCode(code);

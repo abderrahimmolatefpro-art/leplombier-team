@@ -490,7 +490,7 @@ export default function ClientDetailPage() {
                         const res = await fetch('/api/espace-client/send-code', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ phone: client.phone }),
+                          body: JSON.stringify({ phone: client.phone, forceResend: true }),
                         });
                         const data = await res.json();
                         if (data.success) {
