@@ -9,13 +9,12 @@ import {
   getDocs,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   Timestamp,
   query,
   where,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { Document, Client, Project, DocumentItem, ManualRevenue } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { Plus, Edit, Trash2, FileText, Download, Mail, Eye } from 'lucide-react';
@@ -431,12 +430,25 @@ function DocumentsContent() {
   const handleDelete = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) return;
 
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      alert('Session expirée. Veuillez vous reconnecter.');
+      return;
+    }
+
     try {
-      await deleteDoc(doc(db, 'documents', id));
+      const res = await fetch(`/api/documents/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
       loadData();
     } catch (error) {
       console.error('Error deleting document:', error);
-      alert('Erreur lors de la suppression');
+      alert(error instanceof Error ? error.message : 'Erreur lors de la suppression');
     }
   };
 

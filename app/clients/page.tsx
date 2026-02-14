@@ -4,8 +4,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, getDocs, addDoc, updateDoc, doc, Timestamp, query, where } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { Client, User } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { Plus, Edit, Trash2, Phone, Mail, MapPin, Users, Search, ChevronUp, ChevronDown, Eye } from 'lucide-react';
@@ -384,12 +384,25 @@ export default function ClientsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) return;
 
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      alert('Session expirée. Veuillez vous reconnecter.');
+      return;
+    }
+
     try {
-      await deleteDoc(doc(db, 'clients', id));
+      const res = await fetch(`/api/clients/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
       loadClients();
     } catch (error) {
       console.error('Error deleting client:', error);
-      alert('Erreur lors de la suppression');
+      alert(error instanceof Error ? error.message : 'Erreur lors de la suppression');
     }
   };
 
