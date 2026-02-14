@@ -47,7 +47,9 @@ export async function GET(request: NextRequest) {
       .where('clientId', '==', payload.clientId)
       .get();
 
-    const depannages = revenuesSnap.docs.map((d) => {
+    const depannages = revenuesSnap.docs
+      .filter((d) => !d.data().deleted)
+      .map((d) => {
       const data = d.data();
       return {
         id: d.id,

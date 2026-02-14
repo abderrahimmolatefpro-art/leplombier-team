@@ -45,7 +45,9 @@ export default function PlombierDashboardPage() {
           where('plombierId', '==', plombier.id)
         )
       );
-      const revenues = revenuesSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      const revenues = revenuesSnap.docs
+        .filter((d) => !d.data().deleted)
+        .map((d) => ({ ...d.data(), id: d.id }));
       const monthRevenues = revenues.filter((r: any) => {
         const d = r.date?.toDate ? r.date.toDate() : new Date(r.date);
         return d >= monthStart && d <= monthEnd;

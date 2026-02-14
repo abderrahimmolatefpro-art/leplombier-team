@@ -153,14 +153,16 @@ export default function DashboardPage() {
       // Charger les revenus manuels
       const revenuesQuery = query(collection(db, 'manualRevenues'));
       const revenuesSnapshot = await getDocs(revenuesQuery);
-      const revenuesData = revenuesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date?.toDate() || new Date(),
-        plombierHasPaid: doc.data().plombierHasPaid || false,
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-      })) as ManualRevenue[];
+      const revenuesData = revenuesSnapshot.docs
+        .filter((doc) => !doc.data().deleted)
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().date?.toDate() || new Date(),
+          plombierHasPaid: doc.data().plombierHasPaid || false,
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        })) as ManualRevenue[];
       setManualRevenues(revenuesData);
 
       // Charger les commandes instantanées
@@ -1362,11 +1364,15 @@ export default function DashboardPage() {
           </div>
 
           {/* Commandes récentes */}
-          <div className="card">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
-              <ShoppingCart className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
-              <span className="text-sm sm:text-base">Commandes récentes</span>
-            </h2>
+          <Link href="/commandes" className="block">
+            <div className="card hover:border-primary-300 hover:shadow-md transition-all cursor-pointer">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center justify-between">
+                <span className="flex items-center">
+                  <ShoppingCart className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="text-sm sm:text-base">Commandes récentes</span>
+                </span>
+                <span className="text-xs font-normal text-primary-600">Voir tout →</span>
+              </h2>
             <div className="overflow-x-auto -mx-2 sm:mx-0">
               <table className="w-full min-w-[400px] text-xs sm:text-sm">
                 <thead>
@@ -1432,7 +1438,8 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+            </div>
+          </Link>
 
           {/* Projets récents */}
           <div className="card">

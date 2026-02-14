@@ -156,6 +156,7 @@ export async function POST(request: NextRequest) {
 
       const revenuesSnap = await adminDb.collection('manualRevenues').where('clientId', '==', client.id).get();
       const revenuesSorted = revenuesSnap.docs
+        .filter((doc) => !doc.data().deleted)
         .map((doc) => {
           const d = doc.data();
           return { id: doc.id, ...d, date: d.date?.toDate(), createdAt: d.createdAt?.toDate(), updatedAt: d.updatedAt?.toDate() } as ManualRevenue;

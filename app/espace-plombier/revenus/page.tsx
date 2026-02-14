@@ -34,14 +34,16 @@ export default function PlombierRevenusPage() {
             where('plombierId', '==', plombier.id)
           )
         );
-        const list = snap.docs.map((d) => {
-          const data = d.data();
-          return {
-            id: d.id,
-            ...data,
-            date: data.date?.toDate?.() || new Date(data.date),
-          };
-        });
+        const list = snap.docs
+          .filter((d) => !d.data().deleted)
+          .map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              ...data,
+              date: data.date?.toDate?.() || new Date(data.date),
+            };
+          });
         list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setRevenues(list);
       } catch (err) {

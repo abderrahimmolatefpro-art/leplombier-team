@@ -183,14 +183,17 @@ export default function ClientDetailPage() {
       // Charger les revenus manuels
       const revenuesQuery = query(collection(db, 'manualRevenues'), where('clientId', '==', clientId));
       const revenuesSnapshot = await getDocs(revenuesQuery);
-      const revenuesData = revenuesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date?.toDate() || new Date(),
-        plombierHasPaid: doc.data().plombierHasPaid || false,
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-      })) as ManualRevenue[];
+      const revenuesData = revenuesSnapshot.docs
+        .filter((d) => !d.data().deleted)
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().date?.toDate() || new Date(),
+          plombierHasPaid: doc.data().plombierHasPaid || false,
+          deleted: doc.data().deleted || false,
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        })) as ManualRevenue[];
       setManualRevenues(revenuesData);
 
       // Charger les codes promo
@@ -789,9 +792,12 @@ export default function ClientDetailPage() {
                           </button>
                           <button
                             onClick={async () => {
-                              if (confirm('Supprimer ce dépannage ?')) {
+                              if (confirm('Supprimer ce dépannage ? Il ne sera plus affiché ni compté dans les commandes.')) {
                                 try {
-                                  await deleteDoc(doc(db, 'manualRevenues', revenue.id));
+                                  await updateDoc(doc(db, 'manualRevenues', revenue.id), {
+                                    deleted: true,
+                                    updatedAt: Timestamp.now(),
+                                  });
                                   loadClientData();
                                 } catch (error) {
                                   console.error('Error deleting revenue:', error);

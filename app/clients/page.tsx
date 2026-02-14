@@ -143,8 +143,10 @@ export default function ClientsPage() {
               totalCompanyShare += (invoice.total || 0) * companyPercent;
             });
 
-            // Dépannages (avec pourcentage personnalisé)
-            const revenuesData = revenuesSnapshot.docs.map(d => d.data());
+            // Dépannages (avec pourcentage personnalisé) - exclure les supprimés
+            const revenuesData = revenuesSnapshot.docs
+              .filter(d => !d.data().deleted)
+              .map(d => d.data());
             revenuesData.forEach(revenue => {
               const plombierPercent = (revenue.plombierPercentage || 60) / 100;
               const companyPercent = 1 - plombierPercent;

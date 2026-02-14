@@ -17,7 +17,8 @@ import {
   UserPlus,
   Bell,
   MessageSquare,
-  X as XIcon
+  X as XIcon,
+  ShoppingCart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
@@ -40,6 +41,7 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/dashboard', label: 'Tableau de bord', icon: Home },
     { href: '/clients', label: 'Clients', icon: Users },
     { href: '/projets', label: 'Projets', icon: FolderKanban },
+    { href: '/commandes', label: 'Commandes', icon: ShoppingCart },
     { href: '/planning', label: 'Planning', icon: Calendar },
     { href: '/documents', label: 'Documents', icon: FileText },
     { href: '/plombiers', label: 'Plombiers', icon: Users },

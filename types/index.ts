@@ -138,6 +138,8 @@ export interface ManualRevenue {
   notes?: string;
   /** Lien vers une demande instantanée (intervention instant) */
   instantRequestId?: string;
+  /** Si true, dépannage supprimé de la fiche client (ne doit plus être compté dans les commandes) */
+  deleted?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

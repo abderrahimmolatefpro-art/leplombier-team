@@ -147,13 +147,15 @@ function DocumentsContent() {
       // Load manual revenues
       const revenuesQuery = query(collection(db, 'manualRevenues'));
       const revenuesSnapshot = await getDocs(revenuesQuery);
-      const revenuesData = revenuesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date?.toDate() || new Date(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-      })) as ManualRevenue[];
+      const revenuesData = revenuesSnapshot.docs
+        .filter((doc) => !doc.data().deleted)
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().date?.toDate() || new Date(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        })) as ManualRevenue[];
       setManualRevenues(revenuesData);
       
       console.log('📊 Données chargées:', {
