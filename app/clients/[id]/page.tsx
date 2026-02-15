@@ -81,6 +81,9 @@ export default function ClientDetailPage() {
     quantity: 1,
     unitPrice: 0,
   });
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -524,12 +527,72 @@ export default function ClientDetailPage() {
                     )}
                   </div>
                 )}
-                {client.notes && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">Notes:</p>
-                    <p className="text-sm text-gray-700">{client.notes}</p>
+                <div className="pt-3 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-gray-500">Notes</p>
+                    {!editingNotes ? (
+                      <button
+                        onClick={() => {
+                          setNotesDraft(client.notes || '');
+                          setEditingNotes(true);
+                        }}
+                        className="p-1 text-gray-400 hover:text-primary-600"
+                        title="Modifier"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    ) : null}
                   </div>
-                )}
+                  {editingNotes ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={notesDraft}
+                        onChange={(e) => setNotesDraft(e.target.value)}
+                        className="input text-sm min-h-[80px]"
+                        placeholder="Ajouter des notes sur ce client..."
+                        rows={4}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            setSavingNotes(true);
+                            try {
+                              await updateDoc(doc(db, 'clients', clientId), {
+                                notes: notesDraft.trim() || null,
+                                updatedAt: Timestamp.now(),
+                              });
+                              setClient((prev) => prev ? { ...prev, notes: notesDraft.trim() || undefined, updatedAt: new Date() } : null);
+                              setEditingNotes(false);
+                            } catch (error) {
+                              console.error('Error saving notes:', error);
+                              alert('Erreur lors de la sauvegarde des notes');
+                            } finally {
+                              setSavingNotes(false);
+                            }
+                          }}
+                          disabled={savingNotes}
+                          className="btn btn-primary btn-sm"
+                        >
+                          {savingNotes ? 'Enregistrement...' : 'Enregistrer'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNotesDraft(client.notes || '');
+                            setEditingNotes(false);
+                          }}
+                          disabled={savingNotes}
+                          className="btn btn-secondary btn-sm"
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {client.notes || <span className="text-gray-400 italic">Aucune note</span>}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
