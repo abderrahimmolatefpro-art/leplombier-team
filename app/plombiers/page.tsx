@@ -23,7 +23,8 @@ import {
   Trash2,
   BadgeCheck,
   Check,
-  XCircle
+  XCircle,
+  Eye
 } from 'lucide-react';
 import type { PlombierValidationStatus } from '@/types';
 import Link from 'next/link';
@@ -86,6 +87,7 @@ export default function PlombiersPage() {
     password: '',
   });
   const [creating, setCreating] = useState(false);
+  const [documentsModalPlombier, setDocumentsModalPlombier] = useState<User | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -825,6 +827,18 @@ export default function PlombiersPage() {
                         </td>
                         <td className="text-center py-3 px-4">
                           <div className="flex items-center justify-center space-x-2 flex-wrap gap-1">
+                            {(stat.plombier.nationalIdPhotoUrl || stat.plombier.selfiePhotoUrl) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDocumentsModalPlombier(stat.plombier);
+                                }}
+                                className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
+                                title="Voir documents"
+                              >
+                                <Eye size={18} />
+                              </button>
+                            )}
                             {stat.plombier.validationStatus === 'documents_submitted' && (
                               <>
                                 <button
@@ -1165,6 +1179,73 @@ export default function PlombiersPage() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal documents plombier */}
+        {documentsModalPlombier && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Documents – {documentsModalPlombier.name}
+                  </h2>
+                  <button
+                    onClick={() => setDocumentsModalPlombier(null)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                  {documentsModalPlombier.nationalIdPhotoUrl && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">Carte d&apos;identité nationale</p>
+                      <img
+                        src={documentsModalPlombier.nationalIdPhotoUrl}
+                        alt="CNI"
+                        className="w-full rounded-lg border border-gray-200 max-h-64 object-contain bg-gray-50"
+                      />
+                    </div>
+                  )}
+                  {documentsModalPlombier.selfiePhotoUrl && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">Selfie</p>
+                      <img
+                        src={documentsModalPlombier.selfiePhotoUrl}
+                        alt="Selfie"
+                        className="w-full rounded-lg border border-gray-200 max-h-64 object-contain bg-gray-50"
+                      />
+                    </div>
+                  )}
+                </div>
+                {documentsModalPlombier.validationStatus === 'documents_submitted' && (
+                  <div className="flex gap-3 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => {
+                        handleValidatePlombier(documentsModalPlombier.id);
+                        setDocumentsModalPlombier(null);
+                      }}
+                      className="btn btn-primary flex items-center gap-2"
+                    >
+                      <Check size={18} />
+                      Valider
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleRejectPlombier(documentsModalPlombier.id);
+                        setDocumentsModalPlombier(null);
+                      }}
+                      className="btn btn-danger flex items-center gap-2"
+                    >
+                      <XCircle size={18} />
+                      Rejeter
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

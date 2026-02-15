@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User } from '@/types';
-import { ArrowLeft, Save, Users, BadgeCheck } from 'lucide-react';
+import { ArrowLeft, Save, Users, BadgeCheck, Check, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PlombierDetailPage() {
@@ -19,6 +19,7 @@ export default function PlombierDetailPage() {
   const [plombier, setPlombier] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [validating, setValidating] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -98,6 +99,41 @@ export default function PlombierDetailPage() {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleValidate = async () => {
+    if (!plombier) return;
+    setValidating(true);
+    try {
+      await updateDoc(doc(db, 'users', plombier.id), {
+        validationStatus: 'validated',
+        validatedAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      loadPlombier();
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la validation');
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!plombier || !confirm('Rejeter ce plombier ?')) return;
+    setValidating(true);
+    try {
+      await updateDoc(doc(db, 'users', plombier.id), {
+        validationStatus: 'rejected',
+        updatedAt: Timestamp.now(),
+      });
+      loadPlombier();
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors du rejet');
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -192,6 +228,56 @@ export default function PlombierDetailPage() {
                 placeholder="+212 6XX XXX XXX"
               />
             </div>
+
+            {(plombier.nationalIdPhotoUrl || plombier.selfiePhotoUrl) && (
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="font-semibold text-gray-900">Documents de validation</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {plombier.nationalIdPhotoUrl && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">Carte d&apos;identité nationale</p>
+                      <img
+                        src={plombier.nationalIdPhotoUrl}
+                        alt="CNI"
+                        className="w-full rounded-lg border border-gray-200 max-h-48 object-contain bg-white"
+                      />
+                    </div>
+                  )}
+                  {plombier.selfiePhotoUrl && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">Selfie</p>
+                      <img
+                        src={plombier.selfiePhotoUrl}
+                        alt="Selfie"
+                        className="w-full rounded-lg border border-gray-200 max-h-48 object-contain bg-white"
+                      />
+                    </div>
+                  )}
+                </div>
+                {plombier.validationStatus === 'documents_submitted' && (
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      type="button"
+                      onClick={handleValidate}
+                      disabled={validating}
+                      className="btn btn-primary flex items-center gap-2"
+                    >
+                      <Check size={18} />
+                      Valider
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleReject}
+                      disabled={validating}
+                      className="btn btn-danger flex items-center gap-2"
+                    >
+                      <XCircle size={18} />
+                      Rejeter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <input
