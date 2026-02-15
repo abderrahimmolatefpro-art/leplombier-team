@@ -1,5 +1,12 @@
 export type UserRole = 'admin' | 'plombier';
 
+/** Statut de validation du plombier (documents) */
+export type PlombierValidationStatus =
+  | 'pending_documents'
+  | 'documents_submitted'
+  | 'validated'
+  | 'rejected';
+
 export interface User {
   id: string;
   email: string;
@@ -10,6 +17,16 @@ export interface User {
   availableForInstant?: boolean;
   /** Plombier certifié leplombier.ma (badge affiché au client) – défini par l'admin */
   certified?: boolean;
+  /** Statut de validation du plombier (documents) */
+  validationStatus?: PlombierValidationStatus;
+  /** URL photo carte d'identité nationale (Firebase Storage) */
+  nationalIdPhotoUrl?: string;
+  /** URL photo selfie (Firebase Storage) */
+  selfiePhotoUrl?: string;
+  /** Date de soumission des documents */
+  documentsSubmittedAt?: Date;
+  /** Date de validation finale par l'admin */
+  validatedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

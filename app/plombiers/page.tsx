@@ -4,9 +4,9 @@ import { useEffect, useState, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
+import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { auth } from '@/lib/firebase';
+import { generatePassword } from '@/lib/auth-utils';
 import { db } from '@/lib/firebase';
 import { Project, Client, Document, ManualRevenue, User } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -21,8 +21,11 @@ import {
   Edit,
   Plus,
   Trash2,
-  BadgeCheck
+  BadgeCheck,
+  Check,
+  XCircle
 } from 'lucide-react';
+import type { PlombierValidationStatus } from '@/types';
 import Link from 'next/link';
 import {
   startOfWeek,
@@ -79,7 +82,6 @@ export default function PlombiersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createFormData, setCreateFormData] = useState({
     name: '',
-    email: '',
     phone: '',
     password: '',
   });
@@ -457,38 +459,81 @@ export default function PlombiersPage() {
   const handleCreatePlombier = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      alert('Session expirée. Veuillez vous reconnecter.');
+      setCreating(false);
+      return;
+    }
     try {
-      // Créer l'utilisateur dans Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        createFormData.email,
-        createFormData.password
-      );
-      const uid = userCredential.user.uid;
-
-      // Créer le document dans Firestore
-      await setDoc(doc(db, 'users', uid), {
-        email: createFormData.email,
-        name: createFormData.name,
-        phone: createFormData.phone || null,
-        role: 'plombier',
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
+      const res = await fetch('/api/plombiers/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: createFormData.name,
+          phone: createFormData.phone,
+          password: createFormData.password,
+        }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la création');
 
       setShowCreateModal(false);
-      setCreateFormData({ name: '', email: '', phone: '', password: '' });
+      setCreateFormData({ name: '', phone: '', password: '' });
       loadData();
-      alert('Plombier créé avec succès !');
+      alert('Plombier créé avec succès ! Communiquez le mot de passe au plombier.');
     } catch (error: any) {
       console.error('Error creating plombier:', error);
-      if (error.code === 'auth/email-already-in-use') {
-        alert('Cet email est déjà utilisé.');
-      } else {
-        alert(`Erreur lors de la création: ${error.message || 'Erreur inconnue'}`);
-      }
+      alert(error instanceof Error ? error.message : 'Erreur lors de la création');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const getValidationBadge = (status?: PlombierValidationStatus) => {
+    const config: Record<string, { label: string; className: string }> = {
+      pending_documents: { label: 'En attente documents', className: 'bg-amber-100 text-amber-700' },
+      documents_submitted: { label: 'Documents soumis', className: 'bg-blue-100 text-blue-700' },
+      validated: { label: 'Validé', className: 'bg-green-100 text-green-700' },
+      rejected: { label: 'Rejeté', className: 'bg-red-100 text-red-700' },
+    };
+    const c = status ? config[status] : null;
+    if (!c) return null;
+    return (
+      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${c.className}`}>
+        {c.label}
+      </span>
+    );
+  };
+
+  const handleValidatePlombier = async (plombierId: string) => {
+    try {
+      await updateDoc(doc(db, 'users', plombierId), {
+        validationStatus: 'validated',
+        validatedAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      loadData();
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la validation');
+    }
+  };
+
+  const handleRejectPlombier = async (plombierId: string) => {
+    if (!confirm('Rejeter ce plombier ?')) return;
+    try {
+      await updateDoc(doc(db, 'users', plombierId), {
+        validationStatus: 'rejected',
+        updatedAt: Timestamp.now(),
+      });
+      loadData();
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors du rejet');
     }
   };
 
@@ -750,8 +795,9 @@ export default function PlombiersPage() {
                                     Certifié
                                   </span>
                                 )}
+                                {getValidationBadge(stat.plombier.validationStatus)}
                               </div>
-                              <p className="text-xs text-gray-500">{stat.plombier.email}</p>
+                              <p className="text-xs text-gray-500">{stat.plombier.phone || stat.plombier.email}</p>
                             </div>
                           </div>
                         </td>
@@ -778,7 +824,31 @@ export default function PlombiersPage() {
                           </span>
                         </td>
                         <td className="text-center py-3 px-4">
-                          <div className="flex items-center justify-center space-x-2">
+                          <div className="flex items-center justify-center space-x-2 flex-wrap gap-1">
+                            {stat.plombier.validationStatus === 'documents_submitted' && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleValidatePlombier(stat.plombier.id);
+                                  }}
+                                  className="p-1.5 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
+                                  title="Valider"
+                                >
+                                  <Check size={18} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRejectPlombier(stat.plombier.id);
+                                  }}
+                                  className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                                  title="Rejeter"
+                                >
+                                  <XCircle size={18} />
+                                </button>
+                              </>
+                            )}
                             <Link
                               href={`/plombiers/${stat.plombier.id}`}
                               onClick={(e) => e.stopPropagation()}
@@ -1039,28 +1109,15 @@ export default function PlombiersPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={createFormData.email}
-                      onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
-                      className="input"
-                      placeholder="email@example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Téléphone
+                      Téléphone *
                     </label>
                     <input
                       type="tel"
+                      required
                       value={createFormData.phone}
                       onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
                       className="input"
-                      placeholder="+212 6XX XXX XXX"
+                      placeholder="06 12 34 56 78"
                     />
                   </div>
 
@@ -1068,15 +1125,24 @@ export default function PlombiersPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Mot de passe *
                     </label>
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={createFormData.password}
-                      onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
-                      className="input"
-                      placeholder="Minimum 6 caractères"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        value={createFormData.password}
+                        onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                        className="input flex-1"
+                        placeholder="Minimum 6 caractères"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCreateFormData({ ...createFormData, password: generatePassword() })}
+                        className="btn btn-secondary whitespace-nowrap"
+                      >
+                        Générer
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex justify-end space-x-4 pt-4">
@@ -1084,7 +1150,7 @@ export default function PlombiersPage() {
                       type="button"
                       onClick={() => {
                         setShowCreateModal(false);
-                        setCreateFormData({ name: '', email: '', phone: '', password: '' });
+                        setCreateFormData({ name: '', phone: '', password: '' });
                       }}
                       className="btn btn-secondary"
                     >

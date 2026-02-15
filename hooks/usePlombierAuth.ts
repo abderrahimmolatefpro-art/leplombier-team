@@ -5,6 +5,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebas
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User } from '@/types';
+import { phoneToAuthEmail } from '@/lib/auth-utils';
 
 export function usePlombierAuth() {
   const [plombier, setPlombier] = useState<User | null>(null);
@@ -45,7 +46,9 @@ export function usePlombierAuth() {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (identifier: string, password: string) => {
+    // Plombiers existants (email) ou nouveaux (téléphone)
+    const email = identifier.includes('@') ? identifier.trim() : phoneToAuthEmail(identifier);
     const credential = await signInWithEmailAndPassword(auth, email, password);
     const userDoc = await getDoc(doc(db, 'users', credential.user.uid));
     if (userDoc.exists()) {

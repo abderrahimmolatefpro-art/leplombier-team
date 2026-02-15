@@ -71,6 +71,13 @@ export default function PlombierDashboardPage() {
   }, [loading, plombier, router]);
 
   useEffect(() => {
+    if (!plombier) return;
+    if (plombier.validationStatus === 'pending_documents') {
+      router.replace('/espace-plombier/documents');
+    }
+  }, [plombier, router]);
+
+  useEffect(() => {
     loadStats();
   }, [loadStats]);
 
@@ -156,6 +163,12 @@ export default function PlombierDashboardPage() {
         {refreshing && (
           <div className="mb-4 text-center text-sm text-gray-500">Actualisation...</div>
         )}
+        {plombier.validationStatus === 'documents_submitted' && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+            Vos documents sont en attente de validation par l&apos;administrateur. Certaines actions
+            peuvent être limitées.
+          </div>
+        )}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Bonjour, {plombier.name}</h1>
           <p className="text-gray-600 mt-1">Retrouvez vos projets, planning et revenus</p>
@@ -183,7 +196,7 @@ export default function PlombierDashboardPage() {
             </div>
             <button
               onClick={handleToggleAvailability}
-              disabled={loadingToggle}
+              disabled={loadingToggle || plombier.validationStatus === 'documents_submitted'}
               className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 ${
                 available ? 'bg-primary-600' : 'bg-gray-200'
               }`}

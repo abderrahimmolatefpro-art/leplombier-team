@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 
 export default function PlombierLoginPage() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,7 @@ export default function PlombierLoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(identifier, password);
       router.push('/espace-plombier/dashboard');
     } catch (err: any) {
       setError(err.message || 'Erreur de connexion');
@@ -64,7 +64,7 @@ export default function PlombierLoginPage() {
             </div>
             <h1 className="text-xl font-bold text-gray-900">Espace Plombier</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Connectez-vous avec votre email et mot de passe
+              Connectez-vous avec votre téléphone ou email et mot de passe
             </p>
           </div>
 
@@ -76,17 +76,17 @@ export default function PlombierLoginPage() {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
+              <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-2">
+                Téléphone ou email
               </label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="identifier"
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
                 className="input"
-                placeholder="votre@email.com"
+                placeholder="06 12 34 56 78 ou email@example.com"
               />
             </div>
 

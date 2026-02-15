@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
-import { collection, getDocs, updateDoc, deleteDoc, doc, Timestamp, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
+import { generatePassword } from '@/lib/auth-utils';
 import { Recruitment } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { CheckCircle, XCircle, Trash2, Search } from 'lucide-react';
@@ -42,6 +44,10 @@ export default function RecruitmentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterZone, setFilterZone] = useState<string>('all');
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [selectedRecruitment, setSelectedRecruitment] = useState<Recruitment | null>(null);
+  const [acceptPassword, setAcceptPassword] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -101,12 +107,51 @@ export default function RecruitmentsPage() {
     try {
       await updateDoc(doc(db, 'recruitments', id), {
         status: newStatus,
-        updatedAt: Timestamp.now(),
+        updatedAt: new Date(),
       });
       loadRecruitments();
     } catch (error) {
       console.error('Error updating status:', error);
       alert('Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  const handleAcceptAndCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRecruitment || !acceptPassword || acceptPassword.length < 6) {
+      alert('Le mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      alert('Session expirée. Veuillez vous reconnecter.');
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch('/api/plombiers/create-from-recruitment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recruitmentId: selectedRecruitment.id,
+          password: acceptPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la création');
+      setShowAcceptModal(false);
+      setSelectedRecruitment(null);
+      setAcceptPassword('');
+      loadRecruitments();
+      alert('Compte plombier créé ! Communiquez le mot de passe au plombier.');
+    } catch (error) {
+      console.error('Error creating plombier from recruitment:', error);
+      alert(error instanceof Error ? error.message : 'Erreur lors de la création du compte');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -265,10 +310,12 @@ export default function RecruitmentsPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleStatusChange(recruitment.id, 'accepted');
+                                setSelectedRecruitment(recruitment);
+                                setAcceptPassword(generatePassword());
+                                setShowAcceptModal(true);
                               }}
                               className="btn btn-sm btn-success flex items-center space-x-1"
-                              title="Accepter la candidature"
+                              title="Accepter et créer le compte plombier"
                             >
                               <CheckCircle size={14} />
                               <span className="hidden sm:inline">Accepter</span>
@@ -307,6 +354,67 @@ export default function RecruitmentsPage() {
             </table>
           </div>
         </div>
+
+        {/* Modal Accepter et créer le compte */}
+        {showAcceptModal && selectedRecruitment && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  Accepter et créer le compte plombier
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Le compte sera créé pour <strong>{selectedRecruitment.firstName} {selectedRecruitment.lastName}</strong> ({selectedRecruitment.phone}). Communiquez le mot de passe au plombier.
+                </p>
+                <form onSubmit={handleAcceptAndCreate} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mot de passe *
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        required
+                        minLength={6}
+                        value={acceptPassword}
+                        onChange={(e) => setAcceptPassword(e.target.value)}
+                        className="input flex-1"
+                        placeholder="Minimum 6 caractères"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAcceptPassword(generatePassword())}
+                        className="btn btn-secondary whitespace-nowrap"
+                      >
+                        Générer
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAcceptModal(false);
+                        setSelectedRecruitment(null);
+                        setAcceptPassword('');
+                      }}
+                      className="btn btn-secondary"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={creating}
+                    >
+                      {creating ? 'Création...' : 'Créer le compte'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

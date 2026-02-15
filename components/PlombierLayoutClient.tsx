@@ -12,6 +12,7 @@ export default function PlombierLayoutClient({
   const hideNav =
     pathname === '/espace-plombier/login' ||
     pathname === '/espace-plombier' ||
+    pathname === '/espace-plombier/documents' ||
     pathname.startsWith('/espace-plombier/login');
 
   return (
