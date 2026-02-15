@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { storage, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+import { compressImageToDataUrl } from '@/lib/compress-image';
 import { FileImage, Upload, ArrowLeft, LogOut } from 'lucide-react';
 
 export default function PlombierDocumentsPage() {
@@ -75,14 +75,10 @@ export default function PlombierDocumentsPage() {
     setError('');
 
     try {
-      const nationalIdRef = ref(storage, `plombiers/${plombier.id}/nationalId.jpg`);
-      const selfieRef = ref(storage, `plombiers/${plombier.id}/selfie.jpg`);
-
-      await uploadBytes(nationalIdRef, nationalIdFile);
-      await uploadBytes(selfieRef, selfieFile);
-
-      const nationalIdUrl = await getDownloadURL(nationalIdRef);
-      const selfieUrl = await getDownloadURL(selfieRef);
+      const [nationalIdUrl, selfieUrl] = await Promise.all([
+        compressImageToDataUrl(nationalIdFile),
+        compressImageToDataUrl(selfieFile),
+      ]);
 
       await updateDoc(doc(db, 'users', plombier.id), {
         nationalIdPhotoUrl: nationalIdUrl,
@@ -94,8 +90,8 @@ export default function PlombierDocumentsPage() {
 
       router.push('/espace-plombier/dashboard');
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Erreur lors de l\'envoi des documents');
+      console.error('Upload documents error:', err);
+      setError(err?.message || 'Erreur lors de l\'envoi des documents');
     } finally {
       setSubmitting(false);
     }
