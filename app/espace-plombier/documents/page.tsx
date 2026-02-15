@@ -8,10 +8,10 @@ import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
-import { FileImage, Upload, ArrowLeft } from 'lucide-react';
+import { FileImage, Upload, ArrowLeft, LogOut } from 'lucide-react';
 
 export default function PlombierDocumentsPage() {
-  const { plombier, loading } = usePlombierAuth();
+  const { plombier, loading, logout } = usePlombierAuth();
   const router = useRouter();
   const [nationalIdFile, setNationalIdFile] = useState<File | null>(null);
   const [selfieFile, setSelfieFile] = useState<File | null>(null);
@@ -115,7 +115,7 @@ export default function PlombierDocumentsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           <Link
             href="/espace-plombier/dashboard"
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
@@ -126,7 +126,16 @@ export default function PlombierDocumentsPage() {
           <div className="flex-1 flex justify-center">
             <Image src="/logo.png" alt="Le Plombier" width={120} height={40} className="h-8 w-auto" />
           </div>
-          <div className="w-20" />
+          <button
+            onClick={() => {
+              logout();
+              router.replace('/espace-plombier/login');
+            }}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <LogOut size={20} />
+            Déconnexion
+          </button>
         </div>
       </header>
 

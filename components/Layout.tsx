@@ -54,6 +54,15 @@ export default function Layout({ children }: LayoutProps) {
     router.push('/login');
   };
 
+  // Rediriger les plombiers vers leur espace (éviter accès admin)
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) return;
+    if (user.role !== 'admin') {
+      router.replace('/espace-plombier/dashboard');
+    }
+  }, [authLoading, user, router]);
+
   // Écouter les nouveaux clients créés via formulaire
   useEffect(() => {
     if (authLoading || !user) return;

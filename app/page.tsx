@@ -14,7 +14,11 @@ export default function Home() {
       if (loading) return;
 
       if (user) {
-        router.push('/dashboard');
+        if (user.role === 'plombier') {
+          router.push('/espace-plombier/dashboard');
+        } else {
+          router.push('/dashboard');
+        }
         return;
       }
 
