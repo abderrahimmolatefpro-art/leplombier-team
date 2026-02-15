@@ -36,6 +36,13 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: 'bg-red-100 text-red-700',
 };
 
+const FAMILY_SITUATION_LABELS: Record<string, string> = {
+  celibataire: 'Célibataire',
+  marie: 'Marié(e)',
+  divorce: 'Divorcé(e)',
+  veuf: 'Veuf(ve)',
+};
+
 export default function RecruitmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -279,13 +286,21 @@ export default function RecruitmentsPage() {
                 ) : (
                   filteredRecruitments.map((recruitment) => (
                     <tr key={recruitment.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3">
                         <div className="text-sm font-medium text-gray-900">
                           {recruitment.firstName} {recruitment.lastName}
                         </div>
                         <div className="text-xs text-gray-500 truncate max-w-[200px]" title={recruitment.address}>
                           {recruitment.address}
                         </div>
+                        {(recruitment.city || recruitment.familySituation !== undefined || recruitment.hasTransport !== undefined || recruitment.experienceYears !== undefined) && (
+                          <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                            {recruitment.city && <span className="block">Ville: {recruitment.city}</span>}
+                            {recruitment.familySituation && <span className="block">Situation: {FAMILY_SITUATION_LABELS[recruitment.familySituation] || recruitment.familySituation}</span>}
+                            {recruitment.hasTransport !== undefined && <span className="block">Transport: {recruitment.hasTransport ? 'Oui' : 'Non'}</span>}
+                            {recruitment.experienceYears !== undefined && <span className="block">Expérience: {recruitment.experienceYears} an(s)</span>}
+                          </div>
+                        )}
                       </td>
                       <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
                         <a href={`tel:${recruitment.phone}`} className="text-sm text-primary-600 hover:text-primary-800">
@@ -366,6 +381,14 @@ export default function RecruitmentsPage() {
                 <p className="text-sm text-gray-600 mb-4">
                   Le compte sera créé pour <strong>{selectedRecruitment.firstName} {selectedRecruitment.lastName}</strong> ({selectedRecruitment.phone}). Communiquez le mot de passe au plombier.
                 </p>
+                {(selectedRecruitment.city || selectedRecruitment.familySituation || selectedRecruitment.hasTransport !== undefined || selectedRecruitment.experienceYears !== undefined) && (
+                  <div className="text-xs text-gray-600 mb-4 p-3 bg-gray-50 rounded-lg space-y-1">
+                    {selectedRecruitment.city && <p><strong>Ville:</strong> {selectedRecruitment.city}</p>}
+                    {selectedRecruitment.familySituation && <p><strong>Situation familiale:</strong> {FAMILY_SITUATION_LABELS[selectedRecruitment.familySituation] || selectedRecruitment.familySituation}</p>}
+                    {selectedRecruitment.hasTransport !== undefined && <p><strong>Moyen de transport:</strong> {selectedRecruitment.hasTransport ? 'Oui' : 'Non'}</p>}
+                    {selectedRecruitment.experienceYears !== undefined && <p><strong>Années d&apos;expérience:</strong> {selectedRecruitment.experienceYears} an(s)</p>}
+                  </div>
+                )}
                 <form onSubmit={handleAcceptAndCreate} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">

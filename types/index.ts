@@ -181,6 +181,14 @@ export interface Recruitment {
   specialty: string;
   zones: 'casa' | 'rabat' | 'tanger' | 'marrakech' | 'agadir' | 'tetouan' | 'fes';
   address: string;
+  /** Ville / المدينة */
+  city?: string;
+  /** Situation familiale / الحالة العائلية */
+  familySituation?: string;
+  /** Dispose d'un moyen de transport / وسيلة نقل */
+  hasTransport?: boolean;
+  /** Années d'expérience en plomberie / سنوات الخبرة */
+  experienceYears?: number;
   status: 'pending' | 'contacted' | 'accepted' | 'rejected';
   createdAt: Date;
   updatedAt: Date;

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     // #region agent log
     fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:43',message:'Body parsed',data:{hasBody:!!body,firstName:body?.firstName,lastName:body?.lastName,phone:body?.phone},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
-    const { firstName, lastName, phone, specialty, zones, address } = body;
+    const { firstName, lastName, phone, specialty, zones, address, city, familySituation, hasTransport, experienceYears } = body;
 
     // Validation
     if (!firstName || !lastName || !phone || !specialty || !zones || !address) {
@@ -105,17 +105,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Create recruitment document
-    const recruitmentData = {
+    const recruitmentData: Record<string, unknown> = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       phone: phone.trim(),
       specialty: specialty.trim(),
       zones: zones,
       address: address.trim(),
-      status: 'pending', // pending, contacted, accepted, rejected
+      status: 'pending',
       createdAt: admin.firestore.Timestamp.now(),
       updatedAt: admin.firestore.Timestamp.now(),
     };
+    if (city?.trim()) recruitmentData.city = city.trim();
+    if (familySituation?.trim()) recruitmentData.familySituation = familySituation.trim();
+    if (typeof hasTransport === 'boolean') recruitmentData.hasTransport = hasTransport;
+    if (experienceYears !== undefined && experienceYears !== null && experienceYears !== '') {
+      const years = typeof experienceYears === 'string' ? parseInt(experienceYears, 10) : Number(experienceYears);
+      if (!isNaN(years)) recruitmentData.experienceYears = years;
+    }
 
     await adminDb.collection('recruitments').add(recruitmentData);
     // #region agent log
@@ -146,6 +153,10 @@ export async function POST(request: NextRequest) {
             <p><strong>Spécialité:</strong> ${specialty}</p>
             <p><strong>Zone:</strong> ${ZONE_LABELS[zones] || zones}</p>
             <p><strong>Adresse:</strong> ${address}</p>
+            ${city ? `<p><strong>Ville:</strong> ${city}</p>` : ''}
+            ${familySituation ? `<p><strong>Situation familiale:</strong> ${familySituation}</p>` : ''}
+            ${typeof hasTransport === 'boolean' ? `<p><strong>Moyen de transport:</strong> ${hasTransport ? 'Oui' : 'Non'}</p>` : ''}
+            ${experienceYears !== undefined && experienceYears !== null && experienceYears !== '' ? `<p><strong>Années d'expérience:</strong> ${experienceYears}</p>` : ''}
             <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
           `,
         });
