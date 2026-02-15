@@ -67,6 +67,19 @@ Les apps enregistrent automatiquement le token FCM quand l'utilisateur est conne
    - `mobile-client/android/app/google-services.json`
 3. Faites `npx cap sync` dans chaque projet
 
+## Téléchargement APK plombier
+
+La page `/app-plombier` permet aux plombiers de télécharger l'app Android. Pour activer le téléchargement :
+
+1. **Construire l'APK** : Dans Android Studio (mobile-plombier), Build → Build Bundle(s) / APK(s) → Build APK(s). L'APK se trouve dans `mobile-plombier/android/app/build/outputs/apk/debug/` (ou release).
+
+2. **Option A – Fichier local** : Copiez l'APK dans `public/app-plombier-android.apk`. Le lien de téléchargement fonctionnera automatiquement.
+
+3. **Option B – URL externe** : Hébergez l'APK ailleurs (Firebase Storage, GitHub Releases, etc.) et définissez la variable d'environnement :
+   ```
+   NEXT_PUBLIC_APP_PLOMBIER_APK_URL=https://votre-url.com/leplombier-plombier.apk
+   ```
+
 ## Notes
 
 - Les apps chargent le site web en direct via `server.url` (config Capacitor).

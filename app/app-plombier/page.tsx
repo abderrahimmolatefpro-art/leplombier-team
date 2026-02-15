@@ -2,6 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { Smartphone, Download } from 'lucide-react';
+
+const APK_URL = process.env.NEXT_PUBLIC_APP_PLOMBIER_APK_URL || '/Leplombier-PRO.apk';
 
 export default function AppPlombierPage() {
   return (
@@ -34,17 +37,24 @@ export default function AppPlombierPage() {
           </Link>
 
           <div className="border-t border-gray-200 pt-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Télécharger l&apos;application
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center justify-center gap-2">
+              <Smartphone size={22} />
+              Télécharger l&apos;application Android
             </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Disponible prochainement sur Android et iOS.
+              Installez l&apos;app sur votre téléphone pour un accès rapide à votre espace plombier.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              {/* Placeholder pour liens APK / App Store quand disponibles */}
-              {/* <a href="..." className="btn btn-outline">Android (APK)</a> */}
-              {/* <a href="..." className="btn btn-outline">App Store</a> */}
-            </div>
+            <a
+              href={APK_URL}
+              download="Leplombier-PRO.apk"
+              className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors border border-green-700"
+            >
+              <Download size={20} />
+              Télécharger pour Android
+            </a>
+            <p className="text-xs text-gray-500 mt-3">
+              iOS : disponible prochainement
+            </p>
           </div>
 
           <p className="text-sm text-gray-500 mt-8">
