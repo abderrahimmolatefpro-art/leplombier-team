@@ -30,8 +30,7 @@ export default function PlombierDocumentsPage() {
 
   useEffect(() => {
     if (!plombier) return;
-    const status = plombier.validationStatus;
-    if (status === 'validated' || status === 'rejected') {
+    if (plombier.validationStatus === 'validated') {
       router.replace('/espace-plombier/dashboard');
     }
   }, [plombier, router]);
@@ -107,6 +106,7 @@ export default function PlombierDocumentsPage() {
 
   const status = plombier.validationStatus;
   const isSubmitted = status === 'documents_submitted';
+  const isRejected = status === 'rejected';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -145,6 +145,11 @@ export default function PlombierDocumentsPage() {
         {isSubmitted && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
             Vos documents ont été soumis. En attente de validation par l&apos;administrateur.
+          </div>
+        )}
+        {isRejected && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+            Vos documents ont été rejetés. Veuillez soumettre de nouveaux documents.
           </div>
         )}
 

@@ -526,16 +526,27 @@ export default function PlombiersPage() {
   };
 
   const handleRejectPlombier = async (plombierId: string) => {
-    if (!confirm('Rejeter ce plombier ?')) return;
+    if (!confirm('Rejeter les documents de ce plombier ? Un SMS lui sera envoyé pour re-soumettre.')) return;
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      alert('Session expirée. Veuillez vous reconnecter.');
+      return;
+    }
     try {
-      await updateDoc(doc(db, 'users', plombierId), {
-        validationStatus: 'rejected',
-        updatedAt: Timestamp.now(),
+      const res = await fetch('/api/plombiers/reject-documents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plombierId }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors du rejet');
       loadData();
     } catch (err) {
       console.error(err);
-      alert('Erreur lors du rejet');
+      alert(err instanceof Error ? err.message : 'Erreur lors du rejet');
     }
   };
 

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { User } from '@/types';
 import { ArrowLeft, Save, Users, BadgeCheck, Check, XCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -121,17 +121,29 @@ export default function PlombierDetailPage() {
   };
 
   const handleReject = async () => {
-    if (!plombier || !confirm('Rejeter ce plombier ?')) return;
+    if (!plombier || !confirm('Rejeter les documents de ce plombier ? Un SMS lui sera envoyé pour re-soumettre.')) return;
     setValidating(true);
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      alert('Session expirée. Veuillez vous reconnecter.');
+      setValidating(false);
+      return;
+    }
     try {
-      await updateDoc(doc(db, 'users', plombier.id), {
-        validationStatus: 'rejected',
-        updatedAt: Timestamp.now(),
+      const res = await fetch('/api/plombiers/reject-documents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plombierId: plombier.id }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors du rejet');
       loadPlombier();
     } catch (err) {
       console.error(err);
-      alert('Erreur lors du rejet');
+      alert(err instanceof Error ? err.message : 'Erreur lors du rejet');
     } finally {
       setValidating(false);
     }

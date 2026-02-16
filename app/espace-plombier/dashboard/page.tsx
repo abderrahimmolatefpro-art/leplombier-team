@@ -72,7 +72,7 @@ export default function PlombierDashboardPage() {
 
   useEffect(() => {
     if (!plombier) return;
-    if (plombier.validationStatus === 'pending_documents') {
+    if (plombier.validationStatus === 'pending_documents' || plombier.validationStatus === 'rejected') {
       router.replace('/espace-plombier/documents');
     }
   }, [plombier, router]);
