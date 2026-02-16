@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://leplombier.ma';
-    const loginUrl = `${appUrl}/app-plombier`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dash.leplombier.ma';
+    const appPlombierUrl = `${appUrl}/app-plombier`;
 
     await db.collection('users').doc(createdUser.uid).set({
       email: authEmail,
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       createdPlombierId: createdUser.uid,
     });
 
-    const smsMessage = `Félicitations ! Vous êtes accepté sur leplombier.ma. Vos accès : Tél: ${phone} / MDP: ${password}. Accédez à votre espace : ${loginUrl}`;
+    const smsMessage = `Félicitations ! Vous êtes accepté sur leplombier.ma. Vos accès : Tél: ${phone} / MDP: ${password}. Accédez à votre espace et téléchargez l'app Android : ${appPlombierUrl}`;
     try {
       const sent = await sendSms(phone, smsMessage);
       if (!sent) {
