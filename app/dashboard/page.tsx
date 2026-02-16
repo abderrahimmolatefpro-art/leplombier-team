@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Client, Document, ManualRevenue, User, InstantRequest } from '@/types';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatCurrency, isPlombierAssignable } from '@/lib/utils';
 import { 
   FolderKanban, 
   Users, 
@@ -782,13 +782,14 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [filteredData]);
 
-  // Revenus par plombier (dans la période)
+  // Revenus par plombier (dans la période) — uniquement plombiers validés
   const revenueByPlombier = useMemo(() => {
     const { filteredInvoices, filteredProjects, filteredManualRevenues } = filteredData;
     const plombierRevenue: { [key: string]: { name: string; revenue: number; projects: number; unpaid: number } } = {};
-    
-    // Initialiser tous les plombiers
-    plombiers.forEach(plombier => {
+    const assignablePlombiers = plombiers.filter(isPlombierAssignable);
+
+    // Initialiser uniquement les plombiers validés (assignables)
+    assignablePlombiers.forEach(plombier => {
       plombierRevenue[plombier.id] = {
         name: plombier.name,
         revenue: 0,
