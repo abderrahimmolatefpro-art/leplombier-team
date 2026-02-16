@@ -249,6 +249,40 @@ export interface AutoMessage {
   updatedAt: Date;
 }
 
+// Fournisseurs agréés (demandes de pièces)
+export interface Supplier {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address?: string;
+  notes?: string;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type PartRequestStatus = 'en_attente' | 'envoye' | 'recupere' | 'facture' | 'rejete';
+export type PartRequestUrgency = 'normal' | 'urgent' | 'tres_urgent';
+
+export interface PartRequest {
+  id: string;
+  plombierId: string;
+  projectId?: string;
+  manualRevenueId?: string;
+  clientId: string;
+  description: string;
+  quantity?: string;
+  urgency: PartRequestUrgency;
+  status: PartRequestStatus;
+  supplierId?: string;
+  adminNotes?: string;
+  sentAt?: Date;
+  receivedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Messages envoyés (historique)
 export interface SentMessage {
   id: string;

@@ -18,7 +18,9 @@ import {
   Bell,
   MessageSquare,
   X as XIcon,
-  ShoppingCart
+  ShoppingCart,
+  Package,
+  Wrench
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
@@ -44,6 +46,8 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/commandes', label: 'Commandes', icon: ShoppingCart },
     { href: '/planning', label: 'Planning', icon: Calendar },
     { href: '/documents', label: 'Documents', icon: FileText },
+    { href: '/demandes-pieces', label: 'Demandes de pièces', icon: Wrench },
+    { href: '/fournisseurs', label: 'Fournisseurs', icon: Package },
     { href: '/plombiers', label: 'Plombiers', icon: Users },
     { href: '/recrutements', label: 'Candidatures', icon: UserPlus },
     { href: '/messages-automatiques', label: 'Messages', icon: MessageSquare },

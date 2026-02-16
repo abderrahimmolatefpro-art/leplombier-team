@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Zap, FolderKanban, Calendar, DollarSign } from 'lucide-react';
+import { Home, Zap, FolderKanban, Calendar, DollarSign, Package } from 'lucide-react';
 
 const navItems = [
   { href: '/espace-plombier/dashboard', label: 'Accueil', icon: Home },
   { href: '/espace-plombier/instant', label: 'Instant', icon: Zap },
   { href: '/espace-plombier/projets', label: 'Projets', icon: FolderKanban },
+  { href: '/espace-plombier/demandes-pieces', label: 'Pièces', icon: Package },
   { href: '/espace-plombier/planning', label: 'Planning', icon: Calendar },
   { href: '/espace-plombier/revenus', label: 'Revenus', icon: DollarSign },
 ];
