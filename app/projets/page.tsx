@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Client, User } from '@/types';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatCurrency, isPlombierAssignable } from '@/lib/utils';
 import { Plus, Edit, Trash2, Users as UsersIcon, Calendar, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
@@ -90,7 +90,7 @@ export default function ProjetsPage() {
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as User[];
-      setPlombiers(plombiersData);
+      setPlombiers(plombiersData.filter(isPlombierAssignable));
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

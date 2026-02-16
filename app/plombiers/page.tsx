@@ -4,12 +4,12 @@ import { useEffect, useState, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
-import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { auth } from '@/lib/firebase';
 import { generatePassword } from '@/lib/auth-utils';
 import { db } from '@/lib/firebase';
 import { Project, Client, Document, ManualRevenue, User } from '@/types';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatCurrency, isPlombierAssignable } from '@/lib/utils';
 import { 
   Users, 
   DollarSign, 
@@ -22,11 +22,8 @@ import {
   Plus,
   Trash2,
   BadgeCheck,
-  Check,
-  XCircle,
   Eye
 } from 'lucide-react';
-import type { PlombierValidationStatus } from '@/types';
 import Link from 'next/link';
 import {
   startOfWeek,
@@ -251,7 +248,9 @@ export default function PlombiersPage() {
     return { start, end };
   }, [datePreset, customStartDate, customEndDate]);
 
-  // Statistiques par plombier
+  const validatedPlombiers = useMemo(() => plombiers.filter(isPlombierAssignable), [plombiers]);
+
+  // Statistiques par plombier (uniquement les validés)
   const plombierStats = useMemo(() => {
     const { start, end } = getDateRange;
     const existingClientIds = new Set(clients.map(c => c.id));
@@ -275,7 +274,7 @@ export default function PlombiersPage() {
       return r.date >= start && r.date <= end && existingClientIds.has(r.clientId);
     });
 
-    plombiers.forEach(plombier => {
+    validatedPlombiers.forEach(plombier => {
       // Projets assignés à ce plombier
       const plombierProjects = filteredProjects.filter(p => 
         p.plombierIds && p.plombierIds.includes(plombier.id)
@@ -377,7 +376,7 @@ export default function PlombiersPage() {
     }
 
     return stats.sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [plombiers, projects, clients, documents, manualRevenues, getDateRange, selectedPlombierId]);
+  }, [validatedPlombiers, projects, clients, documents, manualRevenues, getDateRange, selectedPlombierId]);
 
   // Calcul des totaux
   const totals = useMemo(() => {
@@ -495,82 +494,32 @@ export default function PlombiersPage() {
     }
   };
 
-  const getValidationBadge = (status?: PlombierValidationStatus) => {
-    const config: Record<string, { label: string; className: string }> = {
-      pending_documents: { label: 'En attente documents', className: 'bg-amber-100 text-amber-700' },
-      documents_submitted: { label: 'Documents soumis', className: 'bg-blue-100 text-blue-700' },
-      validated: { label: 'Validé', className: 'bg-green-100 text-green-700' },
-      rejected: { label: 'Rejeté', className: 'bg-red-100 text-red-700' },
-    };
-    const c = status ? config[status] : null;
-    if (!c) return null;
-    return (
-      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${c.className}`}>
-        {c.label}
-      </span>
-    );
-  };
-
-  const handleValidatePlombier = async (plombierId: string) => {
-    try {
-      await updateDoc(doc(db, 'users', plombierId), {
-        validationStatus: 'validated',
-        validatedAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      });
-      loadData();
-    } catch (err) {
-      console.error(err);
-      alert('Erreur lors de la validation');
+  const handleDeletePlombier = async (plombierId: string, plombierName: string) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${plombierName} ? Cette action est irréversible (compte Firebase Auth et Firestore).`)) {
+      return;
     }
-  };
 
-  const handleRejectPlombier = async (plombierId: string) => {
-    if (!confirm('Rejeter les documents de ce plombier ? Un SMS lui sera envoyé pour re-soumettre.')) return;
     const token = await auth.currentUser?.getIdToken();
     if (!token) {
       alert('Session expirée. Veuillez vous reconnecter.');
       return;
     }
+
     try {
-      const res = await fetch('/api/plombiers/reject-documents', {
+      const res = await fetch(`/api/plombiers/${plombierId}/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plombierId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur lors du rejet');
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la suppression');
       loadData();
-    } catch (err) {
-      console.error(err);
-      alert(err instanceof Error ? err.message : 'Erreur lors du rejet');
-    }
-  };
-
-  const handleDeletePlombier = async (plombierId: string, plombierName: string) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${plombierName} ? Cette action est irréversible.`)) {
-      return;
-    }
-
-    try {
-      // Supprimer le document Firestore
-      await deleteDoc(doc(db, 'users', plombierId));
-      
-      // Note: La suppression de l'utilisateur Firebase Auth nécessite des privilèges admin
-      // On supprime seulement le document Firestore pour l'instant
-      
-      loadData();
-      alert('Plombier supprimé avec succès !');
-    } catch (error: any) {
+      alert('Plombier supprimé définitivement.');
+    } catch (error: unknown) {
       console.error('Error deleting plombier:', error);
-      if (error.code === 'permission-denied') {
-        alert('Erreur de permissions. Vous devez être admin pour supprimer un plombier.');
-      } else {
-        alert(`Erreur lors de la suppression: ${error.message || 'Erreur inconnue'}`);
-      }
+      alert(error instanceof Error ? error.message : 'Erreur lors de la suppression');
     }
   };
 
@@ -629,8 +578,8 @@ export default function PlombiersPage() {
                 onChange={(e) => setSelectedPlombierId(e.target.value)}
                 className="input"
               >
-                <option value="all">Tous les plombiers</option>
-                {plombiers.map(plombier => (
+                <option value="all">Tous les plombiers validés</option>
+                {validatedPlombiers.map(plombier => (
                   <option key={plombier.id} value={plombier.id}>
                     {plombier.name}
                   </option>
@@ -808,7 +757,11 @@ export default function PlombiersPage() {
                                     Certifié
                                   </span>
                                 )}
-                                {getValidationBadge(stat.plombier.validationStatus)}
+                                {stat.plombier.validationStatus === 'validated' && (
+                                  <span className="inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                    Validé
+                                  </span>
+                                )}
                               </div>
                               <p className="text-xs text-gray-500">{stat.plombier.phone || stat.plombier.email}</p>
                             </div>
@@ -849,30 +802,6 @@ export default function PlombiersPage() {
                               >
                                 <Eye size={18} />
                               </button>
-                            )}
-                            {stat.plombier.validationStatus === 'documents_submitted' && (
-                              <>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleValidatePlombier(stat.plombier.id);
-                                  }}
-                                  className="p-1.5 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
-                                  title="Valider"
-                                >
-                                  <Check size={18} />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRejectPlombier(stat.plombier.id);
-                                  }}
-                                  className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
-                                  title="Rejeter"
-                                >
-                                  <XCircle size={18} />
-                                </button>
-                              </>
                             )}
                             <Link
                               href={`/plombiers/${stat.plombier.id}`}
@@ -1100,7 +1029,9 @@ export default function PlombiersPage() {
         {plombierStats.length === 0 && (
           <div className="card text-center py-12">
             <Users className="mx-auto text-gray-400 mb-4" size={48} />
-            <p className="text-gray-600">Aucun plombier trouvé</p>
+            <p className="text-gray-600">
+              Aucun plombier validé. Validez les documents depuis la page Candidatures.
+            </p>
             <button
               onClick={() => setShowCreateModal(true)}
               className="btn btn-primary mt-4"
@@ -1233,30 +1164,6 @@ export default function PlombiersPage() {
                     </div>
                   )}
                 </div>
-                {documentsModalPlombier.validationStatus === 'documents_submitted' && (
-                  <div className="flex gap-3 pt-4 border-t border-gray-200">
-                    <button
-                      onClick={() => {
-                        handleValidatePlombier(documentsModalPlombier.id);
-                        setDocumentsModalPlombier(null);
-                      }}
-                      className="btn btn-primary flex items-center gap-2"
-                    >
-                      <Check size={18} />
-                      Valider
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleRejectPlombier(documentsModalPlombier.id);
-                        setDocumentsModalPlombier(null);
-                      }}
-                      className="btn btn-danger flex items-center gap-2"
-                    >
-                      <XCircle size={18} />
-                      Rejeter
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>

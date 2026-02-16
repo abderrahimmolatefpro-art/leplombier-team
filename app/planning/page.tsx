@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { PlanningEntry, Project, User, Client } from '@/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, isPlombierAssignable } from '@/lib/utils';
 import { Plus, Edit, Trash2, Calendar, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   startOfWeek,
@@ -125,7 +125,7 @@ export default function PlanningPage() {
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as User[];
-      setPlombiers(plombiersData);
+      setPlombiers(plombiersData.filter(isPlombierAssignable));
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

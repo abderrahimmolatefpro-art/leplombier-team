@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Client, Project, Document, DocumentItem, User, PlanningEntry, ClientStats, ManualRevenue, ClientPromoCode } from '@/types';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatCurrency, isPlombierAssignable } from '@/lib/utils';
 import { 
   ArrowLeft, 
   DollarSign, 
@@ -945,7 +945,7 @@ export default function ClientDetailPage() {
         <RevenueModal
           clientId={clientId}
           projects={projects}
-          plombiers={allPlombiers}
+          plombiers={allPlombiers.filter(isPlombierAssignable)}
           editingRevenue={editingRevenue}
           onClose={() => { setShowRevenueModal(false); setEditingRevenue(null); }}
           onSave={loadClientData}

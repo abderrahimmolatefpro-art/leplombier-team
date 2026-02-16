@@ -38,3 +38,9 @@ export function formatNumberFR(num: number): string {
     maximumFractionDigits: 2,
   }).format(num);
 }
+
+/** Plombier assignable (documents validés par admin). Les plombiers sans validationStatus (legacy) sont considérés assignables. */
+export function isPlombierAssignable(plombier: { validationStatus?: string }): boolean {
+  const s = plombier.validationStatus;
+  return s === 'validated' || !s;
+}

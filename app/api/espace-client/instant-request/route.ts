@@ -62,8 +62,12 @@ export async function POST(request: NextRequest) {
     if (addr) bodyParts.push(addr);
     const pushBody = bodyParts.length ? bodyParts.join(' · ') : 'Une nouvelle demande est disponible';
     const pushTitle = 'Nouvelle demande — disponible maintenant';
-    console.log('[FCM] instant-request: plombiers disponibles:', plombiersSnap.docs.map((d) => ({ id: d.id, hasFcm: !!d.data().fcmToken })));
-    for (const plombierDoc of plombiersSnap.docs) {
+    const assignablePlombiers = plombiersSnap.docs.filter((d) => {
+      const s = d.data().validationStatus;
+      return s === 'validated' || !s;
+    });
+    console.log('[FCM] instant-request: plombiers disponibles:', assignablePlombiers.map((d) => ({ id: d.id, hasFcm: !!d.data().fcmToken })));
+    for (const plombierDoc of assignablePlombiers) {
       await sendPushToPlombier(plombierDoc.id, pushTitle, pushBody, { requestId: docRef.id });
     }
 

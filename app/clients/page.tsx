@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import { collection, getDocs, addDoc, updateDoc, doc, Timestamp, query, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Client, User } from '@/types';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatCurrency, isPlombierAssignable } from '@/lib/utils';
 import { Plus, Edit, Trash2, Phone, Mail, MapPin, Users, Search, ChevronUp, ChevronDown, Eye } from 'lucide-react';
 
 type SortField = 'name' | 'totalRevenue' | 'totalProjects' | 'city' | 'createdAt';
@@ -976,11 +976,16 @@ export default function ClientsPage() {
                       className="input"
                     >
                       <option value="">Aucun</option>
-                      {plombiers.map((plombier) => (
-                        <option key={plombier.id} value={plombier.id}>
-                          {plombier.name}
-                        </option>
-                      ))}
+                      {(() => {
+                        const assignable = plombiers.filter(isPlombierAssignable);
+                        const assigned = formData.assignedPlombierId ? plombiers.find(p => p.id === formData.assignedPlombierId) : null;
+                        const list = assigned && !assignable.some(p => p.id === assigned.id) ? [...assignable, assigned] : assignable;
+                        return list.map((plombier) => (
+                          <option key={plombier.id} value={plombier.id}>
+                            {plombier.name}{!isPlombierAssignable(plombier) ? ' (documents non validés)' : ''}
+                          </option>
+                        ));
+                      })()}
                     </select>
                   </div>
 
@@ -1033,7 +1038,7 @@ export default function ClientsPage() {
                                 required
                               >
                                 <option value="">Sélectionner un plombier</option>
-                                {plombiers.map((plombier) => (
+                                {plombiers.filter(isPlombierAssignable).map((plombier) => (
                                   <option key={plombier.id} value={plombier.id}>
                                     {plombier.name}
                                   </option>
