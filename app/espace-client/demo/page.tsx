@@ -227,7 +227,7 @@ function DemoContent() {
         {step === 3 && (
           <form onSubmit={handleSendCode} className="space-y-4">
             <p className="text-sm text-gray-600">
-              Créez votre compte pour recevoir les offres des plombiers en temps réel. Entrez votre numéro, recevez un code par SMS, et c'est parti !
+              Créez votre compte pour recevoir les offres des plombiers en temps réel. Entrez votre numéro, recevez un code par SMS, et c&apos;est parti !
             </p>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
