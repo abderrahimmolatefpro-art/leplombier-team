@@ -1,13 +1,14 @@
 # Blocs Espace Client pour WordPress Elementor
 
-Deux blocs HTML à ajouter sur votre page WordPress (Elementor) pour encourager les visiteurs à se connecter et commander un plombier.
+Trois blocs HTML à ajouter sur votre page WordPress (Elementor) pour encourager les visiteurs à se connecter et commander un plombier.
 
 **Important** : L'iframe sert uniquement à créer un compte ou se connecter. Une fois connecté, l'utilisateur est redirigé vers le dashboard complet (dash.leplombier.ma) pour commander, consulter ses documents, etc.
 
 ## Ordre recommandé
 
 1. **Bloc 2** (explication) en premier – les visiteurs comprennent le concept
-2. **Bloc 1** (iframe) en dessous – ils passent à l'action
+2. **Bloc 3** (démo interactive) – simulation du flux client-plombier, puis inscription et création d'une vraie demande
+3. **Bloc 1** (iframe connexion) – alternative directe pour se connecter sans passer par la démo
 
 ---
 
@@ -51,12 +52,31 @@ L'iframe affiche uniquement le formulaire de connexion. Après connexion, l'util
 
 ---
 
+## Bloc 3 : Démo interactive (simulation + inscription)
+
+Widget qui simule le flux complet : le visiteur décrit son besoin, voit une offre plombier simulée, accepte, puis se connecte (téléphone + SMS). Une **vraie** demande est créée et les plombiers reçoivent une notification. Redirection vers le dashboard pour suivre la demande en temps réel.
+
+À coller dans un **widget HTML** Elementor.
+
+```html
+<div class="crm-demo-block" style="max-width: 480px; margin: 0 auto 30px;">
+  <iframe 
+    src="https://dash.leplombier.ma/espace-client/demo?embed=1" 
+    style="width: 100%; min-height: 500px; border: none; display: block;"
+    title="Démo Le Plombier"
+  ></iframe>
+</div>
+```
+
+---
+
 ## Instructions
 
-1. Dans Elementor, ajoutez **deux widgets HTML** sur votre page
+1. Dans Elementor, ajoutez **trois widgets HTML** sur votre page
 2. Collez le **Bloc 2** (explication) dans le premier widget
-3. Collez le **Bloc 1** (iframe) dans le second widget
-4. Ajustez l'ordre si besoin (explication en haut, iframe en bas)
+3. Collez le **Bloc 3** (démo) dans le second widget
+4. Collez le **Bloc 1** (iframe connexion) dans le troisième widget
+5. Ajustez l'ordre si besoin
 
 ## Prérequis
 
