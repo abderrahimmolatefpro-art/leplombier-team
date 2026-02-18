@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { AutoMessage, SentMessage, Client } from '@/types';
-import { Plus, Edit, Trash2, Save, X, Mail, MessageSquare, Search, Eye, Copy, CheckCircle2, XCircle, Send } from 'lucide-react';
+import { formatDate, formatDateTime } from '@/lib/utils';
+import { Plus, Edit, Trash2, Save, X, Mail, MessageSquare, Search, Eye, Copy, CheckCircle2, XCircle, Send, Inbox } from 'lucide-react';
 
 // Templates pré-remplis
 const MESSAGE_TEMPLATES = {
@@ -99,6 +100,27 @@ export default function AutoMessagesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'promotion' | 'warning'>('all');
   const [filterEnabled, setFilterEnabled] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const [activeTab, setActiveTab] = useState<'templates' | 'boite-mail'>('templates');
+  const [inboxEmails, setInboxEmails] = useState<{ uid: number; subject: string; from: string; fromAddress: string; date: string; seen: boolean }[]>([]);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxError, setInboxError] = useState<string | null>(null);
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeMessage, setComposeMessage] = useState('');
+  const [composeSending, setComposeSending] = useState(false);
+  const [showCompose, setShowCompose] = useState(false);
+  const [viewEmail, setViewEmail] = useState<{
+    uid: number;
+    subject: string;
+    from: string;
+    fromAddress: string;
+    to: string;
+    date: string;
+    text: string;
+    html: string;
+  } | null>(null);
+  const [viewEmailLoading, setViewEmailLoading] = useState(false);
+  const prefetchCache = useRef<Map<number, { uid: number; subject: string; from: string; fromAddress: string; to: string; date: string; text: string; html: string }>>(new Map());
   const [formData, setFormData] = useState({
     name: '',
     type: 'promotion' as 'promotion' | 'warning',
@@ -109,6 +131,41 @@ export default function AutoMessagesPage() {
     emailContent: '',
     enabled: true,
   });
+
+  const loadInbox = useCallback(async () => {
+    setInboxLoading(true);
+    setInboxError(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        setInboxError('Session expirée. Rechargez la page.');
+        setInboxEmails([]);
+        return;
+      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const res = await fetch('/api/inbox', {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (!res.ok) {
+        setInboxError(data.error || 'Erreur lors du chargement');
+        setInboxEmails([]);
+        return;
+      }
+      setInboxEmails(data.emails || []);
+    } catch (err) {
+      const msg = err instanceof Error && err.name === 'AbortError'
+        ? 'Délai dépassé. Vérifiez IMAP_INBOX_* dans .env.local.'
+        : 'Erreur de connexion';
+      setInboxError(msg);
+      setInboxEmails([]);
+    } finally {
+      setInboxLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -122,6 +179,10 @@ export default function AutoMessagesPage() {
       loadSentMessages();
     }
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (user && activeTab === 'boite-mail') loadInbox();
+  }, [user, activeTab, loadInbox]);
 
   const loadClients = async () => {
     try {
@@ -335,6 +396,113 @@ export default function AutoMessagesPage() {
     });
   };
 
+  const composeRef = useRef<HTMLDivElement>(null);
+
+  const prefetchEmail = useCallback(async (uid: number) => {
+    if (prefetchCache.current.has(uid)) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const res = await fetch(`/api/inbox/${uid}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        prefetchCache.current.set(uid, {
+          uid: data.uid,
+          subject: data.subject,
+          from: data.from,
+          fromAddress: data.fromAddress,
+          to: data.to || '',
+          date: data.date,
+          text: data.text || '',
+          html: data.html || '',
+        });
+      }
+    } catch {
+      // ignore prefetch errors
+    }
+  }, []);
+
+  const handleViewEmail = useCallback(async (uid: number) => {
+    const cached = prefetchCache.current.get(uid);
+    if (cached) {
+      setViewEmail(cached);
+      setViewEmailLoading(false);
+      return;
+    }
+    setViewEmailLoading(true);
+    setViewEmail(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      const res = await fetch(`/api/inbox/${uid}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Erreur lors du chargement');
+        return;
+      }
+
+      const emailData = {
+        uid: data.uid,
+        subject: data.subject,
+        from: data.from,
+        fromAddress: data.fromAddress,
+        to: data.to || '',
+        date: data.date,
+        text: data.text || '',
+        html: data.html || '',
+      };
+      prefetchCache.current.set(uid, emailData);
+      setViewEmail(emailData);
+    } catch (err) {
+      alert('Erreur de connexion');
+    } finally {
+      setViewEmailLoading(false);
+    }
+  }, []);
+
+  const handleReply = (email: NonNullable<typeof viewEmail>) => {
+    setComposeTo(email.fromAddress);
+    setComposeSubject(email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`);
+    setComposeMessage(`\n\n---\nLe ${new Date(email.date).toLocaleString('fr-FR')}, ${email.from} a écrit :\n\n${(email.text || '').slice(0, 500)}${email.text && email.text.length > 500 ? '...' : ''}`);
+    setViewEmail(null);
+    setShowCompose(true);
+  };
+
+  const handleComposeSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!composeTo.trim() || !composeSubject.trim() || !composeMessage.trim()) {
+      alert('Destinataire, sujet et message sont requis.');
+      return;
+    }
+    setComposeSending(true);
+    try {
+      const res = await fetch('/api/client/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: composeTo.trim(), subject: composeSubject.trim(), message: composeMessage.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setComposeTo('');
+        setComposeSubject('');
+        setComposeMessage('');
+        alert('Email envoyé avec succès.');
+      } else {
+        alert('Erreur: ' + (data.error || 'Échec de l\'envoi'));
+      }
+    } catch (err) {
+      alert('Erreur de connexion.');
+    } finally {
+      setComposeSending(false);
+    }
+  };
+
   const filteredClientsForSend = clients.filter((c) => {
     const matchesSearch =
       !sendClientSearch ||
@@ -388,26 +556,247 @@ export default function AutoMessagesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Envoi de messages</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Messages</h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
-              Envoyer des SMS et emails à vos clients
+              {activeTab === 'templates' ? 'Envoyer des SMS et emails à vos clients' : 'Boîte mail contact@leplombier.ma — Envoi et réception'}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <button
-              onClick={() => {
-                setEditingMessage(null);
-                resetForm();
-                setShowModal(true);
-              }}
-              className="btn btn-primary flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center"
-            >
-              <Plus size={18} className="sm:w-5 sm:h-5" />
-              <span>Nouveau message</span>
-            </button>
+            {activeTab === 'templates' && (
+              <button
+                onClick={() => {
+                  setEditingMessage(null);
+                  resetForm();
+                  setShowModal(true);
+                }}
+                className="btn btn-primary flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+              >
+                <Plus size={18} className="sm:w-5 sm:h-5" />
+                <span>Nouveau message</span>
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'templates'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <MessageSquare size={16} />
+              Templates
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('boite-mail')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'boite-mail'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Mail size={16} />
+              Boîte mail
+            </span>
+          </button>
+        </div>
+
+        {/* Boîte mail content - style Gmail */}
+        {activeTab === 'boite-mail' && (
+          <div className="card p-0 overflow-hidden flex flex-col" style={{ minHeight: 'calc(100vh - 280px)' }}>
+            {/* Barre d'outils */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setShowCompose(true); setViewEmail(null); }}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <Plus size={18} />
+                  Nouveau
+                </button>
+                <button
+                  onClick={loadInbox}
+                  disabled={inboxLoading}
+                  className="btn btn-secondary btn-sm"
+                >
+                  Actualiser
+                </button>
+              </div>
+              <a
+                href={process.env.NEXT_PUBLIC_WEBMAIL_URL || 'https://premium239.web-hosting.com:2096/3rdparty/roundcube/'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary-600 hover:underline"
+              >
+                Ouvrir le webmail
+              </a>
+            </div>
+
+            {/* Layout 2 colonnes style Gmail */}
+            <div className="flex flex-col md:flex-row flex-1 min-h-0">
+              {/* Liste des emails */}
+              <div className={`border-b md:border-b-0 md:border-r border-gray-200 bg-gray-50/50 overflow-hidden flex flex-col ${
+                viewEmail || showCompose ? 'md:w-96 flex-shrink-0 max-h-[40vh] md:max-h-none' : 'flex-1'
+              }`}>
+                {inboxLoading ? (
+                  <div className="flex justify-center py-16">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
+                  </div>
+                ) : inboxError ? (
+                  <div className="p-4">
+                    <p className="text-sm text-amber-800">{inboxError}</p>
+                    <button type="button" onClick={loadInbox} className="mt-2 btn btn-secondary btn-sm">Réessayer</button>
+                  </div>
+                ) : inboxEmails.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                    <Inbox size={48} className="mb-4 opacity-50" />
+                    <p>Aucun email</p>
+                  </div>
+                ) : (
+                  <div className="overflow-y-auto flex-1">
+                    {inboxEmails.map((email) => {
+                      const initial = (email.from.match(/[A-Za-z0-9]/) || ['?'])[0].toUpperCase();
+                      const isSelected = viewEmail?.uid === email.uid;
+                      return (
+                        <div
+                          key={email.uid}
+                          onMouseEnter={() => prefetchEmail(email.uid)}
+                          onClick={() => { handleViewEmail(email.uid); setShowCompose(false); }}
+                          className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-100 transition-colors ${
+                            isSelected ? 'bg-primary-50 border-l-4 border-l-primary-600' : 'hover:bg-gray-100'
+                          } ${!email.seen ? 'bg-blue-50/70' : ''}`}
+                        >
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold ${
+                            !email.seen ? 'bg-primary-600 text-white' : 'bg-gray-300 text-gray-600'
+                          }`}>
+                            {initial}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`truncate ${!email.seen ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                {email.from.replace(/<[^>]+>/g, '').trim() || email.from}
+                              </span>
+                              <span className="text-xs text-gray-500 flex-shrink-0">
+                                {formatDateTime(email.date)}
+                              </span>
+                            </div>
+                            <p className={`text-sm truncate mt-0.5 ${!email.seen ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+                              {email.subject}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Panneau droit : contenu email ou formulaire */}
+              <div className={`flex-1 bg-white overflow-hidden flex flex-col ${!viewEmail && !showCompose ? 'hidden md:flex' : ''}`}>
+                {showCompose ? (
+                  <div className="flex flex-col h-full overflow-y-auto" ref={composeRef}>
+                    <div className="p-4 border-b flex items-center justify-between">
+                      <h3 className="font-semibold text-gray-900">Nouveau message</h3>
+                      <button onClick={() => { setShowCompose(false); setComposeTo(''); setComposeSubject(''); setComposeMessage(''); }} className="text-gray-400 hover:text-gray-600">
+                        <X size={20} />
+                      </button>
+                    </div>
+                    <form onSubmit={handleComposeSend} className="p-4 space-y-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">À</label>
+                        <input
+                          type="email"
+                          value={composeTo}
+                          onChange={(e) => setComposeTo(e.target.value)}
+                          placeholder="Destinataire"
+                          className="input w-full"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Sujet</label>
+                        <input
+                          type="text"
+                          value={composeSubject}
+                          onChange={(e) => setComposeSubject(e.target.value)}
+                          placeholder="Sujet"
+                          className="input w-full"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <textarea
+                          value={composeMessage}
+                          onChange={(e) => setComposeMessage(e.target.value)}
+                          placeholder="Message..."
+                          className="input w-full min-h-[200px]"
+                          required
+                        />
+                      </div>
+                      <button type="submit" disabled={composeSending} className="btn btn-primary">
+                        {composeSending ? 'Envoi...' : 'Envoyer'}
+                      </button>
+                    </form>
+                  </div>
+                ) : viewEmailLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
+                  </div>
+                ) : viewEmail ? (
+                  <div className="flex flex-col h-full overflow-hidden">
+                    <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
+                      <h3 className="font-semibold text-gray-900 truncate pr-4">{viewEmail.subject}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button onClick={() => handleReply(viewEmail)} className="btn btn-primary btn-sm inline-flex items-center gap-1">
+                          <Send size={14} /> Répondre
+                        </button>
+                        <a
+                          href={`mailto:${viewEmail.fromAddress}?subject=Re: ${encodeURIComponent(viewEmail.subject)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-secondary btn-sm"
+                        >
+                          Client mail
+                        </a>
+                        <button onClick={() => setViewEmail(null)} className="btn btn-secondary btn-sm">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="px-4 py-2 border-b text-sm text-gray-600 space-y-1">
+                      <p><span className="font-medium">De :</span> {viewEmail.from}</p>
+                      <p><span className="font-medium">Date :</span> {formatDateTime(viewEmail.date)}</p>
+                    </div>
+                    <div className="px-4 py-4 overflow-y-auto flex-1 text-sm">
+                      {viewEmail.html ? (
+                        <div className="[&_a]:text-primary-600 [&_a]:underline [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: viewEmail.html }} />
+                      ) : (
+                        <pre className="whitespace-pre-wrap font-sans text-gray-800">{viewEmail.text || '(Aucun contenu)'}</pre>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="hidden md:flex flex-col items-center justify-center h-full text-gray-400">
+                    <Mail size={64} className="mb-4 opacity-50" />
+                    <p>Aucun email sélectionné</p>
+                    <p className="text-sm mt-1">Cliquez sur un email pour le lire</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Templates content */}
+        {activeTab === 'templates' && (
+          <>
         {/* Statistiques globales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="card">
@@ -1081,6 +1470,8 @@ export default function AutoMessagesPage() {
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </Layout>
