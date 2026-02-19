@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { Zap } from 'lucide-react';
+import AddressInput from '@/components/AddressInput';
 
 const MIN_PHONE_DIGITS = 9;
-const ANIMATION_SEND_MS = 2500;
+const ANIMATION_SEND_MS = 1500;
 
-type DemoStep = 1 | 2 | 3 | 4 | 5;
+type DemoStep = 1 | 2 | 3 | 4;
+type CodeSentStatus = 'idle' | 'checking' | 'sent' | 'not_sent';
 
 function isEmbedMode(searchParams: URLSearchParams | null): boolean {
   return searchParams?.get('embed') === '1' || searchParams?.get('embed') === 'true';
@@ -30,6 +32,8 @@ function DemoContent() {
   const [sendingCode, setSendingCode] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [creatingRequest, setCreatingRequest] = useState(false);
+  const [codeSentStatus, setCodeSentStatus] = useState<CodeSentStatus>('idle');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!embed) return;
@@ -47,10 +51,44 @@ function DemoContent() {
   useEffect(() => {
     if (step !== 2) return;
     const t = setTimeout(() => {
-      setStep(token ? 5 : 3);
+      setStep(token ? 4 : 3);
     }, ANIMATION_SEND_MS);
     return () => clearTimeout(t);
   }, [step, token]);
+
+  const checkCodeSent = useCallback(async (phoneToCheck: string) => {
+    const digits = phoneToCheck.replace(/\D/g, '');
+    if (digits.length < MIN_PHONE_DIGITS) {
+      setCodeSentStatus('idle');
+      return;
+    }
+    setCodeSentStatus('checking');
+    try {
+      const res = await fetch('/api/espace-client/check-code-sent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneToCheck }),
+      });
+      const data = await res.json();
+      setCodeSentStatus(data.codeSent ? 'sent' : 'not_sent');
+    } catch {
+      setCodeSentStatus('not_sent');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (step !== 3) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < MIN_PHONE_DIGITS) {
+      setCodeSentStatus('idle');
+      return;
+    }
+    debounceRef.current = setTimeout(() => checkCodeSent(phone), 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [step, phone, checkCodeSent]);
 
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,10 +107,15 @@ function DemoContent() {
         body: JSON.stringify({ phone }),
       });
       const data = await res.json();
-      if (data.success || data.codeAlreadySent) {
-        setStep(4);
+      if (!data.success) {
+        if (data.codeAlreadySent) {
+          setCodeSentStatus('sent');
+        } else {
+          setError(data.error || 'Erreur lors de l\'envoi du code');
+        }
       } else {
-        setError(data.error || "Erreur lors de l'envoi du code");
+        setError('');
+        setCodeSentStatus('sent');
       }
     } catch {
       setError('Erreur de connexion');
@@ -94,7 +137,7 @@ function DemoContent() {
       const data = await res.json();
       if (data.success) {
         await login(data.token);
-        setStep(5);
+        setStep(4);
       } else {
         setError(data.error || 'Code incorrect');
       }
@@ -145,7 +188,7 @@ function DemoContent() {
   }, [address, description, embed, router, searchParams]);
 
   useEffect(() => {
-    if (step === 5) {
+    if (step === 4) {
       createRealRequest();
     }
   }, [step, createRealRequest]);
@@ -170,13 +213,15 @@ function DemoContent() {
           </div>
         )}
 
-        <h1 className={`font-bold text-gray-900 ${embed ? 'text-base mb-1' : 'text-lg mb-2'}`}>
-          {step === 1 && 'Décrivez votre besoin'}
-          {step === 2 && 'Demande envoyée'}
-          {step === 3 && 'Connectez-vous'}
-          {step === 4 && 'Code de vérification'}
-          {step === 5 && 'Création de votre demande'}
-        </h1>
+        <div className="mb-3">
+          <p className="text-xs font-medium text-primary-600">Étape {step}/4</p>
+          <h1 className={`font-bold text-gray-900 ${embed ? 'text-base' : 'text-lg'}`}>
+            {step === 1 && 'Décrivez votre besoin'}
+            {step === 2 && 'Demande envoyée'}
+            {step === 3 && 'Connectez-vous'}
+            {step === 4 && 'Création de votre demande'}
+          </h1>
+        </div>
 
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
@@ -187,17 +232,13 @@ function DemoContent() {
         {/* Step 1: Address + description */}
         {step === 1 && (
           <form onSubmit={handleStep1Submit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Ex: 12 rue Mohammed V, Casablanca"
-                className="input w-full"
-                required
-              />
-            </div>
+            <AddressInput
+              value={address}
+              onChange={setAddress}
+              placeholder="Commencez à taper une adresse..."
+              required
+              label="Adresse"
+            />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
               <textarea
@@ -215,23 +256,33 @@ function DemoContent() {
           </form>
         )}
 
-        {/* Step 2: Animation */}
+        {/* Step 2: Animation (1,5 s, skippable) */}
         {step === 2 && (
           <div className="py-8 flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4" />
-            <p className="text-gray-600 text-center">Votre demande est envoyée aux plombiers...</p>
+            <p className="text-gray-600 text-center mb-4">Votre demande est envoyée aux plombiers...</p>
+            <button
+              type="button"
+              onClick={() => setStep(token ? 4 : 3)}
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium underline"
+            >
+              Passer
+            </button>
           </div>
         )}
 
-        {/* Step 3: Phone (Connectez-vous) */}
+        {/* Step 3: Connectez-vous (phone + code, même logique que login) */}
         {step === 3 && (
-          <form onSubmit={handleSendCode} className="space-y-4">
+          <form onSubmit={handleVerify} className="space-y-4">
             <p className="text-sm text-gray-600">
-              Créez votre compte pour recevoir les offres des plombiers en temps réel. Entrez votre numéro, recevez un code par SMS, et c&apos;est parti !
+              Créez votre compte pour recevoir les offres des plombiers en temps réel. Nouveau ? Votre compte sera créé automatiquement.
             </p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <label htmlFor="demo-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                Téléphone
+              </label>
               <input
+                id="demo-phone"
                 type="tel"
                 value={phone}
                 onChange={(e) => {
@@ -243,19 +294,12 @@ function DemoContent() {
                 required
               />
             </div>
-            <button type="submit" disabled={sendingCode || phone.replace(/\D/g, '').length < MIN_PHONE_DIGITS} className="btn btn-primary w-full">
-              {sendingCode ? 'Envoi...' : 'Envoyer le code SMS'}
-            </button>
-          </form>
-        )}
-
-        {/* Step 4: Code */}
-        {step === 4 && (
-          <form onSubmit={handleVerify} className="space-y-4">
-            <p className="text-sm text-gray-600">Entrez le code reçu par SMS au {phone}</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Code à 6 chiffres</label>
+              <label htmlFor="demo-code" className="block text-sm font-medium text-gray-700 mb-1">
+                Code SMS
+              </label>
               <input
+                id="demo-code"
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
@@ -265,22 +309,38 @@ function DemoContent() {
                 className="input w-full text-center text-lg tracking-widest"
                 required
               />
+              <div className="mt-1 min-h-[1.25rem]">
+                {codeSentStatus === 'checking' && (
+                  <span className="text-xs text-gray-500">Vérification...</span>
+                )}
+                {codeSentStatus === 'not_sent' && (
+                  <button
+                    type="button"
+                    onClick={handleSendCode}
+                    disabled={sendingCode || phone.replace(/\D/g, '').length < MIN_PHONE_DIGITS}
+                    className="text-xs text-primary-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingCode ? 'Envoi...' : 'Envoyer le code'}
+                  </button>
+                )}
+                {codeSentStatus === 'sent' && (
+                  <p className="text-xs text-gray-600">
+                    Consultez vos SMS pour retrouver le code envoyé.{' '}
+                    <a href="https://leplombier.ma/contact" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
+                      Code oublié ? Contactez-nous
+                    </a>
+                  </p>
+                )}
+              </div>
             </div>
             <button type="submit" disabled={verifying} className="btn btn-primary w-full">
               {verifying ? 'Vérification...' : 'Se connecter'}
             </button>
-            <button
-              type="button"
-              onClick={() => setStep(3)}
-              className="w-full text-sm text-gray-500 hover:text-gray-700"
-            >
-              Changer de numéro
-            </button>
           </form>
         )}
 
-        {/* Step 5: Creating request */}
-        {step === 5 && (
+        {/* Step 4: Creating request */}
+        {step === 4 && (
           <div className="py-8 flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4" />
             <p className="text-gray-600 text-center">
