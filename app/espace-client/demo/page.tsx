@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import { useClientAuth } from '@/hooks/useClientAuth';
-import { Zap } from 'lucide-react';
+import { Zap, CheckCircle } from 'lucide-react';
 import AddressInput from '@/components/AddressInput';
 
 const MIN_PHONE_DIGITS = 9;
-const ANIMATION_SEND_MS = 1500;
+const ANIMATION_SEND_MS = 1000;
 
 type DemoStep = 1 | 2 | 3 | 4;
 type CodeSentStatus = 'idle' | 'checking' | 'sent' | 'not_sent';
@@ -33,6 +32,8 @@ function DemoContent() {
   const [verifying, setVerifying] = useState(false);
   const [creatingRequest, setCreatingRequest] = useState(false);
   const [codeSentStatus, setCodeSentStatus] = useState<CodeSentStatus>('idle');
+  const [step2Phase, setStep2Phase] = useState(0);
+  const [step4Phase, setStep4Phase] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -47,13 +48,20 @@ function DemoContent() {
     };
   }, [embed]);
 
-  // Step 2: auto-advance after animation (connect if not logged in, else create request)
+  // Step 2: séquence animation (recherche → plombiers trouvés → envoyé)
   useEffect(() => {
-    if (step !== 2) return;
-    const t = setTimeout(() => {
-      setStep(token ? 4 : 3);
-    }, ANIMATION_SEND_MS);
-    return () => clearTimeout(t);
+    if (step !== 2) {
+      setStep2Phase(0);
+      return;
+    }
+    const t1 = setTimeout(() => setStep2Phase(1), 350);
+    const t2 = setTimeout(() => setStep2Phase(2), 700);
+    const t3 = setTimeout(() => setStep(token ? 4 : 3), ANIMATION_SEND_MS);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, [step, token]);
 
   const checkCodeSent = useCallback(async (phoneToCheck: string) => {
@@ -191,9 +199,20 @@ function DemoContent() {
 
   useEffect(() => {
     if (step === 4) {
+      setStep4Phase(0);
       createRealRequest();
     }
   }, [step, createRealRequest]);
+
+  useEffect(() => {
+    if (step !== 4) return;
+    const t1 = setTimeout(() => setStep4Phase(1), 400);
+    const t2 = setTimeout(() => setStep4Phase(2), 800);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [step]);
 
   const containerClass = embed
     ? 'w-full max-w-md mx-auto py-4 px-2 bg-transparent'
@@ -204,17 +223,6 @@ function DemoContent() {
   return (
     <div className={containerClass}>
       <div className={cardClass}>
-        {!embed && (
-          <div className="flex justify-center mb-4">
-            <Image src="/logo.png" alt="Le Plombier" width={140} height={47} className="h-auto object-contain" priority />
-          </div>
-        )}
-        {embed && (
-          <div className="flex justify-center mb-3">
-            <Image src="/logo.png" alt="Le Plombier" width={90} height={30} className="h-8 w-auto object-contain opacity-90" priority />
-          </div>
-        )}
-
         <div className="mb-3">
           <p className="text-xs font-medium text-primary-600">Étape {step}/4</p>
           <h1 className={`font-bold text-gray-900 ${embed ? 'text-base' : 'text-lg'}`}>
@@ -258,15 +266,40 @@ function DemoContent() {
           </form>
         )}
 
-        {/* Step 2: Animation (1,5 s, skippable) */}
+        {/* Step 2: Animation recherche plombiers (1 s, instantané) */}
         {step === 2 && (
-          <div className="py-8 flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4" />
-            <p className="text-gray-600 text-center mb-4">Votre demande est envoyée aux plombiers...</p>
+          <div className="py-6 flex flex-col items-center">
+            <div className="w-full max-w-xs space-y-3 mb-4">
+              <div className={`flex items-center gap-3 transition-opacity duration-200 ${step2Phase >= 0 ? 'opacity-100' : 'opacity-40'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${step2Phase >= 1 ? 'bg-green-100' : 'bg-primary-100'}`}>
+                  {step2Phase >= 1 ? <CheckCircle className="w-4 h-4 text-green-600" /> : <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" />}
+                </div>
+                <p className="text-sm text-gray-700">
+                  {step2Phase === 0 && 'Recherche de plombiers à proximité...'}
+                  {step2Phase === 1 && '3 plombiers disponibles'}
+                  {step2Phase === 2 && 'Demande envoyée'}
+                </p>
+              </div>
+              {step2Phase >= 1 && (
+                <div className="flex flex-wrap gap-2 pl-11">
+                  {['Mohamed · 2 km', 'Karim · 3 km', 'Youssef · 4 km'].map((name) => (
+                    <span key={name} className="text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="h-1 w-full max-w-xs bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary-600 transition-all duration-300 ease-out"
+                style={{ width: step2Phase === 0 ? '33%' : step2Phase === 1 ? '66%' : '100%' }}
+              />
+            </div>
             <button
               type="button"
               onClick={() => setStep(token ? 4 : 3)}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium underline"
+              className="mt-4 text-sm text-primary-600 hover:text-primary-700 font-medium underline"
             >
               Passer
             </button>
@@ -341,13 +374,27 @@ function DemoContent() {
           </form>
         )}
 
-        {/* Step 4: Creating request */}
+        {/* Step 4: Création demande (séquence instantanée) */}
         {step === 4 && (
-          <div className="py-8 flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4" />
-            <p className="text-gray-600 text-center">
-              {creatingRequest ? 'Création de votre demande...' : 'Redirection...'}
-            </p>
+          <div className="py-6 flex flex-col items-center">
+            <div className="w-full max-w-xs space-y-2 mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${step4Phase >= 1 ? 'bg-green-100' : 'bg-primary-100'}`}>
+                  {step4Phase >= 2 ? <CheckCircle className="w-4 h-4 text-green-600" /> : <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" />}
+                </div>
+                <p className="text-sm text-gray-700">
+                  {step4Phase === 0 && (creatingRequest ? 'Création de votre demande...' : 'Préparation...')}
+                  {step4Phase === 1 && 'Plombiers notifiés'}
+                  {step4Phase === 2 && 'Redirection...'}
+                </p>
+              </div>
+            </div>
+            <div className="h-1 w-full max-w-xs bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary-600 transition-all duration-300 ease-out"
+                style={{ width: step4Phase === 0 ? '33%' : step4Phase === 1 ? '66%' : '100%' }}
+              />
+            </div>
           </div>
         )}
       </div>
