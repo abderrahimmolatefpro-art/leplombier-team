@@ -42,7 +42,23 @@ export function useClientAuth() {
   }, [setToken]);
 
   useEffect(() => {
-    const t = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+    if (typeof window === 'undefined') return;
+
+    let t = localStorage.getItem(TOKEN_KEY);
+
+    if (!t) {
+      const params = new URLSearchParams(window.location.search);
+      const tokenFromUrl = params.get('espace_client_token');
+      if (tokenFromUrl) {
+        localStorage.setItem(TOKEN_KEY, tokenFromUrl);
+        t = tokenFromUrl;
+        params.delete('espace_client_token');
+        const newSearch = params.toString();
+        const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '');
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+
     setTokenState(t);
 
     if (t) {

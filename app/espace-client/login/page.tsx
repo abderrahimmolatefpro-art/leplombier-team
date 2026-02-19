@@ -129,7 +129,9 @@ function ClientLoginContent() {
         await login(data.token);
         const redirectPath = getRedirectPath(searchParams);
         if (embed) {
-          window.top!.location.href = `${window.location.origin}${redirectPath}`;
+          const sep = redirectPath.includes('?') ? '&' : '?';
+          const urlWithToken = `${redirectPath}${sep}espace_client_token=${encodeURIComponent(data.token)}`;
+          window.top!.location.href = `${window.location.origin}${urlWithToken}`;
         } else {
           router.push(redirectPath);
         }

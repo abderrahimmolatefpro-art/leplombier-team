@@ -174,8 +174,10 @@ function DemoContent() {
         return;
       }
       const next = searchParams?.get('next') || `/espace-client/commander?requestId=${data.id}`;
-      const path = next.startsWith('/') ? next : `/espace-client/commander?requestId=${data.id}`;
+      let path = next.startsWith('/') ? next : `/espace-client/commander?requestId=${data.id}`;
       if (embed && typeof window !== 'undefined' && window.top) {
+        const sep = path.includes('?') ? '&' : '?';
+        path += `${sep}espace_client_token=${encodeURIComponent(authToken)}`;
         window.top.location.href = `${window.location.origin}${path}`;
       } else {
         router.push(path);
