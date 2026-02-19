@@ -7,7 +7,7 @@ import { Zap, CheckCircle } from 'lucide-react';
 import AddressInput from '@/components/AddressInput';
 
 const MIN_PHONE_DIGITS = 9;
-const ANIMATION_SEND_MS = 1000;
+const ANIMATION_SEND_MS = 1800;
 
 type DemoStep = 1 | 2 | 3 | 4;
 type CodeSentStatus = 'idle' | 'checking' | 'sent' | 'not_sent';
@@ -54,8 +54,8 @@ function DemoContent() {
       setStep2Phase(0);
       return;
     }
-    const t1 = setTimeout(() => setStep2Phase(1), 350);
-    const t2 = setTimeout(() => setStep2Phase(2), 700);
+    const t1 = setTimeout(() => setStep2Phase(1), 600);
+    const t2 = setTimeout(() => setStep2Phase(2), 1200);
     const t3 = setTimeout(() => setStep(token ? 4 : 3), ANIMATION_SEND_MS);
     return () => {
       clearTimeout(t1);
@@ -206,8 +206,8 @@ function DemoContent() {
 
   useEffect(() => {
     if (step !== 4) return;
-    const t1 = setTimeout(() => setStep4Phase(1), 400);
-    const t2 = setTimeout(() => setStep4Phase(2), 800);
+    const t1 = setTimeout(() => setStep4Phase(1), 600);
+    const t2 = setTimeout(() => setStep4Phase(2), 1200);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
