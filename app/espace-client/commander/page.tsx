@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { Zap, Phone, CheckCircle, XCircle, BadgeCheck } from 'lucide-react';
 import AddressInput from '@/components/AddressInput';
+import DescriptionWithSuggestions from '@/components/DescriptionWithSuggestions';
 
 const POLL_INTERVAL_MS = 2500;
 const PLOMBIER_LOCATION_POLL_MS = 15000;
@@ -41,6 +42,12 @@ function CommanderPageContent() {
   const searchParams = useSearchParams();
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+
+  const handleServiceSelect = (svc: { id: string; label: string; priceMin?: number }) => {
+    setSelectedServiceId(svc.id);
+    if (svc.priceMin != null) setClientProposedAmount(String(svc.priceMin));
+  };
   const [requestId, setRequestId] = useState<string | null>(null);
   const [state, setState] = useState<RequestState>('idle');
   const [requestData, setRequestData] = useState<RequestData | null>(null);
@@ -307,6 +314,7 @@ function CommanderPageContent() {
           address: address.trim(),
           description: description.trim(),
           clientProposedAmount: clientProposedAmount.trim() ? parseFloat(clientProposedAmount) : undefined,
+          serviceId: selectedServiceId || undefined,
         }),
       });
 
@@ -345,6 +353,7 @@ function CommanderPageContent() {
     waitingStartedAtRef.current = null;
     setDescription('');
     setClientProposedAmount('');
+    setSelectedServiceId(null);
     setClientCoords(null);
     setPlombierCoords(null);
     mapInstanceRef.current = null;
@@ -464,6 +473,13 @@ function CommanderPageContent() {
                 required
                 active={state === 'idle' || state === 'submitting'}
               />
+              <DescriptionWithSuggestions
+                value={description}
+                onChange={setDescription}
+                onServiceSelect={handleServiceSelect}
+                placeholder="Ex: Fuite sous l'évier, robinet qui goutte..."
+                required
+              />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Budget proposé (MAD) <span className="text-slate-400 font-normal">optionnel</span>
@@ -492,17 +508,6 @@ function CommanderPageContent() {
                   onChange={(e) => setClientProposedAmount(e.target.value)}
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   placeholder="Ex: 500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Description du problème</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder:text-slate-400"
-                  placeholder="Ex: Fuite sous l'évier, robinet qui goutte..."
-                  required
                 />
               </div>
               {errorMsg && (

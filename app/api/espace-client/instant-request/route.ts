@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { address, description, clientProposedAmount } = body;
+    const { address, description, clientProposedAmount, serviceId } = body;
 
     if (!address || typeof address !== 'string' || !description || typeof description !== 'string') {
       return NextResponse.json(
@@ -45,6 +45,9 @@ export async function POST(request: NextRequest) {
     };
     if (typeof clientProposedAmount === 'number' && clientProposedAmount >= 0) {
       requestData.clientProposedAmount = clientProposedAmount;
+    }
+    if (typeof serviceId === 'string' && serviceId.trim()) {
+      requestData.serviceId = serviceId.trim();
     }
 
     const docRef = await db.collection('instantRequests').add(requestData);

@@ -40,6 +40,8 @@ export interface InstantRequest {
   description: string;
   /** Budget en MAD proposé par le client (optionnel, style inDrive) */
   clientProposedAmount?: number;
+  /** Service sélectionné (recherche_fuite, visite_expert, depannage_rapide) */
+  serviceId?: string;
   status: InstantRequestStatus;
   plombierId?: string;
   createdAt: Date;

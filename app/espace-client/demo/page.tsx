@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { Zap, CheckCircle } from 'lucide-react';
 import AddressInput from '@/components/AddressInput';
+import DescriptionWithSuggestions from '@/components/DescriptionWithSuggestions';
 
 const MIN_PHONE_DIGITS = 9;
 const ANIMATION_SEND_MS = 1800;
@@ -25,6 +26,7 @@ function DemoContent() {
   const [step, setStep] = useState<DemoStep>(1);
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -97,6 +99,10 @@ function DemoContent() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [step, phone, checkCodeSent]);
+
+  const handleServiceSelect = (svc: { id: string; label: string; priceMin?: number }) => {
+    setSelectedServiceId(svc.id);
+  };
 
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,6 +180,7 @@ function DemoContent() {
         body: JSON.stringify({
           address: address.trim(),
           description: description.trim(),
+          serviceId: selectedServiceId || undefined,
         }),
       });
       const data = await res.json();
@@ -195,7 +202,7 @@ function DemoContent() {
     } finally {
       setCreatingRequest(false);
     }
-  }, [address, description, embed, router, searchParams]);
+  }, [address, description, selectedServiceId, embed, router, searchParams]);
 
   useEffect(() => {
     if (step === 4) {
@@ -239,7 +246,7 @@ function DemoContent() {
           </div>
         )}
 
-        {/* Step 1: Address + description */}
+        {/* Step 1: Address + description (suggestions intégrées) */}
         {step === 1 && (
           <form onSubmit={handleStep1Submit} className="space-y-4">
             <AddressInput
@@ -249,16 +256,15 @@ function DemoContent() {
               required
               label="Adresse"
             />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex: Fuite d'eau sous l'évier de la cuisine"
-                className="input w-full min-h-[80px]"
-                required
-              />
-            </div>
+            <DescriptionWithSuggestions
+              value={description}
+              onChange={setDescription}
+              onServiceSelect={handleServiceSelect}
+              placeholder="Ex: Fuite d'eau sous l'évier de la cuisine"
+              required
+              minRows={3}
+              label="Description"
+            />
             <button type="submit" className="btn btn-primary w-full flex items-center justify-center gap-2">
               <Zap size={18} />
               Envoyer ma demande
