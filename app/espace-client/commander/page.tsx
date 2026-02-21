@@ -619,10 +619,13 @@ function CommanderPageContent() {
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-slate-900 text-lg">{offer.plombierName}</p>
                             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                              {offer.averageRating != null && offer.reviewCount != null && (
-                                <span className="text-sm text-slate-600 font-medium">
-                                  {offer.averageRating.toFixed(1).replace('.', ',')} ({offer.reviewCount})
+                              {offer.reviewCount != null && offer.reviewCount > 0 && offer.averageRating != null ? (
+                                <span className="inline-flex items-center gap-1.5 text-sm text-amber-600 font-medium">
+                                  <Star className="w-4 h-4 fill-amber-400" />
+                                  {offer.averageRating.toFixed(1).replace('.', ',')} ({offer.reviewCount} avis)
                                 </span>
+                              ) : (
+                                <span className="text-sm text-slate-400 font-medium">Nouveau · Aucun avis</span>
                               )}
                               {offer.certified ? (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary-100 text-primary-700">
