@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getAdminApp, getAdminDb } from '@/lib/firebase-admin';
 import { phoneToAuthEmail } from '@/lib/auth-utils';
 import { sendSms } from '@/lib/sms';
+import { cityFromZone, toCanonicalCity } from '@/lib/cities';
 
 export async function POST(request: NextRequest) {
   try {
@@ -102,12 +103,22 @@ export async function POST(request: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dash.leplombier.ma';
     const appPlombierUrl = `${appUrl}/app-plombier`;
 
+    let city: string | undefined;
+    if (data.city && typeof data.city === 'string') {
+      city = toCanonicalCity(data.city) ?? undefined;
+    } else if (typeof data.zones === 'string') {
+      city = cityFromZone(data.zones) ?? undefined;
+    } else if (data.zones && Array.isArray(data.zones) && data.zones.length > 0) {
+      city = cityFromZone(data.zones[0]) ?? undefined;
+    }
+
     await db.collection('users').doc(createdUser.uid).set({
       email: authEmail,
       name,
       phone,
       role: 'plombier',
       validationStatus: 'pending_documents',
+      ...(city && { city }),
       createdAt: new Date(),
       updatedAt: new Date(),
     });

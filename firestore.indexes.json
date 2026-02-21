@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "instantRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "city", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

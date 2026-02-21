@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { usePlombierLocation } from '@/hooks/usePlombierLocation';
 import { Phone, MapPin, CheckCircle, MapPinned, Star } from 'lucide-react';
@@ -90,10 +91,12 @@ export default function PlombierInstantPage() {
 
   useEffect(() => {
     if (!plombier?.id) return;
-    const q = query(
-      collection(db, 'instantRequests'),
-      where('status', '==', 'en_attente')
-    );
+    const plombierCity = plombier.city?.trim();
+    const constraints = [
+      where('status', '==', 'en_attente'),
+      ...(plombierCity ? [where('city', '==', plombierCity)] : []),
+    ];
+    const q = query(collection(db, 'instantRequests'), ...constraints);
 
     const unsub = onSnapshot(
       q,
@@ -121,7 +124,7 @@ export default function PlombierInstantPage() {
     );
 
     return () => unsub();
-  }, [plombier?.id]);
+  }, [plombier?.id, plombier?.city]);
 
   useEffect(() => {
     if (!plombier?.id) return;
@@ -465,6 +468,24 @@ export default function PlombierInstantPage() {
               >
                 {markingDoneId ? 'Enregistrement...' : 'Marquer comme terminée'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {available && !myMission && !plombier.city && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <MapPin className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-900">Renseignez votre ville</p>
+              <p className="text-sm text-amber-800 mt-1">
+                Indiquez votre ville dans Paramètres pour voir uniquement les demandes de votre zone.
+              </p>
+              <Link
+                href="/espace-plombier/parametres"
+                className="inline-block mt-2 text-sm font-medium text-primary-600 hover:underline"
+              >
+                Aller aux paramètres →
+              </Link>
             </div>
           </div>
         )}

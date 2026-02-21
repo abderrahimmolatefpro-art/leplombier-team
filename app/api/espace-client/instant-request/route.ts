@@ -3,6 +3,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
 import { sendPushToPlombier } from '@/lib/fcm';
+import { toCanonicalCity, citiesMatch } from '@/lib/cities';
 
 const EXPIRE_MINUTES = 15;
 
@@ -34,6 +35,26 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + EXPIRE_MINUTES * 60 * 1000);
 
+    // Récupérer la ville : client.city ou geocode
+    let requestCity: string | null = null;
+    const clientDoc = await db.collection('clients').doc(payload.clientId).get();
+    if (clientDoc.exists) {
+      const clientCity = clientDoc.data()?.city;
+      if (clientCity && typeof clientCity === 'string' && clientCity.trim()) {
+        requestCity = toCanonicalCity(clientCity.trim());
+      }
+    }
+    if (!requestCity && address.trim()) {
+      try {
+        const geo = await import('@/lib/geocode').then((m) => m.geocodeAddress(address.trim()));
+        if (geo?.city) {
+          requestCity = toCanonicalCity(geo.city);
+        }
+      } catch (e) {
+        console.warn('[instant-request] Geocode city failed:', e);
+      }
+    }
+
     const requestData: Record<string, unknown> = {
       clientId: payload.clientId,
       address: address.trim(),
@@ -43,6 +64,9 @@ export async function POST(request: NextRequest) {
       expiresAt: Timestamp.fromDate(expiresAt),
       updatedAt: Timestamp.fromDate(now),
     };
+    if (requestCity) {
+      requestData.city = requestCity;
+    }
     if (typeof clientProposedAmount === 'number' && clientProposedAmount >= 0) {
       requestData.clientProposedAmount = clientProposedAmount;
     }
@@ -52,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     const docRef = await db.collection('instantRequests').add(requestData);
 
-    // Push aux plombiers disponibles (style InDrive)
+    // Push aux plombiers disponibles dans la même ville (style InDrive)
     const plombiersSnap = await db
       .collection('users')
       .where('role', '==', 'plombier')
@@ -66,8 +90,15 @@ export async function POST(request: NextRequest) {
     const pushBody = bodyParts.length ? bodyParts.join(' · ') : 'Une nouvelle demande est disponible';
     const pushTitle = 'Nouvelle demande — disponible maintenant';
     const assignablePlombiers = plombiersSnap.docs.filter((d) => {
-      const s = d.data().validationStatus;
-      return s === 'validated' || !s;
+      const data = d.data();
+      const s = data.validationStatus;
+      if (s !== 'validated' && s) return false;
+      if (requestCity) {
+        const plombierCity = data.city;
+        if (!plombierCity) return false;
+        return citiesMatch(plombierCity, requestCity);
+      }
+      return true;
     });
     console.log('[FCM] instant-request: plombiers disponibles:', assignablePlombiers.map((d) => ({ id: d.id, hasFcm: !!d.data().fcmToken })));
     for (const plombierDoc of assignablePlombiers) {

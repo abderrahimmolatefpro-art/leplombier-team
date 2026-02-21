@@ -27,6 +27,8 @@ export interface User {
   documentsSubmittedAt?: Date;
   /** Date de validation finale par l'admin */
   validatedAt?: Date;
+  /** Ville d'intervention du plombier (filtrage demandes instantanées, style inDrive) */
+  city?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +46,8 @@ export interface InstantRequest {
   serviceId?: string;
   status: InstantRequestStatus;
   plombierId?: string;
+  /** Ville de l'intervention (filtrage plombiers par zone) */
+  city?: string;
   createdAt: Date;
   acceptedAt?: Date;
   expiresAt: Date;

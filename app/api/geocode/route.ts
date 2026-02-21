@@ -3,6 +3,17 @@ import { NextRequest, NextResponse } from 'next/server';
 const GOOGLE_MAPS_API_KEY =
   process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+function extractCity(result: { address_components?: Array<{ types: string[]; long_name: string }> }): string | null {
+  const components = result.address_components;
+  if (!components?.length) return null;
+  const order = ['locality', 'administrative_area_level_2', 'administrative_area_level_1'];
+  for (const type of order) {
+    const comp = components.find((c) => c.types.includes(type));
+    if (comp?.long_name) return comp.long_name;
+  }
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (!GOOGLE_MAPS_API_KEY) {
@@ -24,9 +35,13 @@ export async function GET(request: NextRequest) {
       const res = await fetch(url);
       const data = await res.json();
       if (data.status !== 'OK' || !data.results?.[0]) {
-        return NextResponse.json({ address: null });
+        return NextResponse.json({ address: null, city: null });
       }
-      return NextResponse.json({ address: data.results[0].formatted_address });
+      const result = data.results[0];
+      return NextResponse.json({
+        address: result.formatted_address,
+        city: extractCity(result),
+      });
     }
 
     // Geocode: address → lat/lng
@@ -39,11 +54,13 @@ export async function GET(request: NextRequest) {
     const data = await res.json();
 
     if (data.status !== 'OK' || !data.results?.[0]) {
-      return NextResponse.json({ lat: null, lng: null });
+      return NextResponse.json({ lat: null, lng: null, city: null });
     }
 
-    const { lat: latRes, lng: lngRes } = data.results[0].geometry.location;
-    return NextResponse.json({ lat: latRes, lng: lngRes });
+    const result = data.results[0];
+    const { lat: latRes, lng: lngRes } = result.geometry.location;
+    const city = extractCity(result);
+    return NextResponse.json({ lat: latRes, lng: lngRes, city });
   } catch (error) {
     console.error('[geocode] Error:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });

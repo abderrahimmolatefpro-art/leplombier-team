@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { FolderKanban, Calendar } from 'lucide-react';
@@ -40,7 +40,7 @@ const PLANNING_TYPE_LABELS: Record<string, string> = {
 
 type Tab = 'commandes' | 'planning';
 
-export default function PlombierCommandesPage() {
+function PlombierCommandesContent() {
   const { plombier, loading: authLoading } = usePlombierAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -358,5 +358,17 @@ export default function PlombierCommandesPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function PlombierCommandesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+      </div>
+    }>
+      <PlombierCommandesContent />
+    </Suspense>
   );
 }
