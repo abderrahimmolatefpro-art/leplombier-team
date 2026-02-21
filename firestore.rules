@@ -133,6 +133,13 @@ service cloud.firestore {
       allow read, create, update, delete: if isAuthenticated() && isAdmin();
     }
 
+    // Collection reviews (avis client/plombier style inDrive)
+    // Création uniquement via API route (Admin SDK)
+    match /reviews/{reviewId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if false;
+    }
+
     // Collection partRequests (demandes de pièces)
     // Lecture : plombier (ses demandes) ou admin (toutes). Création : plombier (ses demandes). Mise à jour : admin uniquement.
     match /partRequests/{requestId} {

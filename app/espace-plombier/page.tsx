@@ -11,7 +11,7 @@ export default function EspacePlombierPage() {
   useEffect(() => {
     if (loading) return;
     if (plombier) {
-      router.replace('/espace-plombier/dashboard');
+      router.replace('/espace-plombier/instant');
     } else {
       router.replace('/espace-plombier/login');
     }

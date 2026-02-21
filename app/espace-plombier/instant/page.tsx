@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { usePlombierLocation } from '@/hooks/usePlombierLocation';
-import { Phone, MapPin, CheckCircle, MapPinned } from 'lucide-react';
+import { Phone, MapPin, CheckCircle, MapPinned, Star } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { haversineDistance } from '@/lib/geo';
@@ -46,7 +46,6 @@ export default function PlombierInstantPage() {
   const { location: plombierLocation, loading: locationLoading, error: locationError, requestLocation, openAppSettings, isNativeAndroid } = usePlombierLocation();
   const router = useRouter();
   const [available, setAvailable] = useState(false);
-  const [loadingToggle, setLoadingToggle] = useState(false);
   const [requests, setRequests] = useState<InstantRequestDoc[]>([]);
   const [myMission, setMyMission] = useState<InstantRequestDoc | null>(null);
   const [clientInfo, setClientInfo] = useState<ClientDoc | null>(null);
@@ -58,6 +57,12 @@ export default function PlombierInstantPage() {
   const [distancesMap, setDistancesMap] = useState<Record<string, number>>({});
   const geocodeCacheRef = useRef<Record<string, { lat: number; lng: number }>>({});
   const [selectedRequest, setSelectedRequest] = useState<InstantRequestDoc | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewClientId, setReviewClientId] = useState<string | null>(null);
+  const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     if (!selectedRequest) return;
@@ -77,29 +82,11 @@ export default function PlombierInstantPage() {
     if (!plombier?.id) return;
 
     const userRef = doc(db, 'users', plombier.id);
-    getDoc(userRef).then((snap) => {
-      const availableForInstant = !!snap.exists() && !!snap.data()?.availableForInstant;
-      setAvailable(availableForInstant);
+    const unsub = onSnapshot(userRef, (snap) => {
+      setAvailable(!!(snap.exists() && snap.data()?.availableForInstant));
     });
+    return () => unsub();
   }, [plombier?.id]);
-
-  const handleToggleAvailability = async () => {
-    if (!plombier?.id) return;
-    setLoadingToggle(true);
-    setError('');
-    try {
-      await updateDoc(doc(db, 'users', plombier.id), {
-        availableForInstant: !available,
-        updatedAt: Timestamp.now(),
-      });
-      setAvailable(!available);
-    } catch (err) {
-      console.error(err);
-      setError('Impossible de modifier la disponibilité');
-    } finally {
-      setLoadingToggle(false);
-    }
-  };
 
   useEffect(() => {
     if (!plombier?.id) return;
@@ -317,11 +304,13 @@ export default function PlombierInstantPage() {
     if (!myMission?.id || !plombier?.id) return;
     const user = auth.currentUser;
     if (!user) return;
-    setMarkingDoneId(myMission.id);
+    const missionId = myMission.id;
+    const clientId = myMission.clientId;
+    setMarkingDoneId(missionId);
     setError('');
     try {
       const idToken = await user.getIdToken();
-      const res = await fetch(`/api/espace-plombier/instant-request/${myMission.id}/complete`, {
+      const res = await fetch(`/api/espace-plombier/instant-request/${missionId}/complete`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${idToken}` },
       });
@@ -330,11 +319,49 @@ export default function PlombierInstantPage() {
         setError(data.error || 'Impossible de marquer la mission comme terminée');
         return;
       }
+      setShowReviewModal(true);
+      setReviewClientId(clientId);
+      setReviewRequestId(missionId);
     } catch (err) {
       console.error(err);
       setError('Impossible de marquer la mission comme terminée');
     } finally {
       setMarkingDoneId(null);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewRequestId || !reviewClientId || !plombier?.id || reviewRating < 1) return;
+    const user = auth.currentUser;
+    if (!user) return;
+    setReviewSubmitting(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          instantRequestId: reviewRequestId,
+          toUserId: reviewClientId,
+          rating: reviewRating,
+          comment: reviewComment.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        setShowReviewModal(false);
+        setReviewClientId(null);
+        setReviewRequestId(null);
+        setReviewRating(0);
+        setReviewComment('');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -348,26 +375,11 @@ export default function PlombierInstantPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <div className="w-10 flex-shrink-0" />
-          <button
-            type="button"
-            onClick={handleToggleAvailability}
-            disabled={loadingToggle}
-            className={`flex-1 max-w-[200px] py-2.5 px-4 rounded-full font-medium text-sm transition-colors ${
-              available
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {available ? 'En ligne' : 'Hors ligne'}
-          </button>
-          <div className="w-10 flex-shrink-0" />
+      {error && (
+        <div className="max-w-4xl mx-auto px-4 pt-2">
+          <p className="text-sm text-red-600 text-center">{error}</p>
         </div>
-        {error && <p className="text-sm text-red-600 mt-2 text-center">{error}</p>}
-      </header>
-
+      )}
       <main className="max-w-4xl mx-auto px-4 py-6">
         {available && !myMission && (locationLoading || locationError) && (
           <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
@@ -524,6 +536,61 @@ export default function PlombierInstantPage() {
             }
             onClose={() => setSelectedRequest(null)}
           />
+        )}
+
+        {showReviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              <h3 className="font-bold text-gray-900 mb-2">Mission terminée !</h3>
+              <p className="text-sm text-gray-500 mb-4">Noter le client (optionnel)</p>
+              <form onSubmit={handleSubmitReview} className="space-y-4">
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setReviewRating(n)}
+                      className="p-2 rounded-lg hover:bg-gray-50"
+                    >
+                      <Star
+                        size={28}
+                        className={reviewRating >= n ? 'fill-amber-400 text-amber-500' : 'text-gray-300'}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Votre avis (optionnel)"
+                  rows={2}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReviewModal(false);
+                      setReviewClientId(null);
+                      setReviewRequestId(null);
+                      setReviewRating(0);
+                      setReviewComment('');
+                    }}
+                    className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-700 font-medium"
+                  >
+                    Passer
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={reviewSubmitting || reviewRating < 1}
+                    className="flex-1 py-2.5 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 disabled:opacity-50"
+                  >
+                    {reviewSubmitting ? 'Envoi...' : 'Envoyer'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </main>
     </div>

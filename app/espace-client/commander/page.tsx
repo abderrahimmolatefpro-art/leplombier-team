@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useClientAuth } from '@/hooks/useClientAuth';
-import { Zap, Phone, CheckCircle, XCircle, BadgeCheck } from 'lucide-react';
+import { Zap, Phone, CheckCircle, XCircle, BadgeCheck, Star } from 'lucide-react';
 import AddressInput from '@/components/AddressInput';
 import DescriptionWithSuggestions from '@/components/DescriptionWithSuggestions';
 
@@ -12,7 +12,7 @@ const PLOMBIER_LOCATION_POLL_MS = 15000;
 const FALLBACK_PHONE = '06 71 05 23 71';
 const FALLBACK_PHONE_DELAY_MS = 90 * 1000; // 1min30 sans plombier → afficher le standard
 
-type RequestState = 'idle' | 'submitting' | 'waiting' | 'accepted' | 'expired' | 'cancelled' | 'error';
+type RequestState = 'idle' | 'submitting' | 'waiting' | 'accepted' | 'completed' | 'expired' | 'cancelled' | 'error';
 
 interface OfferItem {
   id: string;
@@ -22,6 +22,8 @@ interface OfferItem {
   message?: string;
   status: string;
   certified?: boolean;
+  averageRating?: number | null;
+  reviewCount?: number;
 }
 
 interface RequestData {
@@ -34,6 +36,7 @@ interface RequestData {
   offers?: OfferItem[];
   expiresAt: string | null;
   createdAt?: string | null;
+  clientHasReviewed?: boolean;
 }
 
 function CommanderPageContent() {
@@ -62,6 +65,9 @@ function CommanderPageContent() {
   const markersRef = useRef<google.maps.Marker[]>([]);
   const [showFallbackPhone, setShowFallbackPhone] = useState(false);
   const waitingStartedAtRef = useRef<number | null>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   // Restaurer l'état depuis l'URL (ex: depuis Mes commandes)
   useEffect(() => {
@@ -85,9 +91,12 @@ function CommanderPageContent() {
           offers: data.offers,
           expiresAt: data.expiresAt || null,
           createdAt: data.createdAt || null,
+          clientHasReviewed: data.clientHasReviewed,
         });
         if (data.status === 'accepte') {
           setState('accepted');
+        } else if (data.status === 'termine') {
+          setState('completed');
         } else if (data.status === 'annule') {
           setState('cancelled');
         } else if (data.status === 'expire' || (data.expiresAt && new Date(data.expiresAt).getTime() < Date.now())) {
@@ -261,6 +270,10 @@ function CommanderPageContent() {
         setState('accepted');
         return;
       }
+      if (data.status === 'termine') {
+        setState('completed');
+        return;
+      }
       if (data.status === 'expire' || data.status === 'annule') {
         setState(data.status === 'expire' ? 'expired' : 'cancelled');
         return;
@@ -379,6 +392,38 @@ function CommanderPageContent() {
       setErrorMsg('Erreur de connexion');
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestId || !token || !requestData?.plombier || reviewRating < 1) return;
+    setReviewSubmitting(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          instantRequestId: requestId,
+          toUserId: requestData.plombier.id,
+          rating: reviewRating,
+          comment: reviewComment.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Erreur');
+        return;
+      }
+      setRequestData((prev) => (prev ? { ...prev, clientHasReviewed: true } : prev));
+    } catch {
+      setErrorMsg('Erreur de connexion');
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -573,7 +618,12 @@ function CommanderPageContent() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-slate-900 text-lg">{offer.plombierName}</p>
-                            <div className="mt-1.5">
+                            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                              {offer.averageRating != null && offer.reviewCount != null && (
+                                <span className="text-sm text-slate-600 font-medium">
+                                  {offer.averageRating.toFixed(1).replace('.', ',')} ({offer.reviewCount})
+                                </span>
+                              )}
                               {offer.certified ? (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary-100 text-primary-700">
                                   <BadgeCheck className="w-4 h-4" />
@@ -733,6 +783,68 @@ function CommanderPageContent() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {state === 'completed' && requestData?.plombier && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-emerald-200/80 p-6 sm:p-8">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-8 h-8 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Intervention terminée</h2>
+                  <p className="text-sm text-slate-600 mt-0.5">Merci pour votre confiance.</p>
+                </div>
+              </div>
+            </div>
+
+            {!requestData.clientHasReviewed && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+                <h3 className="font-bold text-slate-900 mb-2">Noter {requestData.plombier.name}</h3>
+                <p className="text-sm text-slate-500 mb-4">Comment s&apos;est passée l&apos;intervention ?</p>
+                <form onSubmit={handleSubmitReview} className="space-y-4">
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setReviewRating(n)}
+                        className="p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                      >
+                        <Star
+                          size={32}
+                          className={reviewRating >= n ? 'fill-amber-400 text-amber-500' : 'text-slate-300'}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Votre avis (optionnel)"
+                    rows={3}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500"
+                  />
+                  {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+                  <button
+                    type="submit"
+                    disabled={reviewSubmitting || reviewRating < 1}
+                    className="w-full py-3 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 disabled:opacity-50"
+                  >
+                    {reviewSubmitting ? 'Envoi...' : 'Envoyer mon avis'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            <button
+              onClick={handleNewRequest}
+              className="block text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline"
+            >
+              Faire une nouvelle demande
+            </button>
           </div>
         )}
 

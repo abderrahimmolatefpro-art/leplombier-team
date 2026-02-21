@@ -63,6 +63,18 @@ export interface InstantOffer {
   updatedAt: Date;
 }
 
+/** Avis entre client et plombier (style inDrive) */
+export interface Review {
+  id: string;
+  instantRequestId: string;
+  fromUserId: string;
+  toUserId: string;
+  fromRole: 'client' | 'plombier';
+  rating: number; // 1-5
+  comment?: string;
+  createdAt: Date;
+}
+
 export interface Client {
   id: string;
   name: string;

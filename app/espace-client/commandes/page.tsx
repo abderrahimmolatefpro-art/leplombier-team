@@ -116,7 +116,7 @@ export default function ClientCommandesPage() {
                   const isInstant = order.type === 'intervention_instant';
                   const canOpenInstant =
                     isInstant &&
-                    (order.status === 'en_attente' || order.status === 'en_cours') &&
+                    (order.status === 'en_attente' || order.status === 'en_cours' || order.status === 'termine') &&
                     order.instantRequestId;
                   const cardClassName = `block bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 ${
                     canOpenInstant ? 'hover:border-primary-200 transition-colors' : ''
@@ -159,7 +159,7 @@ export default function ClientCommandesPage() {
                       )}
                       {canOpenInstant && (
                         <p className="text-sm text-primary-600 mt-2 font-medium">
-                          Voir le détail →
+                          {order.status === 'termine' ? 'Voir le détail / Noter le plombier →' : 'Voir le détail →'}
                         </p>
                       )}
                     </>

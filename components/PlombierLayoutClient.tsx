@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import PlombierNav from './PlombierNav';
+import PlombierHeader from './PlombierHeader';
 
 export default function PlombierLayoutClient({
   children,
@@ -15,8 +16,11 @@ export default function PlombierLayoutClient({
     pathname === '/espace-plombier/documents' ||
     pathname.startsWith('/espace-plombier/login');
 
+  const showHeader = !hideNav;
+
   return (
     <>
+      {showHeader && <PlombierHeader />}
       <div className={hideNav ? '' : 'pb-24'}>{children}</div>
       {!hideNav && <PlombierNav />}
     </>

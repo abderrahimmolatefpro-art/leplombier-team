@@ -51,6 +51,26 @@ export async function GET(
       }
     }
 
+    // Stats d'avis pour les plombiers
+    const getPlombierRating = async (pid: string) => {
+      const revSnap = await db
+        .collection('reviews')
+        .where('toUserId', '==', pid)
+        .get();
+      let total = 0;
+      let sum = 0;
+      revSnap.docs.forEach((d) => {
+        const r = d.data().rating;
+        if (typeof r === 'number' && r >= 1 && r <= 5) {
+          total++;
+          sum += r;
+        }
+      });
+      return total > 0
+        ? { averageRating: Math.round((sum / total) * 10) / 10, reviewCount: total }
+        : { averageRating: null, reviewCount: 0 };
+    };
+
     // Offres plombiers (style inDrive) pour cette demande
     const offersSnap = await db.collection('instantOffers').where('requestId', '==', id).get();
     const offers: Array<{
@@ -61,6 +81,8 @@ export async function GET(
       message?: string;
       status: string;
       certified?: boolean;
+      averageRating?: number | null;
+      reviewCount?: number;
     }> = [];
     for (const o of offersSnap.docs) {
       const oData = o.data();
@@ -69,6 +91,7 @@ export async function GET(
       const uData = userDoc.exists ? userDoc.data() : null;
       const plombierName = (uData?.name as string) || '';
       const certified = !!uData?.certified;
+      const { averageRating, reviewCount } = await getPlombierRating(oData.plombierId);
       offers.push({
         id: o.id,
         plombierId: oData.plombierId,
@@ -77,6 +100,23 @@ export async function GET(
         message: oData.message,
         status: oData.status,
         certified,
+        averageRating,
+        reviewCount,
+      });
+    }
+
+    // Vérifier si client/plombier a déjà noté (pour status termine)
+    let clientHasReviewed = false;
+    let plombierHasReviewed = false;
+    if (data.status === 'termine') {
+      const reviewsSnap = await db
+        .collection('reviews')
+        .where('instantRequestId', '==', id)
+        .get();
+      reviewsSnap.docs.forEach((d) => {
+        const r = d.data();
+        if (r.fromUserId === data.clientId) clientHasReviewed = true;
+        if (r.fromUserId === data.plombierId) plombierHasReviewed = true;
       });
     }
 
@@ -89,6 +129,8 @@ export async function GET(
       plombierId,
       plombier,
       offers,
+      clientHasReviewed,
+      plombierHasReviewed,
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
       acceptedAt: data.acceptedAt?.toDate?.()?.toISOString?.() || null,
       expiresAt: data.expiresAt?.toDate?.()?.toISOString?.() || null,
