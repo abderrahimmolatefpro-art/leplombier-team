@@ -48,7 +48,13 @@ export async function GET(request: NextRequest) {
       .get();
 
     const depannages = revenuesSnap.docs
-      .filter((d) => !d.data().deleted)
+      .filter((d) => {
+        const data = d.data();
+        if (data.deleted) return false;
+        // Exclure les dépannages créés depuis une intervention instantanée (déjà affichés via instantRequests)
+        if (data.instantRequestId) return false;
+        return true;
+      })
       .map((d) => {
       const data = d.data();
       return {

@@ -11,7 +11,7 @@ export default function EspaceClientPage() {
   useEffect(() => {
     if (loading) return;
     if (token) {
-      router.replace('/espace-client/dashboard');
+      router.replace('/espace-client/commander');
     } else {
       router.replace('/espace-client/login');
     }

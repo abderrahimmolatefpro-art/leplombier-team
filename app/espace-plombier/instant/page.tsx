@@ -32,6 +32,8 @@ interface InstantRequestDoc {
   clientProposedAmount?: number;
   status: string;
   plombierId?: string;
+  photoRequested?: boolean;
+  photos?: string[];
   createdAt: { toDate: () => Date };
   expiresAt: { toDate: () => Date };
 }
@@ -64,6 +66,7 @@ export default function PlombierInstantPage() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [requestingPhotosId, setRequestingPhotosId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedRequest) return;
@@ -302,6 +305,33 @@ export default function PlombierInstantPage() {
     const amount = req.clientProposedAmount ?? 0;
     submitOffer(req.id, amount);
   };
+
+  const handleRequestPhotos = useCallback(
+    async (requestId: string) => {
+      const user = auth.currentUser;
+      if (!user) return;
+      setRequestingPhotosId(requestId);
+      setError('');
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch(
+          `/api/espace-plombier/instant-request/${requestId}/request-photos`,
+          { method: 'POST', headers: { Authorization: `Bearer ${idToken}` } }
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Erreur lors de la demande');
+          return;
+        }
+        setSelectedRequest(null);
+      } catch (err) {
+        setError('Erreur de connexion');
+      } finally {
+        setRequestingPhotosId(null);
+      }
+    },
+    []
+  );
 
   const handleMarkMissionDone = async () => {
     if (!myMission?.id || !plombier?.id) return;
@@ -551,6 +581,11 @@ export default function PlombierInstantPage() {
             hasOffered={myOfferRequestIds.has(selectedRequest.id)}
             sendingOffer={sendingOfferRequestId === selectedRequest.id}
             plombierLocation={plombierLocation}
+            requestId={selectedRequest.id}
+            photoRequested={selectedRequest.photoRequested}
+            photos={selectedRequest.photos}
+            onRequestPhotos={() => handleRequestPhotos(selectedRequest.id)}
+            requestingPhotos={requestingPhotosId === selectedRequest.id}
             onAccept={() => handleAcceptPrice(selectedRequest)}
             onCounterOffer={(amount, message) =>
               submitOffer(selectedRequest.id, amount, message)

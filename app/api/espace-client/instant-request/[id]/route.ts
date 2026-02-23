@@ -126,6 +126,8 @@ export async function GET(
       address: data.address,
       description: data.description,
       clientProposedAmount: data.clientProposedAmount ?? undefined,
+      photoRequested: !!data.photoRequested,
+      photos: data.photos || [],
       plombierId,
       plombier,
       offers,

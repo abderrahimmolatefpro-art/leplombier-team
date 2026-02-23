@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useClientAuth } from '@/hooks/useClientAuth';
-import { Zap, Phone, CheckCircle, XCircle, BadgeCheck, Star } from 'lucide-react';
+import { Zap, Phone, CheckCircle, XCircle, BadgeCheck, Star, Camera } from 'lucide-react';
+import { compressImageToDataUrl } from '@/lib/compress-image';
 import AddressInput from '@/components/AddressInput';
 import DescriptionWithSuggestions from '@/components/DescriptionWithSuggestions';
 
@@ -32,6 +33,8 @@ interface RequestData {
   address: string;
   description: string;
   clientProposedAmount?: number;
+  photoRequested?: boolean;
+  photos?: string[];
   plombier?: { id: string; name: string; phone?: string; certified?: boolean };
   offers?: OfferItem[];
   expiresAt: string | null;
@@ -68,6 +71,8 @@ function CommanderPageContent() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [addingPhotos, setAddingPhotos] = useState(false);
 
   // Restaurer l'état depuis l'URL (ex: depuis Mes commandes)
   useEffect(() => {
@@ -87,6 +92,8 @@ function CommanderPageContent() {
           address: data.address,
           description: data.description,
           clientProposedAmount: data.clientProposedAmount,
+          photoRequested: data.photoRequested,
+          photos: data.photos || [],
           plombier: data.plombier,
           offers: data.offers,
           expiresAt: data.expiresAt || null,
@@ -427,6 +434,36 @@ function CommanderPageContent() {
     }
   };
 
+  const handleAddPhotos = useCallback(async () => {
+    if (!requestId || !token || photoFiles.length === 0) return;
+    setAddingPhotos(true);
+    setErrorMsg('');
+    try {
+      const urls = await Promise.all(photoFiles.map((f) => compressImageToDataUrl(f)));
+      const res = await fetch(`/api/espace-client/instant-request/${requestId}/add-photos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ photos: urls }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Erreur lors de l\'envoi');
+        return;
+      }
+      setPhotoFiles([]);
+      setRequestData((prev) =>
+        prev ? { ...prev, photos: [...(prev.photos || []), ...urls] } : prev
+      );
+    } catch {
+      setErrorMsg('Erreur de connexion');
+    } finally {
+      setAddingPhotos(false);
+    }
+  }, [requestId, token, photoFiles]);
+
   const handleAcceptOffer = async (offerId: string) => {
     if (!token || !requestId) return;
     setAcceptingOfferId(offerId);
@@ -483,18 +520,6 @@ function CommanderPageContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/80 sticky top-0 z-10 px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900">Commander un plombier</h1>
-            <p className="text-xs text-slate-500">Intervention immédiate</p>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
         {(state === 'idle' || state === 'submitting') && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 sm:p-8">
@@ -596,6 +621,60 @@ function CommanderPageContent() {
                 </div>
               </div>
             </div>
+
+            {requestData?.photoRequested && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+                <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-primary-600" />
+                  Un plombier demande des photos
+                </h3>
+                <p className="text-sm text-slate-600 mb-4">
+                  Envoyez des photos pour aider le plombier à mieux estimer le prix.
+                </p>
+                {(requestData.photos?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {requestData.photos?.map((url, i) => (
+                      <img
+                        key={i}
+                        src={url}
+                        alt={`Photo ${i + 1}`}
+                        className="w-20 h-20 object-cover rounded-lg border border-slate-200"
+                      />
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-50 text-primary-700 font-medium text-sm hover:bg-primary-100 transition-colors">
+                    <Camera className="w-4 h-4" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setPhotoFiles((prev) => [...prev, ...files]);
+                        e.target.value = '';
+                      }}
+                    />
+                    Ajouter des photos
+                  </label>
+                  {photoFiles.length > 0 && (
+                    <>
+                      <span className="text-sm text-slate-500">{photoFiles.length} fichier(s) sélectionné(s)</span>
+                      <button
+                        type="button"
+                        onClick={handleAddPhotos}
+                        disabled={addingPhotos}
+                        className="px-4 py-2.5 rounded-xl bg-primary-600 text-white font-medium text-sm hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        {addingPhotos ? 'Envoi...' : 'Envoyer'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {sortedOffers.length > 0 ? (
               <div>

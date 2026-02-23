@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Zap, FolderKanban, FileText, Tag } from 'lucide-react';
+import { Zap, FolderKanban, FileText, Tag } from 'lucide-react';
 
 const navItems = [
-  { href: '/espace-client/dashboard', label: 'Accueil', icon: Home },
   { href: '/espace-client/commander', label: 'Commander', icon: Zap },
   { href: '/espace-client/commandes', label: 'Commandes', icon: FolderKanban },
   { href: '/espace-client/documents', label: 'Documents', icon: FileText },

@@ -13,13 +13,15 @@ const ALLOWED_REDIRECTS = [
   '/espace-client/commandes',
   '/espace-client/documents',
   '/espace-client/codes-promo',
+  '/espace-client/parametres',
+  '/espace-client/profil',
 ];
 
 function getRedirectPath(searchParams: URLSearchParams | null): string {
   const next = searchParams?.get('next') || searchParams?.get('redirect');
-  if (!next || !next.startsWith('/')) return '/espace-client/dashboard';
+  if (!next || !next.startsWith('/')) return '/espace-client/commander';
   const path = next.split('?')[0];
-  return ALLOWED_REDIRECTS.includes(path) ? path : '/espace-client/dashboard';
+  return ALLOWED_REDIRECTS.includes(path) ? path : '/espace-client/commander';
 }
 
 function isEmbedMode(searchParams: URLSearchParams | null): boolean {

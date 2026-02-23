@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, X } from 'lucide-react';
+import { MapPin, X, Camera, ImageIcon } from 'lucide-react';
 import { formatTimeAndDistance } from '@/lib/geo';
 
 interface InstantRequestDetailProps {
@@ -14,6 +14,11 @@ interface InstantRequestDetailProps {
   hasOffered: boolean;
   sendingOffer: boolean;
   plombierLocation: { lat: number; lng: number } | null;
+  requestId?: string;
+  photoRequested?: boolean;
+  photos?: string[];
+  onRequestPhotos?: () => Promise<void>;
+  requestingPhotos?: boolean;
   onAccept: () => void;
   onCounterOffer: (amount: number, message?: string) => void;
   onClose: () => void;
@@ -43,6 +48,11 @@ export default function InstantRequestDetail({
   hasOffered,
   sendingOffer,
   plombierLocation,
+  requestId,
+  photoRequested,
+  photos = [],
+  onRequestPhotos,
+  requestingPhotos,
   onAccept,
   onCounterOffer,
   onClose,
@@ -295,6 +305,43 @@ export default function InstantRequestDetail({
                 <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
               </div>
             ) : null}
+
+            {photos.length > 0 && (
+              <div className="flex-shrink-0">
+                <p className="text-xs font-medium text-gray-500 mb-1">Photos du client</p>
+                <div className="flex gap-2 flex-wrap">
+                  {photos.map((url, i) => (
+                    <a
+                      key={i}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100"
+                    >
+                      <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {requestId && onRequestPhotos && !photoRequested && (
+              <button
+                type="button"
+                onClick={onRequestPhotos}
+                disabled={requestingPhotos}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-primary-300 bg-primary-50/50 text-primary-700 text-sm font-medium hover:bg-primary-50 disabled:opacity-50"
+              >
+                <Camera size={18} />
+                {requestingPhotos ? 'Envoi...' : 'Demander des photos au client'}
+              </button>
+            )}
+            {photoRequested && photos.length === 0 && (
+              <p className="text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg flex items-center gap-2">
+                <ImageIcon size={16} />
+                Photos demandées – en attente du client
+              </p>
+            )}
 
             {hasOffered ? (
               <p className="text-green-600 font-medium text-sm py-2">Offre envoyée</p>

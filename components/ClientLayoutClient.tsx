@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import ClientHeader from './ClientHeader';
 import ClientNav from './ClientNav';
 
 export default function ClientLayoutClient({
@@ -16,6 +17,7 @@ export default function ClientLayoutClient({
 
   return (
     <>
+      {!hideNav && <ClientHeader />}
       <div className={hideNav ? '' : 'pb-24'}>{children}</div>
       {!hideNav && <ClientNav />}
     </>
