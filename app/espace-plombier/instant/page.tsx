@@ -34,6 +34,10 @@ interface InstantRequestDoc {
   plombierId?: string;
   photoRequested?: boolean;
   photos?: string[];
+  etaMinutes?: number;
+  etaAt?: { toDate: () => Date };
+  arrivedAt?: { toDate: () => Date };
+  clientReadyAt?: { toDate: () => Date };
   createdAt: { toDate: () => Date };
   expiresAt: { toDate: () => Date };
 }
@@ -67,6 +71,8 @@ export default function PlombierInstantPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [requestingPhotosId, setRequestingPhotosId] = useState<string | null>(null);
+  const [settingEtaId, setSettingEtaId] = useState<string | null>(null);
+  const [settingArrivedId, setSettingArrivedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedRequest) return;
@@ -333,6 +339,50 @@ export default function PlombierInstantPage() {
     []
   );
 
+  const handleSetEta = useCallback(
+    async (requestId: string, etaMinutes: number) => {
+      const user = auth.currentUser;
+      if (!user) return;
+      setSettingEtaId(requestId);
+      setError('');
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch(`/api/espace-plombier/instant-request/${requestId}/set-eta`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ etaMinutes }),
+        });
+        const data = await res.json();
+        if (!res.ok) setError(data.error || 'Erreur');
+      } catch {
+        setError('Erreur de connexion');
+      } finally {
+        setSettingEtaId(null);
+      }
+    },
+    []
+  );
+
+  const handleArrived = useCallback(async (requestId: string) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    setSettingArrivedId(requestId);
+    setError('');
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch(`/api/espace-plombier/instant-request/${requestId}/arrived`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || 'Erreur');
+    } catch {
+      setError('Erreur de connexion');
+    } finally {
+      setSettingArrivedId(null);
+    }
+  }, []);
+
   const handleMarkMissionDone = async () => {
     if (!myMission?.id || !plombier?.id) return;
     const user = auth.currentUser;
@@ -471,6 +521,46 @@ export default function PlombierInstantPage() {
                 </div>
               )}
             </div>
+            {myMission.clientReadyAt && (
+              <div className="mt-3 py-2 px-3 rounded-lg bg-blue-50 text-blue-800 text-sm font-medium">
+                ✓ Le client est chez lui et vous attend
+              </div>
+            )}
+            {(!myMission.etaMinutes || (myMission.etaAt && myMission.etaAt.toDate().getTime() < Date.now())) && !myMission.arrivedAt && (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-gray-500 mb-2">
+                  {myMission.etaAt && myMission.etaAt.toDate().getTime() < Date.now()
+                    ? 'Mettez à jour votre heure d\'arrivée'
+                    : 'Indiquez votre heure d\'arrivée au client'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[5, 10, 15, 20, 30, 45, 60].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => handleSetEta(myMission.id, m)}
+                      disabled={settingEtaId === myMission.id}
+                      className="py-2 px-3 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {settingEtaId === myMission.id ? '...' : `${m} min`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {myMission.etaMinutes && !myMission.arrivedAt && (
+              <div className={`mt-3 py-2 px-3 rounded-lg text-sm ${
+                myMission.etaAt && myMission.etaAt.toDate().getTime() < Date.now()
+                  ? 'bg-amber-100 text-amber-900 font-medium'
+                  : 'bg-amber-50 text-amber-800'
+              }`}>
+                {myMission.etaAt && myMission.etaAt.toDate().getTime() < Date.now() ? (
+                  <>L&apos;heure indiquée est dépassée. Mettez à jour ou confirmez votre arrivée.</>
+                ) : (
+                  <>Arrivée indiquée : dans {myMission.etaMinutes} min</>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap gap-3 mt-4">
               {clientInfo?.phone && (
                 <a
@@ -490,6 +580,22 @@ export default function PlombierInstantPage() {
                 <MapPin size={20} />
                 Itinéraire
               </a>
+              {!myMission.arrivedAt && (
+                <button
+                  type="button"
+                  onClick={() => handleArrived(myMission.id)}
+                  disabled={settingArrivedId === myMission.id}
+                  className="py-3 px-4 min-h-[44px] bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {settingArrivedId === myMission.id ? 'Envoi...' : 'Je suis arrivé'}
+                </button>
+              )}
+              {myMission.arrivedAt && (
+                <span className="py-3 px-4 min-h-[44px] inline-flex items-center gap-2 rounded-lg bg-green-100 text-green-800 font-medium">
+                  <CheckCircle size={20} />
+                  Arrivé
+                </span>
+              )}
               <button
                 type="button"
                 onClick={handleMarkMissionDone}

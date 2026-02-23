@@ -37,6 +37,10 @@ interface RequestData {
   photos?: string[];
   plombier?: { id: string; name: string; phone?: string; certified?: boolean };
   offers?: OfferItem[];
+  etaMinutes?: number;
+  etaAt?: string | null;
+  arrivedAt?: string | null;
+  clientReadyAt?: string | null;
   expiresAt: string | null;
   createdAt?: string | null;
   clientHasReviewed?: boolean;
@@ -60,6 +64,7 @@ function CommanderPageContent() {
   const [errorMsg, setErrorMsg] = useState('');
   const [acceptingOfferId, setAcceptingOfferId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [clientReadySubmitting, setClientReadySubmitting] = useState(false);
   const [clientProposedAmount, setClientProposedAmount] = useState<string>('');
   const [clientCoords, setClientCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [plombierCoords, setPlombierCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -96,6 +101,10 @@ function CommanderPageContent() {
           photos: data.photos || [],
           plombier: data.plombier,
           offers: data.offers,
+          etaMinutes: data.etaMinutes,
+          etaAt: data.etaAt ?? null,
+          arrivedAt: data.arrivedAt ?? null,
+          clientReadyAt: data.clientReadyAt ?? null,
           expiresAt: data.expiresAt || null,
           createdAt: data.createdAt || null,
           clientHasReviewed: data.clientHasReviewed,
@@ -401,6 +410,28 @@ function CommanderPageContent() {
       setCancelling(false);
     }
   };
+
+  const handleClientReady = useCallback(async () => {
+    if (!requestId || !token) return;
+    setClientReadySubmitting(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch(`/api/espace-client/instant-request/${requestId}/ready`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Erreur');
+        return;
+      }
+      setRequestData((prev) => (prev ? { ...prev, clientReadyAt: new Date().toISOString() } : prev));
+    } catch {
+      setErrorMsg('Erreur de connexion');
+    } finally {
+      setClientReadySubmitting(false);
+    }
+  }, [requestId, token]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -836,6 +867,49 @@ function CommanderPageContent() {
                   </a>
                 )}
                 <p className="text-sm text-slate-500">Adresse : {requestData.address}</p>
+                {requestData.etaMinutes && !requestData.arrivedAt && (
+                  <div className={`mt-3 py-2.5 px-4 rounded-xl border ${
+                    requestData.etaAt && new Date(requestData.etaAt).getTime() < Date.now()
+                      ? 'bg-amber-100 border-amber-300'
+                      : 'bg-amber-50 border-amber-200/80'
+                  }`}>
+                    <p className="text-sm font-semibold text-amber-800">
+                      {requestData.etaAt && new Date(requestData.etaAt).getTime() < Date.now() ? (
+                        <>L&apos;heure indiquée est dépassée. Le plombier est peut-être en retard.</>
+                      ) : (
+                        <>
+                          Arrivée estimée : dans {requestData.etaMinutes} min
+                          {requestData.etaAt && (
+                            <span className="font-normal text-amber-700 ml-1">
+                              (vers {new Date(requestData.etaAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {requestData.arrivedAt && (
+                  <div className="mt-3 py-2.5 px-4 rounded-xl bg-green-50 border border-green-200/80">
+                    <p className="text-sm font-semibold text-green-800 flex items-center gap-2">
+                      <CheckCircle size={18} />
+                      Le plombier est devant chez vous
+                    </p>
+                  </div>
+                )}
+                {!requestData.clientReadyAt && (
+                  <button
+                    type="button"
+                    onClick={handleClientReady}
+                    disabled={clientReadySubmitting}
+                    className="mt-3 inline-flex items-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-primary-300 bg-primary-50/50 text-primary-700 font-medium text-sm hover:bg-primary-100 disabled:opacity-50"
+                  >
+                    {clientReadySubmitting ? 'Envoi...' : 'Je suis chez moi'}
+                  </button>
+                )}
+                {requestData.clientReadyAt && (
+                  <p className="mt-3 text-sm text-slate-500">✓ Vous avez indiqué être chez vous</p>
+                )}
               </div>
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
