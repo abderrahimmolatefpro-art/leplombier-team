@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { MapPin, X, Camera, ImageIcon } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { MapPin, X, Camera, ImageIcon, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatTimeAndDistance } from '@/lib/geo';
 
 interface InstantRequestDetailProps {
@@ -61,7 +61,39 @@ export default function InstantRequestDetail({
   const [counterAmount, setCounterAmount] = useState(String(baseAmount));
   const [counterMessage, setCounterMessage] = useState('');
   const [showCustomOffer, setShowCustomOffer] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxScale, setLightboxScale] = useState(1);
+  const lightboxRef = useRef<HTMLDivElement | null>(null);
   const quickAmounts = getQuickAmounts(priceMad);
+
+  const openLightbox = useCallback((i: number) => {
+    setLightboxIndex(i);
+    setLightboxScale(1);
+  }, []);
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+  const zoomLightbox = useCallback((delta: number) => {
+    setLightboxScale((s) => Math.max(0.5, Math.min(4, s + delta)));
+  }, []);
+
+  useEffect(() => {
+    if (lightboxIndex == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeLightbox();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightboxIndex, closeLightbox]);
+
+  useEffect(() => {
+    const el = lightboxRef.current;
+    if (!el || lightboxIndex == null) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setLightboxScale((s) => Math.max(0.5, Math.min(4, s + (e.deltaY > 0 ? -0.2 : 0.2))));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [lightboxIndex]);
 
   const handleCounterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,17 +343,95 @@ export default function InstantRequestDetail({
                 <p className="text-xs font-medium text-gray-500 mb-1">Photos du client</p>
                 <div className="flex gap-2 flex-wrap">
                   {photos.map((url, i) => (
-                    <a
+                    <button
                       key={i}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100"
+                      type="button"
+                      onClick={() => openLightbox(i)}
+                      className="block w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 hover:ring-2 hover:ring-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400"
                     >
-                      <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                    </a>
+                      <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                    </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {lightboxIndex != null && photos[lightboxIndex] && (
+              <div
+                ref={lightboxRef}
+                className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center"
+                onClick={closeLightbox}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Photo agrandie"
+              >
+                <div
+                  className="absolute top-4 right-4 flex items-center gap-2 z-10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => zoomLightbox(-0.25)}
+                    className="p-2 rounded-lg bg-white/20 text-white hover:bg-white/30"
+                    aria-label="Réduire"
+                  >
+                    <ZoomOut size={24} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => zoomLightbox(0.25)}
+                    className="p-2 rounded-lg bg-white/20 text-white hover:bg-white/30"
+                    aria-label="Agrandir"
+                  >
+                    <ZoomIn size={24} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeLightbox}
+                    className="p-2 rounded-lg bg-white/20 text-white hover:bg-white/30"
+                    aria-label="Fermer"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const idx = lightboxIndex ?? 0;
+                        setLightboxIndex(idx > 0 ? idx - 1 : photos.length - 1);
+                        setLightboxScale(1);
+                      }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/20 text-white hover:bg-white/30 z-10"
+                      aria-label="Photo précédente"
+                    >
+                      <ChevronLeft size={28} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const idx = lightboxIndex ?? 0;
+                        setLightboxIndex(idx < photos.length - 1 ? idx + 1 : 0);
+                        setLightboxScale(1);
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/20 text-white hover:bg-white/30 z-10"
+                      aria-label="Photo suivante"
+                    >
+                      <ChevronRight size={28} />
+                    </button>
+                  </>
+                )}
+                <img
+                  src={photos[lightboxIndex]}
+                  alt={`Photo ${lightboxIndex + 1}`}
+                  className="max-w-[95vw] max-h-[90vh] object-contain cursor-zoom-in transition-transform duration-150"
+                  style={{ transform: `scale(${lightboxScale})` }}
+                  onClick={(e) => e.stopPropagation()}
+                  draggable={false}
+                />
               </div>
             )}
 
