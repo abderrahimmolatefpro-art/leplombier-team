@@ -94,6 +94,7 @@ export interface Client {
   companyName?: string; // Nom de l'entreprise si client professionnel
   clientType?: 'particulier' | 'professionnel';
   source?: 'form' | 'manual'; // Source de création : formulaire web ou manuel
+  referredByClientId?: string; // ID du client PRO parrain (si ramené par un client pro)
   accessCodeHash?: string; // Hash du code d'accès espace client (SHA-256)
   accessCodeSentAt?: Date; // Date d'envoi du dernier code
   createdAt: Date;

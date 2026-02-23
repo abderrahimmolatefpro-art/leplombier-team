@@ -33,6 +33,7 @@ export default function ClientsPage() {
     ice: '',
     clientType: 'particulier' as 'particulier' | 'professionnel',
     assignedPlombierId: '',
+    referredByClientId: '',
   });
   
   // Action rapide lors de la création
@@ -55,6 +56,7 @@ export default function ClientsPage() {
   const [filterPlombier, setFilterPlombier] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'particulier' | 'professionnel'>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'plombier_paid' | 'plombier_unpaid'>('all');
+  const [filterReferredBy, setFilterReferredBy] = useState('');
   
   // Tri (par défaut : les plus récents en premier)
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -335,6 +337,7 @@ export default function ClientsPage() {
       ice: client.ice || '',
       clientType: client.clientType || 'particulier',
       assignedPlombierId: client.assignedPlombierId || '',
+      referredByClientId: client.referredByClientId || '',
     });
     // Réinitialiser l'action lors de l'édition (on ne crée pas d'action en édition)
     setActionType('none');
@@ -366,6 +369,7 @@ export default function ClientsPage() {
       ice: '',
       clientType: 'particulier',
       assignedPlombierId: '',
+      referredByClientId: '',
     });
     
     setActionType('none');
@@ -435,6 +439,11 @@ export default function ClientsPage() {
       filtered = filtered.filter(client => client.clientType === filterType);
     }
 
+    // Filtre par parrain (client PRO)
+    if (filterReferredBy) {
+      filtered = filtered.filter(client => client.referredByClientId === filterReferredBy);
+    }
+
     // Filtre par paiement plombier (uniquement les clients avec revenus > 0 MAD)
     if (filterPayment !== 'all') {
       filtered = filtered.filter(client => {
@@ -482,7 +491,7 @@ export default function ClientsPage() {
     });
 
     return filtered;
-  }, [clients, searchQuery, filterPlombier, filterType, filterPayment, sortField, sortDirection]);
+  }, [clients, searchQuery, filterPlombier, filterType, filterReferredBy, filterPayment, sortField, sortDirection]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -535,6 +544,7 @@ export default function ClientsPage() {
                 ice: '',
                 clientType: 'particulier',
                 assignedPlombierId: '',
+                referredByClientId: '',
               });
               setActionType('none');
               setActionData({
@@ -602,6 +612,24 @@ export default function ClientsPage() {
               </select>
             </div>
 
+            {/* Filtre : ramené par (client PRO) */}
+            <div>
+              <select
+                value={filterReferredBy}
+                onChange={(e) => setFilterReferredBy(e.target.value)}
+                className="input"
+              >
+                <option value="">Ramené par : Tous</option>
+                {clients
+                  .filter((c) => c.clientType === 'professionnel')
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
             {/* Filtre : plombier a payé ou non */}
             <div>
               <select
@@ -617,12 +645,13 @@ export default function ClientsPage() {
           </div>
 
           {/* Reset filters */}
-          {(searchQuery || filterPlombier || filterType !== 'all' || filterPayment !== 'all') && (
+          {(searchQuery || filterPlombier || filterType !== 'all' || filterReferredBy || filterPayment !== 'all') && (
             <button
               onClick={() => {
                 setSearchQuery('');
                 setFilterPlombier('');
                 setFilterType('all');
+                setFilterReferredBy('');
                 setFilterPayment('all');
               }}
               className="mt-3 text-sm text-primary-600 hover:underline"
@@ -986,6 +1015,26 @@ export default function ClientsPage() {
                           </option>
                         ));
                       })()}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ramené par (client PRO)
+                    </label>
+                    <select
+                      value={formData.referredByClientId}
+                      onChange={(e) => setFormData({ ...formData, referredByClientId: e.target.value })}
+                      className="input"
+                    >
+                      <option value="">Aucun</option>
+                      {clients
+                        .filter((c) => c.clientType === 'professionnel' && c.id !== editingClient?.id)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.companyName || c.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 

@@ -84,6 +84,9 @@ export default function ClientDetailPage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [referredByClient, setReferredByClient] = useState<Client | null>(null);
+  const [referredClients, setReferredClients] = useState<Client[]>([]);
+  const [referredInvoicesTotal, setReferredInvoicesTotal] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -210,6 +213,58 @@ export default function ClientDetailPage() {
         expiresAt: d.data().expiresAt?.toDate(),
       })) as ClientPromoCode[];
       setClientPromoCodes(promosData);
+
+      // Charger le parrain si ce client a été ramené par un client PRO
+      if (clientData.referredByClientId) {
+        const parrainDoc = await getDoc(doc(db, 'clients', clientData.referredByClientId));
+        if (parrainDoc.exists()) {
+          const parrainData = {
+            id: parrainDoc.id,
+            ...parrainDoc.data(),
+            createdAt: parrainDoc.data().createdAt?.toDate() || new Date(),
+            updatedAt: parrainDoc.data().updatedAt?.toDate() || new Date(),
+          } as Client;
+          setReferredByClient(parrainData);
+        } else {
+          setReferredByClient(null);
+        }
+      } else {
+        setReferredByClient(null);
+      }
+
+      // Charger les clients ramenés si ce client est un client PRO
+      if (clientData.clientType === 'professionnel') {
+        const referredQuery = query(
+          collection(db, 'clients'),
+          where('referredByClientId', '==', clientId)
+        );
+        const referredSnapshot = await getDocs(referredQuery);
+        const referredData = referredSnapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+          createdAt: d.data().createdAt?.toDate() || new Date(),
+          updatedAt: d.data().updatedAt?.toDate() || new Date(),
+        })) as Client[];
+        setReferredClients(referredData);
+
+        // Calculer le total des factures des clients ramenés
+        let totalFactures = 0;
+        for (const refClient of referredData) {
+          const docsQuery = query(
+            collection(db, 'documents'),
+            where('clientId', '==', refClient.id),
+            where('type', '==', 'facture')
+          );
+          const docsSnap = await getDocs(docsQuery);
+          docsSnap.docs.forEach((d) => {
+            totalFactures += (d.data().total as number) || 0;
+          });
+        }
+        setReferredInvoicesTotal(totalFactures);
+      } else {
+        setReferredClients([]);
+        setReferredInvoicesTotal(0);
+      }
 
       // Calculer les statistiques
       const calculatedStats = calculateClientStats(projectsData, documentsData, appointmentsData, revenuesData);
@@ -481,6 +536,17 @@ export default function ClientDetailPage() {
                     <span className="text-sm text-gray-700 ml-2">{client.ice}</span>
                   </div>
                 )}
+                {referredByClient && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <span className="text-xs text-gray-500">Ramené par :</span>
+                    <Link
+                      href={`/clients/${referredByClient.id}`}
+                      className="block text-sm font-medium text-primary-600 hover:underline mt-1"
+                    >
+                      {referredByClient.companyName || referredByClient.name}
+                    </Link>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200">
                   <p className="text-xs text-gray-500 mb-2">Espace client</p>
                   <p className="text-sm text-gray-600 mb-2">
@@ -595,6 +661,36 @@ export default function ClientDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Clients ramenés (client PRO) */}
+            {client.clientType === 'professionnel' && (
+              <div className="card">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Clients ramenés</h2>
+                {referredClients.length > 0 ? (
+                  <div className="space-y-3">
+                    <ul className="space-y-2">
+                      {referredClients.map((refClient) => (
+                        <li key={refClient.id}>
+                          <Link
+                            href={`/clients/${refClient.id}`}
+                            className="text-sm font-medium text-primary-600 hover:underline"
+                          >
+                            {refClient.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="pt-3 border-t border-gray-200">
+                      <p className="text-sm text-gray-600">
+                        Total facturé aux clients ramenés : <span className="font-bold text-gray-900">{formatCurrency(referredInvoicesTotal)}</span>
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Aucun client ramené pour le moment.</p>
+                )}
+              </div>
+            )}
 
             {/* Prochain rendez-vous */}
             {stats?.nextAppointment && (
