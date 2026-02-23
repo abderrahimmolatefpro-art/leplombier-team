@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
-import { Menu, User, DollarSign, Settings } from 'lucide-react';
+import { Menu, User, DollarSign, Settings, LogOut } from 'lucide-react';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function PlombierHeader() {
   const pathname = usePathname();
-  const { plombier } = usePlombierAuth();
+  const router = useRouter();
+  const { plombier, logout } = usePlombierAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [available, setAvailable] = useState(false);
   const [loadingToggle, setLoadingToggle] = useState(false);
@@ -78,7 +79,18 @@ export default function PlombierHeader() {
             <div className="flex-1" />
           )}
 
-          <div className="w-10" />
+          <button
+            type="button"
+            onClick={async () => {
+              await logout();
+              router.replace('/espace-plombier/login');
+            }}
+            className="p-2 -mr-2 rounded-lg hover:bg-red-50 text-red-600"
+            aria-label="Déconnexion"
+            title="Déconnexion"
+          >
+            <LogOut size={22} />
+          </button>
         </div>
         {toggleError && (
           <p className="text-sm text-red-600 text-center px-4 pb-2">{toggleError}</p>
@@ -115,7 +127,7 @@ export default function PlombierHeader() {
                 </Link>
               ))}
             </nav>
-            <div className="border-t border-gray-100 p-4">
+            <div className="border-t border-gray-100 p-4 space-y-1">
               <Link
                 href="/espace-plombier/parametres"
                 onClick={() => setMenuOpen(false)}
@@ -124,6 +136,18 @@ export default function PlombierHeader() {
                 <Settings size={20} />
                 Paramètres du compte
               </Link>
+              <button
+                type="button"
+                onClick={async () => {
+                  setMenuOpen(false);
+                  await logout();
+                  router.replace('/espace-plombier/login');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg text-left font-medium"
+              >
+                <LogOut size={20} />
+                Déconnexion
+              </button>
             </div>
           </div>
         </>
