@@ -58,7 +58,9 @@ export async function POST(
         await notifyPlombier(
           plombierId,
           'Demande annulée',
-          'La demande a été annulée par le client'
+          'La demande a été annulée par le client',
+          undefined,
+          { name: 'demande_annulee', params: [] }
         );
       }
     }

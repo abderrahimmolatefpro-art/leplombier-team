@@ -101,8 +101,12 @@ export async function POST(request: NextRequest) {
       return true;
     });
     console.log('[FCM] instant-request: plombiers disponibles:', assignablePlombiers.map((d) => ({ id: d.id, hasFcm: !!d.data().fcmToken })));
+    const whatsappParams = [pushBody];
     for (const plombierDoc of assignablePlombiers) {
-      await notifyPlombier(plombierDoc.id, pushTitle, pushBody, { requestId: docRef.id });
+      await notifyPlombier(plombierDoc.id, pushTitle, pushBody, { requestId: docRef.id }, {
+        name: 'demande_service_recue',
+        params: whatsappParams,
+      });
     }
 
     // #region agent log

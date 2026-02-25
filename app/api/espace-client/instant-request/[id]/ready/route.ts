@@ -53,7 +53,9 @@ export async function POST(
       await notifyPlombier(
         plombierId,
         'Client prêt',
-        'Le client est chez lui et vous attend'
+        'Le client est chez lui et vous attend',
+        undefined,
+        { name: 'client_pret', params: [] }
       );
     }
 

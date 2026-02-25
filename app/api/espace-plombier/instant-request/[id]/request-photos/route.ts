@@ -60,11 +60,11 @@ export async function POST(
     });
 
     const clientId = data.clientId as string;
-    const address = (data.address as string) || '';
     await notifyClient(
       clientId,
       'Photos demandées',
-      'Un plombier souhaite voir des photos pour mieux estimer le prix.'
+      'Un plombier souhaite voir des photos pour mieux estimer le prix.',
+      { name: 'photos_demandees', params: [] }
     );
 
     return NextResponse.json({ ok: true });

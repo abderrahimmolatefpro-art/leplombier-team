@@ -60,7 +60,8 @@ export async function POST(
     await notifyClient(
       clientId,
       'Intervention terminée',
-      'Votre intervention est terminée'
+      'Votre intervention est terminée',
+      { name: 'intervention_terminee', params: [] }
     );
 
     return NextResponse.json({ ok: true });

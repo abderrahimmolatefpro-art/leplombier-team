@@ -81,7 +81,8 @@ export async function POST(
     await notifyClient(
       data.clientId as string,
       'Heure d\'arrivée',
-      `${plombierName} sera chez vous ${etaText}`
+      `${plombierName} sera chez vous ${etaText}`,
+      { name: 'heure_arrivee', params: [plombierName, etaText] }
     );
 
     return NextResponse.json({

@@ -120,7 +120,8 @@ export async function POST(request: NextRequest) {
     await notifyClient(
       clientId,
       'Nouvelle offre',
-      `${plombierName} propose ${amount} MAD`
+      `${plombierName} propose ${amount} MAD`,
+      { name: 'nouvelle_offre', params: [plombierName, String(amount)] }
     );
 
     return NextResponse.json({

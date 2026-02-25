@@ -62,7 +62,8 @@ export async function POST(
     await notifyClient(
       data.clientId as string,
       'Plombier arrivé',
-      `${plombierName} est devant chez vous`
+      `${plombierName} est devant chez vous`,
+      { name: 'plombier_arrive', params: [plombierName] }
     );
 
     return NextResponse.json({ ok: true });

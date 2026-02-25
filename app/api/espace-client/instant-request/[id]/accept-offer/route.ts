@@ -126,10 +126,13 @@ export async function POST(
         }
       : null;
 
+    const waParam = address ? address.slice(0, 80) : 'Le client a accepté votre offre';
     await notifyPlombier(
       plombierId,
       'Votre offre a été acceptée',
-      address ? `– ${address.slice(0, 80)}` : 'Le client a accepté votre offre'
+      address ? `– ${address.slice(0, 80)}` : 'Le client a accepté votre offre',
+      undefined,
+      { name: 'offre_acceptee', params: [waParam] }
     );
 
     return NextResponse.json({
