@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPushToPlombier } from '@/lib/fcm';
+import { notifyPlombier } from '@/lib/notify';
 
 export async function POST(
   request: NextRequest,
@@ -55,7 +55,7 @@ export async function POST(
     for (const offerDoc of offersSnap.docs) {
       const plombierId = offerDoc.data()?.plombierId;
       if (plombierId) {
-        await sendPushToPlombier(
+        await notifyPlombier(
           plombierId,
           'Demande annulée',
           'La demande a été annulée par le client'

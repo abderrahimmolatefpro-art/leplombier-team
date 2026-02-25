@@ -3,7 +3,7 @@ import { getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPushToClient } from '@/lib/fcm';
+import { notifyClient } from '@/lib/notify';
 
 export async function POST(
   request: NextRequest,
@@ -78,7 +78,7 @@ export async function POST(
           ? `dans environ ${etaMinutes} min`
           : `dans environ ${Math.round(etaMinutes / 60)}h`;
 
-    await sendPushToClient(
+    await notifyClient(
       data.clientId as string,
       'Heure d\'arrivée',
       `${plombierName} sera chez vous ${etaText}`

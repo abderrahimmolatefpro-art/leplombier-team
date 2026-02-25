@@ -5,7 +5,7 @@ import { getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPushToClient } from '@/lib/fcm';
+import { notifyClient } from '@/lib/notify';
 
 const DEBUG_LOG = join(process.cwd(), '.cursor', 'debug.log');
 function agentLog(p: { location: string; message: string; data?: Record<string, unknown>; hypothesisId?: string }) {
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     const plombierName = (userDoc.data()?.name as string) || 'Un plombier';
     const clientId = requestData.clientId as string;
-    await sendPushToClient(
+    await notifyClient(
       clientId,
       'Nouvelle offre',
       `${plombierName} propose ${amount} MAD`

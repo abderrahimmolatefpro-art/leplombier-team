@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPushToPlombier } from '@/lib/fcm';
+import { notifyPlombier } from '@/lib/notify';
 
 export async function POST(
   request: NextRequest,
@@ -50,7 +50,7 @@ export async function POST(
 
     const plombierId = data.plombierId as string;
     if (plombierId) {
-      await sendPushToPlombier(
+      await notifyPlombier(
         plombierId,
         'Client prêt',
         'Le client est chez lui et vous attend'

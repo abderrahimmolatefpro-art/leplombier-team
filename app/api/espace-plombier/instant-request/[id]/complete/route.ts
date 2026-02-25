@@ -3,7 +3,7 @@ import { getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPushToClient } from '@/lib/fcm';
+import { notifyClient } from '@/lib/notify';
 
 export async function POST(
   request: NextRequest,
@@ -57,7 +57,7 @@ export async function POST(
     });
 
     const clientId = data.clientId as string;
-    await sendPushToClient(
+    await notifyClient(
       clientId,
       'Intervention terminée',
       'Votre intervention est terminée'

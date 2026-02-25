@@ -3,7 +3,7 @@ import { getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPushToClient } from '@/lib/fcm';
+import { notifyClient } from '@/lib/notify';
 
 export async function POST(
   request: NextRequest,
@@ -59,7 +59,7 @@ export async function POST(
     const userDoc = await db.collection('users').doc(plombierId).get();
     const plombierName = userDoc.exists ? (userDoc.data()?.name as string) || 'Le plombier' : 'Le plombier';
 
-    await sendPushToClient(
+    await notifyClient(
       data.clientId as string,
       'Plombier arrivé',
       `${plombierName} est devant chez vous`

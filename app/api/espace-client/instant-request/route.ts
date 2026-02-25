@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPushToPlombier } from '@/lib/fcm';
+import { notifyPlombier } from '@/lib/notify';
 import { toCanonicalCity, citiesMatch } from '@/lib/cities';
 
 const EXPIRE_MINUTES = 15;
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     });
     console.log('[FCM] instant-request: plombiers disponibles:', assignablePlombiers.map((d) => ({ id: d.id, hasFcm: !!d.data().fcmToken })));
     for (const plombierDoc of assignablePlombiers) {
-      await sendPushToPlombier(plombierDoc.id, pushTitle, pushBody, { requestId: docRef.id });
+      await notifyPlombier(plombierDoc.id, pushTitle, pushBody, { requestId: docRef.id });
     }
 
     // #region agent log

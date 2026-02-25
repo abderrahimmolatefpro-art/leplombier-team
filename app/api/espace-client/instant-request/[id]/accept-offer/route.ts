@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
-import { sendPushToPlombier } from '@/lib/fcm';
+import { notifyPlombier } from '@/lib/notify';
 
 export async function POST(
   request: NextRequest,
@@ -126,7 +126,7 @@ export async function POST(
         }
       : null;
 
-    await sendPushToPlombier(
+    await notifyPlombier(
       plombierId,
       'Votre offre a été acceptée',
       address ? `– ${address.slice(0, 80)}` : 'Le client a accepté votre offre'
