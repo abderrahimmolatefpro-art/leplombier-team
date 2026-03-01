@@ -669,61 +669,134 @@ export default function DashboardPage() {
     };
   }, [filteredData, clients, plombiers]);
 
-  // Données pour graphique revenus par mois (selon la période)
-  const monthlyRevenueData = useMemo(() => {
+  // Données pour graphiques chiffre d'affaires (par jour si période <= 31 jours, sinon par mois)
+  const chartRevenueBreakdown = useMemo(() => {
     const { start, end } = getDateRange;
-    const months: { [key: string]: number } = {};
-    
-    // Générer les mois dans la plage
-    const current = new Date(start);
-    while (current <= end) {
-      const monthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
-      months[monthKey] = 0;
-      current.setMonth(current.getMonth() + 1);
-    }
-    
-    // Utiliser les données filtrées
     const { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier } = filteredData;
     const existingClientIds = new Set(filteredClientsByPlombier.map(c => c.id));
-    
-    // Factures payées dans la période (filtrées par plombier si nécessaire)
+
+    const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const useDaily = daysDiff <= 31;
+
+    const projectsWithInvoiceDoc = new Set(
+      documents
+        .filter(d => d.type === 'facture' && d.projectId)
+        .map(d => d.projectId)
+        .filter((id): id is string => !!id)
+    );
+    const revenuesWithInvoiceDoc = new Set(
+      documents
+        .filter(d => d.type === 'facture' && d.manualRevenueId)
+        .map(d => d.manualRevenueId)
+        .filter((id): id is string => !!id)
+    );
+    const isProjectSansFacture = (project: Project) =>
+      project.hasInvoice === false || (project.hasInvoice !== true && !projectsWithInvoiceDoc.has(project.id));
+    const isRevenueSansFacture = (revenue: ManualRevenue) =>
+      revenue.isBlackRevenue === true || (revenue.isBlackRevenue !== false && !revenuesWithInvoiceDoc.has(revenue.id));
+
+    type BucketData = { revenus: number; partPlombier: number; partSociete: number; avecFacture: number; sansFacture: number };
+    const buckets: { [key: string]: BucketData } = {};
+
+    const current = new Date(start);
+    current.setHours(0, 0, 0, 0);
+    const endDate = new Date(end);
+    endDate.setHours(23, 59, 59, 999);
+
+    while (current <= endDate) {
+      const key = useDaily
+        ? `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`
+        : `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+      buckets[key] = { revenus: 0, partPlombier: 0, partSociete: 0, avecFacture: 0, sansFacture: 0 };
+      if (useDaily) {
+        current.setDate(current.getDate() + 1);
+      } else {
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+
+    const getKey = (d: Date) =>
+      useDaily
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
     filteredInvoices.forEach(doc => {
-      const date = doc.date;
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      if (months[monthKey] !== undefined) {
-        months[monthKey] += doc.total || 0;
-      }
+      if (!existingClientIds.has(doc.clientId)) return;
+      const key = getKey(doc.date);
+      const b = buckets[key];
+      if (!b) return;
+      const amount = doc.total || 0;
+      const relatedProject = filteredProjects.find(p => p.clientId === doc.clientId);
+      const plombierPercent = relatedProject ? (relatedProject.plombierPercentage || 60) / 100 : 0.6;
+      const companyPercent = 1 - plombierPercent;
+      b.revenus += amount;
+      b.partPlombier += amount * plombierPercent;
+      b.partSociete += amount * companyPercent;
+      b.avecFacture += amount;
     });
-    
-    // Projets dans la période (filtrés par plombier si nécessaire)
+
     filteredProjects.forEach(project => {
-      if (project.amount && project.amount > 0) {
-        const projectDate = project.createdAt || project.startDate;
-        const monthKey = `${projectDate.getFullYear()}-${String(projectDate.getMonth() + 1).padStart(2, '0')}`;
-        if (months[monthKey] !== undefined) {
-          months[monthKey] += project.amount;
-        }
+      if (!project.amount || project.amount <= 0) return;
+      const projectDate = project.createdAt || project.startDate;
+      const key = getKey(projectDate);
+      const b = buckets[key];
+      if (!b) return;
+      const plombierPercent = (project.plombierPercentage || 60) / 100;
+      const companyPercent = 1 - plombierPercent;
+      b.revenus += project.amount;
+      b.partPlombier += project.amount * plombierPercent;
+      b.partSociete += project.amount * companyPercent;
+      if (isProjectSansFacture(project)) {
+        b.sansFacture += project.amount;
+      } else {
+        b.avecFacture += project.amount;
       }
     });
-    
-    // Revenus manuels dans la période (filtrés par plombier si nécessaire)
+
     filteredManualRevenues.forEach(revenue => {
-      const date = revenue.date;
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      if (months[monthKey] !== undefined) {
-        months[monthKey] += revenue.amount;
+      if (!existingClientIds.has(revenue.clientId)) return;
+      const key = getKey(revenue.date);
+      const b = buckets[key];
+      if (!b) return;
+      const plombierPercent = (revenue.plombierPercentage || 60) / 100;
+      const companyPercent = 1 - plombierPercent;
+      b.revenus += revenue.amount;
+      b.partPlombier += revenue.amount * plombierPercent;
+      b.partSociete += revenue.amount * companyPercent;
+      if (isRevenueSansFacture(revenue)) {
+        b.sansFacture += revenue.amount;
+      } else {
+        b.avecFacture += revenue.amount;
       }
     });
-    
-    return Object.entries(months).map(([month, revenue]) => {
-      const [year, monthNum] = month.split('-');
-      const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+
+    const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    const sortedKeys = Object.keys(buckets).sort();
+
+    return sortedKeys.map((key) => {
+      const data = buckets[key];
+      let label: string;
+      if (useDaily) {
+        const [, m, d] = key.split('-');
+        label = `${parseInt(d)}/${parseInt(m)}`;
+      } else {
+        const [, monthNum] = key.split('-');
+        label = monthNames[parseInt(monthNum) - 1];
+      }
       return {
-        month: monthNames[parseInt(monthNum) - 1],
-        revenus: Math.round(revenue),
+        key,
+        label,
+        revenus: Math.round(data.revenus),
+        partPlombier: Math.round(data.partPlombier),
+        partSociete: Math.round(data.partSociete),
+        avecFacture: Math.round(data.avecFacture),
+        sansFacture: Math.round(data.sansFacture),
       };
     });
-  }, [filteredData, getDateRange]);
+  }, [filteredData, documents, getDateRange]);
+
+  // Alias pour compatibilité (utilise label comme dataKey pour les charts)
+  const monthlyRevenueBreakdown = chartRevenueBreakdown;
 
   // Données pour graphique revenus par type de projet (dans la période) - filtrées par plombier si nécessaire
   const revenueByProjectType = useMemo(() => {
@@ -1283,32 +1356,86 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Graphiques */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Revenus par mois */}
+        {/* Graphiques Chiffre d'affaires */}
+        <div className="space-y-4 sm:space-y-6">
+          <h2 className="text-xl font-bold text-gray-900">Chiffre d&apos;affaires</h2>
+          {/* Graphique principal Revenus (courbe comme Sales) - s'adapte au sélecteur de date */}
           <div className="card">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
-              <BarChart3 className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
-              <span className="text-sm sm:text-base">Revenus par mois (6 derniers mois)</span>
-            </h2>
-            <ResponsiveContainer width="100%" height={200} className="sm:h-[300px]">
-              <LineChart data={monthlyRevenueData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+            <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center">
+              <TrendingUp className="mr-2 w-5 h-5" />
+              Revenus
+            </h3>
+            <ResponsiveContainer width="100%" height={220} className="sm:h-[300px]">
+              <LineChart data={chartRevenueBreakdown} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                <YAxis width={50} tick={{ fontSize: 10 }} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                <YAxis width={50} tick={{ fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${v / 1000}k` : v} />
                 <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
                 <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenus" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2}
-                  name="Revenus (MAD)"
-                />
+                <Line type="monotone" dataKey="revenus" stroke="#3B82F6" strokeWidth={2} name="Revenus (MAD)" dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Revenus totaux par barres */}
+            <div className="card">
+              <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center">
+                <BarChart3 className="mr-2 w-5 h-5" />
+                Revenus totaux
+              </h3>
+              <ResponsiveContainer width="100%" height={200} className="sm:h-[280px]">
+                <BarChart data={chartRevenueBreakdown} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis width={50} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
+                  <Bar dataKey="revenus" fill="#3B82F6" name="Revenus (MAD)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
+            {/* Part plombier vs Part société */}
+            <div className="card">
+              <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center">
+                <PieChart className="mr-2 w-5 h-5" />
+                Part plombier vs Part société
+              </h3>
+              <ResponsiveContainer width="100%" height={200} className="sm:h-[280px]">
+                <BarChart data={chartRevenueBreakdown} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis width={50} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar dataKey="partPlombier" stackId="a" fill="#10B981" name="Part plombier (MAD)" />
+                  <Bar dataKey="partSociete" stackId="a" fill="#3B82F6" name="Part société (MAD)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Revenus avec/sans facture */}
+            <div className="card">
+              <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center">
+                <FileText className="mr-2 w-5 h-5" />
+                Revenus avec/sans facture
+              </h3>
+              <ResponsiveContainer width="100%" height={200} className="sm:h-[280px]">
+                <BarChart data={chartRevenueBreakdown} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis width={50} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar dataKey="avecFacture" stackId="b" fill="#10B981" name="Avec facture (MAD)" />
+                  <Bar dataKey="sansFacture" stackId="b" fill="#F59E0B" name="Sans facture (MAD)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Autres graphiques */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Revenus par type de projet */}
           <div className="card">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
@@ -1335,10 +1462,7 @@ export default function DashboardPage() {
               </RechartsPieChart>
             </ResponsiveContainer>
           </div>
-        </div>
 
-        {/* Top clients et projets récents */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Top 5 clients */}
           <div className="card">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
