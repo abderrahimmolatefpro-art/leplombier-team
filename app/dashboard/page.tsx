@@ -31,9 +31,6 @@ import {
   Line,
   BarChart,
   Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -798,63 +795,6 @@ export default function DashboardPage() {
   // Alias pour compatibilité (utilise label comme dataKey pour les charts)
   const monthlyRevenueBreakdown = chartRevenueBreakdown;
 
-  // Données pour graphique revenus par type de projet (dans la période) - filtrées par plombier si nécessaire
-  const revenueByProjectType = useMemo(() => {
-    const { filteredProjects } = filteredData;
-    const typeMap: { [key: string]: number } = {};
-    
-    filteredProjects.forEach(project => {
-      if (project.amount && project.amount > 0) {
-        const typeName = 
-          project.type === 'recherche_fuite' ? 'Recherche fuite' :
-          project.type === 'reparation_lourde' ? 'Réparation lourde' :
-          project.type === 'renovation_salle_bain' ? 'Rénovation SDB' : 'Autre';
-        
-        typeMap[typeName] = (typeMap[typeName] || 0) + project.amount;
-      }
-    });
-    
-    return Object.entries(typeMap).map(([name, value]) => ({
-      name,
-      value: Math.round(value),
-    }));
-  }, [filteredData]);
-
-  // Top clients par revenus (dans la période) - filtrés par plombier si nécessaire
-  const topClients = useMemo(() => {
-    const { filteredInvoices, filteredProjects, filteredManualRevenues, filteredClientsByPlombier } = filteredData;
-    const clientRevenue: { [key: string]: number } = {};
-    
-    // Factures dans la période (déjà filtrées)
-    filteredInvoices.forEach(doc => {
-      clientRevenue[doc.clientId] = (clientRevenue[doc.clientId] || 0) + (doc.total || 0);
-    });
-    
-    // Projets dans la période (déjà filtrés)
-    filteredProjects.forEach(project => {
-      if (project.amount && project.amount > 0) {
-        clientRevenue[project.clientId] = (clientRevenue[project.clientId] || 0) + project.amount;
-      }
-    });
-    
-    // Revenus manuels dans la période (déjà filtrés)
-    filteredManualRevenues.forEach(revenue => {
-      clientRevenue[revenue.clientId] = (clientRevenue[revenue.clientId] || 0) + revenue.amount;
-    });
-    
-    return Object.entries(clientRevenue)
-      .map(([clientId, revenue]) => {
-        const client = filteredClientsByPlombier.find(c => c.id === clientId);
-        return {
-          name: client?.name || 'Client supprimé',
-          revenue: Math.round(revenue),
-        };
-      })
-      .filter(item => item.name !== 'Client supprimé') // Exclure les clients supprimés
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-  }, [filteredData]);
-
   // Revenus par plombier (dans la période) — uniquement plombiers validés
   const revenueByPlombier = useMemo(() => {
     const { filteredInvoices, filteredProjects, filteredManualRevenues } = filteredData;
@@ -1434,60 +1374,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Autres graphiques */}
+        {/* Commandes récentes et projets */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Revenus par type de projet */}
-          <div className="card">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
-              <PieChart className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
-              <span className="text-sm sm:text-base">Revenus par type de projet</span>
-            </h2>
-            <ResponsiveContainer width="100%" height={200} className="sm:h-[300px]">
-              <RechartsPieChart>
-                <Pie
-                  data={revenueByProjectType}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                  outerRadius={isMobile ? 60 : 70}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {revenueByProjectType.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
-              </RechartsPieChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Top 5 clients */}
-          <div className="card">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center">
-              <Users className="mr-2 w-5 h-5 sm:w-6 sm:h-6" />
-              <span className="text-sm sm:text-base">Top 5 clients par revenus</span>
-            </h2>
-            <ResponsiveContainer width="100%" height={200} className="sm:h-[300px]">
-              <BarChart data={topClients} margin={{ top: 5, right: 5, left: 0, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={80}
-                  className="text-xs"
-                  tick={{ fontSize: 9 }}
-                  interval={0}
-                />
-                <YAxis width={50} tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
-                <Bar dataKey="revenue" fill="#3B82F6" name="Revenus (MAD)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
           {/* Commandes récentes */}
           <Link href="/commandes" className="block">
             <div className="card hover:border-primary-300 hover:shadow-md transition-all cursor-pointer">
