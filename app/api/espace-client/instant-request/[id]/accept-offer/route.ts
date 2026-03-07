@@ -3,6 +3,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
 import { notifyPlombier } from '@/lib/notify';
+import { getNotifMessage } from '@/lib/notificationMessages';
 
 export async function POST(
   request: NextRequest,
@@ -126,11 +127,13 @@ export async function POST(
         }
       : null;
 
-    const waParam = address ? address.slice(0, 80) : 'Le client a accepté votre offre';
+    const country = (requestData.country as string) || 'MA';
+    const bodyText = address ? getNotifMessage('offerAcceptedBodyAddress', country as 'MA' | 'ES', address.slice(0, 80)) : getNotifMessage('offerAcceptedBodyFallback', country as 'MA' | 'ES');
+    const waParam = address ? address.slice(0, 80) : bodyText;
     await notifyPlombier(
       plombierId,
-      'Votre offre a été acceptée',
-      address ? `– ${address.slice(0, 80)}` : 'Le client a accepté votre offre',
+      getNotifMessage('offerAccepted', country as 'MA' | 'ES'),
+      bodyText,
       undefined,
       { name: 'offre_acceptee', params: [waParam] }
     );

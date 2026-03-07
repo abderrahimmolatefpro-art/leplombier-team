@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapPin } from 'lucide-react';
+import { getActiveCountry } from '@/lib/companyConfig';
 
 interface AddressInputProps {
   value: string;
@@ -12,6 +13,8 @@ interface AddressInputProps {
   /** Quand false, désactive l'autocomplete et les maps (ex: formulaire masqué) */
   active?: boolean;
   label?: string;
+  /** Pays pour le filtrage Google Places (ma/es). Par défaut: getActiveCountry() */
+  country?: 'MA' | 'ES';
 }
 
 export default function AddressInput({
@@ -22,7 +25,10 @@ export default function AddressInput({
   disabled = false,
   active = true,
   label = 'Adresse',
+  country: countryProp,
 }: AddressInputProps) {
+  const country = countryProp ?? getActiveCountry();
+  const placesCountry = country === 'ES' ? 'es' : 'ma';
   const [addressPreviewCoords, setAddressPreviewCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [showAddressMap, setShowAddressMap] = useState(false);
   const [geocodingMap, setGeocodingMap] = useState(false);
@@ -47,7 +53,7 @@ export default function AddressInput({
   const handleMapClick = useCallback(async (lat: number, lng: number) => {
     setPickingAddress(true);
     try {
-      const res = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`);
+      const res = await fetch(`/api/geocode?lat=${lat}&lng=${lng}&country=${country}`);
       const data = await res.json();
       if (data.address) {
         onChange(data.address);
@@ -79,7 +85,7 @@ export default function AddressInput({
     }
     setGeocodingMap(true);
     try {
-      const res = await fetch(`/api/geocode?address=${encodeURIComponent(value)}`);
+      const res = await fetch(`/api/geocode?address=${encodeURIComponent(value)}&country=${country}`);
       const data = await res.json();
       if (data.lat && data.lng) {
         setAddressPreviewCoords({ lat: data.lat, lng: data.lng });
@@ -101,7 +107,7 @@ export default function AddressInput({
       if (!g?.maps?.places || !inputEl || autocompleteRef.current) return;
       try {
         const autocomplete = new g.maps.places.Autocomplete(inputEl, {
-          componentRestrictions: { country: 'ma' },
+          componentRestrictions: { country: placesCountry },
           fields: ['formatted_address', 'geometry'],
         });
         autocomplete.addListener('place_changed', () => {

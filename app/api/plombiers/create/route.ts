@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, phone, password } = body;
+    const { name, phone, password, country } = body;
     if (!name || !phone || !password || password.length < 6) {
       return NextResponse.json(
         { error: 'name, phone et password (min 6 caractères) requis' },
@@ -73,11 +73,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const plombierCountry = country === 'ES' ? 'ES' : 'MA';
     await db.collection('users').doc(createdUser.uid).set({
       email: authEmail,
       name: name.trim(),
       phone: phone.trim(),
       role: 'plombier',
+      country: plombierCountry,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

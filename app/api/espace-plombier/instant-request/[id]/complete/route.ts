@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { notifyClient } from '@/lib/notify';
+import { getNotifMessage } from '@/lib/notificationMessages';
 
 export async function POST(
   request: NextRequest,
@@ -57,10 +58,11 @@ export async function POST(
     });
 
     const clientId = data.clientId as string;
+    const country = (data.country as string) || 'MA';
     await notifyClient(
       clientId,
-      'Intervention terminée',
-      'Votre intervention est terminée',
+      getNotifMessage('interventionComplete', country as 'MA' | 'ES'),
+      getNotifMessage('interventionCompleteBody', country as 'MA' | 'ES'),
       { name: 'intervention_terminee', params: [] }
     );
 

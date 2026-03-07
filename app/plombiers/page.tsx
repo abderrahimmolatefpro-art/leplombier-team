@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import { collection, query, where, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { auth } from '@/lib/firebase';
@@ -10,6 +11,7 @@ import { generatePassword } from '@/lib/auth-utils';
 import { db } from '@/lib/firebase';
 import { Project, Client, Document, ManualRevenue, User } from '@/types';
 import { formatDate, formatCurrency, isPlombierAssignable } from '@/lib/utils';
+import { getWebsiteDomain } from '@/lib/companyConfig';
 import { 
   Users, 
   DollarSign, 
@@ -62,6 +64,7 @@ interface PlombierStats {
 
 export default function PlombiersPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [plombiers, setPlombiers] = useState<User[]>([]);
@@ -82,6 +85,7 @@ export default function PlombiersPage() {
     name: '',
     phone: '',
     password: '',
+    country: 'MA' as 'MA' | 'ES',
   });
   const [creating, setCreating] = useState(false);
   const [documentsModalPlombier, setDocumentsModalPlombier] = useState<User | null>(null);
@@ -95,7 +99,7 @@ export default function PlombiersPage() {
     if (user) {
       loadData();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   // Fermer le sélecteur de dates quand on clique en dehors
   useEffect(() => {
@@ -114,8 +118,12 @@ export default function PlombiersPage() {
 
   const loadData = async () => {
     try {
-      // Charger les plombiers
-      const plombiersQuery = query(collection(db, 'users'), where('role', '==', 'plombier'));
+      // Charger les plombiers (filtrés par pays)
+      const plombiersQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'plombier'),
+        where('country', 'in', countryFilter)
+      );
       const plombiersSnapshot = await getDocs(plombiersQuery);
       const plombiersData = plombiersSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -125,25 +133,32 @@ export default function PlombiersPage() {
       })) as User[];
       setPlombiers(plombiersData);
 
-      // Charger les projets
+      // Charger les clients du pays (pour filtrer projets/documents/revenus)
+      const clientsQuery = query(
+        collection(db, 'clients'),
+        where('country', 'in', countryFilter)
+      );
+      const clientsSnapshot = await getDocs(clientsQuery);
+      const clientIds = new Set(clientsSnapshot.docs.map((d) => d.id));
+
+      // Charger les projets (filtrés par clientIds du pays)
       const projectsQuery = query(collection(db, 'projects'));
       const projectsSnapshot = await getDocs(projectsQuery);
-      const projectsData = projectsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        startDate: doc.data().startDate?.toDate() || new Date(),
-        endDate: doc.data().endDate?.toDate(),
-        amount: doc.data().amount || 0,
-        hasInvoice: doc.data().hasInvoice || false,
-        paidByPlombierIds: doc.data().paidByPlombierIds || [],
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-      })) as Project[];
+      const projectsData = projectsSnapshot.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          startDate: doc.data().startDate?.toDate() || new Date(),
+          endDate: doc.data().endDate?.toDate(),
+          amount: doc.data().amount || 0,
+          hasInvoice: doc.data().hasInvoice || false,
+          paidByPlombierIds: doc.data().paidByPlombierIds || [],
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        })) as Project[];
       setProjects(projectsData);
 
-      // Charger les clients
-      const clientsQuery = query(collection(db, 'clients'));
-      const clientsSnapshot = await getDocs(clientsQuery);
       const clientsData = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -152,10 +167,12 @@ export default function PlombiersPage() {
       })) as Client[];
       setClients(clientsData);
 
-      // Charger les documents (factures payées)
+      // Charger les documents (filtrés par clientIds du pays)
       const documentsQuery = query(collection(db, 'documents'));
       const documentsSnapshot = await getDocs(documentsQuery);
-      const documentsData = documentsSnapshot.docs.map((doc) => ({
+      const documentsData = documentsSnapshot.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((doc) => ({
         id: doc.id,
         ...doc.data(),
         date: doc.data().date?.toDate() || new Date(),
@@ -165,11 +182,11 @@ export default function PlombiersPage() {
       })) as Document[];
       setDocuments(documentsData);
 
-      // Charger les revenus manuels (dépannages)
+      // Charger les revenus manuels (dépannages, filtrés par clientIds du pays)
       const revenuesQuery = query(collection(db, 'manualRevenues'));
       const revenuesSnapshot = await getDocs(revenuesQuery);
       const revenuesData = revenuesSnapshot.docs
-        .filter((doc) => !doc.data().deleted)
+        .filter((doc) => !doc.data().deleted && clientIds.has(doc.data().clientId))
         .map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -477,13 +494,14 @@ export default function PlombiersPage() {
           name: createFormData.name,
           phone: createFormData.phone,
           password: createFormData.password,
+          country: createFormData.country || 'MA',
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur lors de la création');
 
       setShowCreateModal(false);
-      setCreateFormData({ name: '', phone: '', password: '' });
+      setCreateFormData({ name: '', phone: '', password: '', country: 'MA' });
       loadData();
       alert('Plombier créé avec succès ! Communiquez le mot de passe au plombier.');
     } catch (error: any) {
@@ -752,7 +770,7 @@ export default function PlombiersPage() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="font-medium text-gray-900">{stat.plombier.name}</p>
                                 {stat.plombier.certified && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700" title="Certifié leplombier.ma">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700" title={`Certifié ${getWebsiteDomain(stat.plombier.country ?? 'MA')}`}>
                                     <BadgeCheck className="w-3 h-3" />
                                     Certifié
                                   </span>
@@ -1079,6 +1097,20 @@ export default function PlombiersPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pays
+                    </label>
+                    <select
+                      value={createFormData.country}
+                      onChange={(e) => setCreateFormData({ ...createFormData, country: e.target.value as 'MA' | 'ES' })}
+                      className="input"
+                    >
+                      <option value="MA">Maroc</option>
+                      <option value="ES">Espagne</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Mot de passe *
                     </label>
                     <div className="flex gap-2">
@@ -1106,7 +1138,7 @@ export default function PlombiersPage() {
                       type="button"
                       onClick={() => {
                         setShowCreateModal(false);
-                        setCreateFormData({ name: '', phone: '', password: '' });
+                        setCreateFormData({ name: '', phone: '', password: '', country: 'MA' });
                       }}
                       className="btn btn-secondary"
                     >

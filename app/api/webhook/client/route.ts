@@ -218,7 +218,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    
+    const country = body.country === 'ES' ? 'ES' : (request.headers.get('host')?.includes('leplombier.es') ? 'ES' : 'MA');
+
     // #region agent log
     fetch('http://127.0.0.1:7245/ingest/a6c00fac-488c-478e-8d12-9c269400222a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/webhook/client/route.ts:POST',message:'Request body received',data:{hasName:!!body.name,hasPhone:!!body.phone,hasEmail:!!body.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
@@ -239,7 +240,7 @@ export async function POST(request: NextRequest) {
     let existingClient = null;
     
     if (body.phone) {
-      const phoneQuery = adminDb.collection('clients').where('phone', '==', body.phone);
+      const phoneQuery = adminDb.collection('clients').where('phone', '==', body.phone).where('country', '==', country);
       const phoneSnapshot = await phoneQuery.get();
       if (!phoneSnapshot.empty) {
         existingClient = phoneSnapshot.docs[0];
@@ -247,7 +248,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!existingClient && body.email) {
-      const emailQuery = adminDb.collection('clients').where('email', '==', body.email);
+      const emailQuery = adminDb.collection('clients').where('email', '==', body.email).where('country', '==', country);
       const emailSnapshot = await emailQuery.get();
       if (!emailSnapshot.empty) {
         existingClient = emailSnapshot.docs[0];
@@ -268,6 +269,7 @@ export async function POST(request: NextRequest) {
       notes: body.message?.trim() || body.notes?.trim() || '',
       assignedPlombierId: body.assignedPlombierId || '',
       source: 'form', // Marquer comme créé via formulaire
+      country,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };

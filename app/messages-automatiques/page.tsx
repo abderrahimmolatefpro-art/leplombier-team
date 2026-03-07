@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where, orderBy } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -80,6 +81,7 @@ const MESSAGE_TEMPLATES = {
 
 export default function AutoMessagesPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [messages, setMessages] = useState<AutoMessage[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -178,7 +180,7 @@ export default function AutoMessagesPage() {
       loadClients();
       loadSentMessages();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   useEffect(() => {
     if (user && activeTab === 'boite-mail') loadInbox();
@@ -186,7 +188,7 @@ export default function AutoMessagesPage() {
 
   const loadClients = async () => {
     try {
-      const clientsSnapshot = await getDocs(collection(db, 'clients'));
+      const clientsSnapshot = await getDocs(query(collection(db, 'clients'), where('country', 'in', countryFilter)));
       const clientsData = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),

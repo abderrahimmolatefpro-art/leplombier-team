@@ -2,16 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Zap, FolderKanban, FileText, Tag } from 'lucide-react';
 
-const navItems = [
-  { href: '/espace-client/commander', label: 'Commander', icon: Zap },
-  { href: '/espace-client/commandes', label: 'Commandes', icon: FolderKanban },
-  { href: '/espace-client/documents', label: 'Documents', icon: FileText },
-  { href: '/espace-client/codes-promo', label: 'Codes promo', icon: Tag },
+const navKeys = [
+  { href: '/espace-client/commander', key: 'commander', icon: Zap },
+  { href: '/espace-client/commandes', key: 'commandes', icon: FolderKanban },
+  { href: '/espace-client/documents', key: 'documents', icon: FileText },
+  { href: '/espace-client/codes-promo', key: 'codesPromo', icon: Tag },
 ];
 
 export default function ClientNav() {
+  const t = useTranslations('client.nav');
   const pathname = usePathname();
 
   return (
@@ -20,7 +22,7 @@ export default function ClientNav() {
       style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="flex items-center justify-around min-h-[56px]">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navKeys.map(({ href, key, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/');
           return (
             <Link
@@ -31,7 +33,7 @@ export default function ClientNav() {
               }`}
             >
               <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-xs mt-0.5">{label}</span>
+              <span className="text-xs mt-0.5">{t(key)}</span>
             </Link>
           );
         })}

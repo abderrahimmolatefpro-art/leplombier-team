@@ -3,8 +3,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Client, ManualRevenue, InstantRequest } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -32,6 +33,7 @@ type CommandeItem = {
 
 export default function CommandesPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -40,9 +42,9 @@ export default function CommandesPage() {
   const [instantRequests, setInstantRequests] = useState<InstantRequest[]>([]);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [includeExpiredCancelled, setIncludeExpiredCancelled] = useState(false);
+  const [includeExpiredCancelled, setIncludeExpiredCancelled] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [datePreset, setDatePreset] = useState<DatePreset>('thisMonth');
+  const [datePreset, setDatePreset] = useState<DatePreset>('thisYear');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -53,7 +55,7 @@ export default function CommandesPage() {
       return;
     }
     if (user) loadData();
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -134,13 +136,17 @@ export default function CommandesPage() {
   const loadData = async () => {
     try {
       const [projectsSnap, clientsSnap, revenuesSnap, instantSnap] = await Promise.all([
-        getDocs(query(collection(db, 'projects'))),
-        getDocs(query(collection(db, 'clients'))),
-        getDocs(query(collection(db, 'manualRevenues'))),
-        getDocs(query(collection(db, 'instantRequests'))),
+        getDocs(collection(db, 'projects')),
+        getDocs(query(collection(db, 'clients'), where('country', 'in', countryFilter))),
+        getDocs(collection(db, 'manualRevenues')),
+        getDocs(query(collection(db, 'instantRequests'), where('country', 'in', countryFilter))),
       ]);
 
-      setProjects(projectsSnap.docs.map((d) => ({
+      const clientIds = new Set(clientsSnap.docs.map((d) => d.id));
+
+      setProjects(projectsSnap.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((d) => ({
         id: d.id,
         ...d.data(),
         startDate: d.data().startDate?.toDate() || new Date(),
@@ -160,7 +166,7 @@ export default function CommandesPage() {
 
       setManualRevenues(
         revenuesSnap.docs
-          .filter((d) => !d.data().deleted)
+          .filter((d) => !d.data().deleted && clientIds.has(d.data().clientId))
           .map((d) => ({
             id: d.id,
             ...d.data(),
@@ -191,6 +197,8 @@ export default function CommandesPage() {
 
     projects.forEach((p) => {
       if (!existingClientIds.has(p.clientId)) return;
+      const pDate = p.createdAt || p.startDate;
+      const d = pDate instanceof Date ? pDate : new Date();
       items.push({
         id: p.id,
         clientId: p.clientId,
@@ -199,39 +207,39 @@ export default function CommandesPage() {
         clientName: clients.find((c) => c.id === p.clientId)?.name || 'Inconnu',
         status: p.status,
         amount: p.amount || 0,
-        date: p.createdAt || p.startDate,
+        date: d,
       });
     });
 
     manualRevenues.forEach((r) => {
-      if (!existingClientIds.has(r.clientId)) return;
+      const d = r.date instanceof Date ? r.date : (r.createdAt instanceof Date ? r.createdAt : new Date());
       items.push({
         id: r.id,
-        clientId: r.clientId,
+        clientId: r.clientId || '',
         type: 'Dépannage',
         name: r.description || 'Dépannage',
         clientName: clients.find((c) => c.id === r.clientId)?.name || 'Inconnu',
         status: 'termine',
-        amount: r.amount,
-        date: r.date,
+        amount: r.amount ?? 0,
+        date: d,
       });
     });
 
     instantRequests.forEach((r) => {
-      if (!existingClientIds.has(r.clientId)) return;
+      const d = r.createdAt instanceof Date ? r.createdAt : new Date();
       items.push({
         id: r.id,
-        clientId: r.clientId,
+        clientId: r.clientId || '',
         type: 'Intervention instantanée',
         name: r.address || r.description || 'Intervention',
         clientName: clients.find((c) => c.id === r.clientId)?.name || 'Inconnu',
-        status: r.status,
-        amount: r.clientProposedAmount || 0,
-        date: r.createdAt,
+        status: r.status || 'en_attente',
+        amount: r.clientProposedAmount ?? 0,
+        date: d,
       });
     });
 
-    return items.sort((a, b) => b.date.getTime() - a.date.getTime());
+    return items.sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
   }, [projects, manualRevenues, instantRequests, clients]);
 
   const filteredCommandes = useMemo(() => {

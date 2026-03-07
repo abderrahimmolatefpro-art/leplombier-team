@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { FileText } from 'lucide-react';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -22,6 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function ClientDocumentsPage() {
+  const t = useTranslations('client.documents');
   const { token, loading: authLoading } = useClientAuth();
   const router = useRouter();
   const [documents, setDocuments] = useState<any[]>([]);
@@ -54,7 +56,7 @@ export default function ClientDocumentsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-gray-900 mb-6">Mes documents</h1>
+        <h1 className="text-lg font-semibold text-gray-900 mb-6">{t('title')}</h1>
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
@@ -64,7 +66,7 @@ export default function ClientDocumentsPage() {
         ) : documents.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Aucun document pour le moment</p>
+            <p className="text-gray-500">{t('noDocuments')}</p>
           </div>
         ) : (
           <div className="space-y-4">

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import {
   collection,
@@ -48,6 +49,7 @@ const URGENCY_LABELS: Record<PartRequestUrgency, string> = {
 
 export default function DemandesPiecesPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [requests, setRequests] = useState<PartRequest[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -78,18 +80,23 @@ export default function DemandesPiecesPage() {
     if (user) {
       loadData();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   const loadData = async () => {
     try {
       const [requestsSnap, suppliersSnap, plombiersSnap, clientsSnap] = await Promise.all([
         getDocs(collection(db, 'partRequests')),
         getDocs(collection(db, 'suppliers')),
-        getDocs(query(collection(db, 'users'), where('role', '==', 'plombier'))),
-        getDocs(collection(db, 'clients')),
+        getDocs(query(collection(db, 'users'), where('role', '==', 'plombier'), where('country', 'in', countryFilter))),
+        getDocs(query(collection(db, 'clients'), where('country', 'in', countryFilter))),
       ]);
 
-      const requestsData = requestsSnap.docs.map((d) => {
+      const clientIds = new Set(clientsSnap.docs.map((d) => d.id));
+      const plombierIds = new Set(plombiersSnap.docs.map((d) => d.id));
+
+      const requestsData = requestsSnap.docs
+        .filter((d) => clientIds.has(d.data().clientId) && plombierIds.has(d.data().plombierId))
+        .map((d) => {
         const data = d.data();
         return {
           id: d.id,

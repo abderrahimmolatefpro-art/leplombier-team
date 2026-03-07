@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -11,6 +12,8 @@ import { compressImageToDataUrl } from '@/lib/compress-image';
 import { FileImage, Upload, ArrowLeft, LogOut } from 'lucide-react';
 
 export default function PlombierDocumentsPage() {
+  const t = useTranslations('plumber.documents');
+  const tCommon = useTranslations('common');
   const { plombier, loading, logout } = usePlombierAuth();
   const router = useRouter();
   const [nationalIdFile, setNationalIdFile] = useState<File | null>(null);
@@ -42,7 +45,7 @@ export default function PlombierDocumentsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setError('Veuillez sélectionner une image (JPG, PNG)');
+      setError(t('errorImage'));
       return;
     }
     setError('');
@@ -66,7 +69,7 @@ export default function PlombierDocumentsPage() {
     e.preventDefault();
     if (!plombier?.id) return;
     if (!nationalIdFile || !selfieFile) {
-      setError('Veuillez fournir les deux photos (carte nationale et selfie)');
+      setError(t('errorBoth'));
       return;
     }
 
@@ -90,7 +93,7 @@ export default function PlombierDocumentsPage() {
       router.push('/espace-plombier/dashboard');
     } catch (err: any) {
       console.error('Upload documents error:', err);
-      setError(err?.message || 'Erreur lors de l\'envoi des documents');
+      setError(err?.message || t('errorUpload'));
     } finally {
       setSubmitting(false);
     }
@@ -117,7 +120,7 @@ export default function PlombierDocumentsPage() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft size={20} />
-            Retour
+            {t('back')}
           </Link>
           <div className="flex-1 flex justify-center">
             <Image src="/logo.png" alt="Le Plombier" width={120} height={40} className="h-8 w-auto" />
@@ -130,26 +133,25 @@ export default function PlombierDocumentsPage() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <LogOut size={20} />
-            Déconnexion
+            {tCommon('logout')}
           </button>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Documents de validation</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('title')}</h1>
         <p className="text-gray-600 mb-8">
-          Pour finaliser votre inscription, veuillez fournir une photo de votre carte d&apos;identité
-          nationale et un selfie.
+          {t('subtitle')}
         </p>
 
         {isSubmitted && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
-            Vos documents ont été soumis. En attente de validation par l&apos;administrateur.
+            {t('submitted')}
           </div>
         )}
         {isRejected && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
-            Vos documents ont été rejetés. Veuillez soumettre de nouveaux documents.
+            {t('rejected')}
           </div>
         )}
 
@@ -162,7 +164,7 @@ export default function PlombierDocumentsPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Photo carte d&apos;identité nationale
+              {t('nationalId')}
             </label>
             <input
               ref={nationalIdInputRef}
@@ -185,14 +187,14 @@ export default function PlombierDocumentsPage() {
               ) : (
                 <>
                   <FileImage className="w-12 h-12 text-gray-400" />
-                  <span className="text-sm text-gray-600">Cliquez pour sélectionner une image</span>
+                  <span className="text-sm text-gray-600">{t('selectImage')}</span>
                 </>
               )}
             </button>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Photo selfie</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('selfie')}</label>
             <input
               ref={selfieInputRef}
               type="file"
@@ -214,7 +216,7 @@ export default function PlombierDocumentsPage() {
               ) : (
                 <>
                   <Upload className="w-12 h-12 text-gray-400" />
-                  <span className="text-sm text-gray-600">Cliquez pour sélectionner une image</span>
+                  <span className="text-sm text-gray-600">{t('selectImage')}</span>
                 </>
               )}
             </button>
@@ -226,7 +228,7 @@ export default function PlombierDocumentsPage() {
               disabled={submitting || !nationalIdFile || !selfieFile}
               className="btn btn-primary w-full flex items-center justify-center gap-2"
             >
-              {submitting ? 'Envoi en cours...' : 'Soumettre'}
+              {submitting ? t('submitting') : t('submit')}
             </button>
           )}
         </form>

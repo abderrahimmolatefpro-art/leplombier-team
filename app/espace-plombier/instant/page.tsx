@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { usePlombierLocation } from '@/hooks/usePlombierLocation';
 import { Phone, MapPin, CheckCircle, MapPinned, Star } from 'lucide-react';
@@ -49,6 +50,7 @@ interface ClientDoc {
 }
 
 export default function PlombierInstantPage() {
+  const t = useTranslations('plumber.instant');
   const { plombier, loading: authLoading } = usePlombierAuth();
   const { location: plombierLocation, loading: locationLoading, error: locationError, requestLocation, openAppSettings, isNativeAndroid } = usePlombierLocation();
   const router = useRouter();
@@ -101,8 +103,10 @@ export default function PlombierInstantPage() {
   useEffect(() => {
     if (!plombier?.id) return;
     const plombierCity = plombier.city?.trim();
+    const plombierCountry = plombier.country || 'MA';
     const constraints = [
       where('status', '==', 'en_attente'),
+      where('country', '==', plombierCountry),
       ...(plombierCity ? [where('city', '==', plombierCity)] : []),
     ];
     const q = query(collection(db, 'instantRequests'), ...constraints);
@@ -133,7 +137,7 @@ export default function PlombierInstantPage() {
     );
 
     return () => unsub();
-  }, [plombier?.id, plombier?.city]);
+  }, [plombier?.id, plombier?.city, plombier?.country]);
 
   useEffect(() => {
     if (!plombier?.id) return;
@@ -293,13 +297,13 @@ export default function PlombierInstantPage() {
         });
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'Erreur lors de l\'envoi de l\'offre');
+          setError(data.error || t('errorOffer'));
           return;
         }
         setMyOfferRequestIds((prev) => new Set(prev).add(requestId));
         setSelectedRequest(null);
       } catch (err) {
-        setError('Erreur de connexion');
+        setError(t('errorConnection'));
       } finally {
         setSendingOfferRequestId(null);
       }
@@ -326,12 +330,12 @@ export default function PlombierInstantPage() {
         );
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'Erreur lors de la demande');
+          setError(data.error || t('errorRequestPhotos'));
           return;
         }
         setSelectedRequest(null);
       } catch (err) {
-        setError('Erreur de connexion');
+        setError(t('errorConnection'));
       } finally {
         setRequestingPhotosId(null);
       }
@@ -353,9 +357,9 @@ export default function PlombierInstantPage() {
           body: JSON.stringify({ etaMinutes }),
         });
         const data = await res.json();
-        if (!res.ok) setError(data.error || 'Erreur');
+        if (!res.ok) setError(data.error || t('errorGeneric'));
       } catch {
-        setError('Erreur de connexion');
+        setError(t('errorConnection'));
       } finally {
         setSettingEtaId(null);
       }
@@ -375,9 +379,9 @@ export default function PlombierInstantPage() {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       const data = await res.json();
-      if (!res.ok) setError(data.error || 'Erreur');
+      if (!res.ok) setError(data.error || t('errorGeneric'));
     } catch {
-      setError('Erreur de connexion');
+      setError(t('errorConnection'));
     } finally {
       setSettingArrivedId(null);
     }
@@ -399,7 +403,7 @@ export default function PlombierInstantPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Impossible de marquer la mission comme terminée');
+        setError(data.error || t('errorComplete'));
         return;
       }
       setShowReviewModal(true);
@@ -407,7 +411,7 @@ export default function PlombierInstantPage() {
       setReviewRequestId(missionId);
     } catch (err) {
       console.error(err);
-      setError('Impossible de marquer la mission comme terminée');
+      setError(t('errorComplete'));
     } finally {
       setMarkingDoneId(null);
     }
@@ -468,14 +472,14 @@ export default function PlombierInstantPage() {
           <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
             <MapPinned className="w-12 h-12 text-amber-600 mx-auto mb-3" />
             <h3 className="font-semibold text-gray-900 mb-2">
-              {locationLoading ? 'Localisation en cours...' : 'Activez la localisation'}
+              {locationLoading ? t('locationLoading') : t('enableLocation')}
             </h3>
             <p className="text-sm text-gray-600 mb-4">
               {locationLoading
-                ? 'Nous calculons les distances et temps de trajet vers les demandes.'
+                ? t('locationDescLoading')
                 : isNativeAndroid
-                ? 'Ouvrez les paramètres de l\'app pour activer la localisation et voir les distances vers chaque intervention.'
-                : 'Autorisez la localisation pour voir les distances et temps de déplacement vers chaque intervention.'}
+                ? t('locationDescAndroid')
+                : t('locationDescWeb')}
             </p>
             {locationError && (
               <button
@@ -483,7 +487,7 @@ export default function PlombierInstantPage() {
                 onClick={isNativeAndroid ? openAppSettings : requestLocation}
                 className="py-2.5 px-4 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700"
               >
-                {isNativeAndroid ? 'Ouvrir les paramètres' : 'Réessayer'}
+                {isNativeAndroid ? t('openSettings') : t('retry')}
               </button>
             )}
           </div>
@@ -494,7 +498,7 @@ export default function PlombierInstantPage() {
             <div className="flex items-center gap-3 text-green-700 mb-4">
               <CheckCircle className="w-10 h-10" />
               <div>
-                <h3 className="font-semibold">Mission en cours</h3>
+                <h3 className="font-semibold">{t('missionInProgress')}</h3>
                 <p className="text-sm">Déplacez-vous immédiatement chez le client.</p>
               </div>
             </div>

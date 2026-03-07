@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { FolderKanban } from 'lucide-react';
 import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
@@ -23,14 +24,8 @@ const STATUS_LABELS: Record<string, string> = {
   annule: 'Annulé',
 };
 
-const FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: 'Tous' },
-  { value: 'en_cours', label: 'En cours' },
-  { value: 'en_attente', label: 'En attente' },
-  { value: 'termine', label: 'Terminé' },
-];
-
 export default function PlombierProjetsPage() {
+  const t = useTranslations('plumber.projets');
   const { plombier, loading: authLoading } = usePlombierAuth();
   const router = useRouter();
   const [projects, setProjects] = useState<any[]>([]);
@@ -102,7 +97,7 @@ export default function PlombierProjetsPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-lg font-semibold text-gray-900">Mes projets</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t('title')}</h1>
         </div>
       </header>
 
@@ -116,7 +111,12 @@ export default function PlombierProjetsPage() {
         ) : (
           <>
             <div className="flex gap-2 flex-wrap mb-6">
-              {FILTER_OPTIONS.map((opt) => (
+              {[
+                { value: 'all', label: t('all') },
+                { value: 'en_cours', label: t('inProgress') },
+                { value: 'en_attente', label: t('pending') },
+                { value: 'termine', label: t('completed') },
+              ].map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setFilterStatus(opt.value)}
@@ -135,7 +135,7 @@ export default function PlombierProjetsPage() {
                 <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
                   <FolderKanban className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">
-                    {filterStatus === 'all' ? 'Aucun projet assigné' : 'Aucun projet pour ce filtre'}
+                    {filterStatus === 'all' ? t('noProjects') : t('noProjectsFilter')}
                   </p>
                 </div>
               ) : (
@@ -167,7 +167,7 @@ export default function PlombierProjetsPage() {
                               : 'bg-gray-100 text-gray-700'
                           }`}
                         >
-                          {STATUS_LABELS[p.status] || p.status}
+                          {p.status === 'termine' ? t('completed') : p.status === 'en_cours' ? t('inProgress') : p.status === 'en_attente' ? t('pending') : p.status}
                         </span>
                       </div>
                       {p.description && (
@@ -175,10 +175,10 @@ export default function PlombierProjetsPage() {
                       )}
                       <div className="flex gap-4 mt-2 text-sm">
                         {p.amount > 0 && (
-                          <span className="text-gray-700">Montant: {formatCurrency(p.amount)}</span>
+                          <span className="text-gray-700">{t('amount')}: {formatCurrency(p.amount)}</span>
                         )}
                         {share > 0 && (
-                          <span className="font-medium text-primary-600">Ma part: {formatCurrency(share)}</span>
+                          <span className="font-medium text-primary-600">{t('myShare')}: {formatCurrency(share)}</span>
                         )}
                       </div>
                     </div>

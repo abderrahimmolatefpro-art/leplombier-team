@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { FolderKanban, Calendar } from 'lucide-react';
 import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
@@ -25,22 +26,10 @@ const STATUS_LABELS: Record<string, string> = {
   annule: 'Annulé',
 };
 
-const FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: 'Tous' },
-  { value: 'en_cours', label: 'En cours' },
-  { value: 'en_attente', label: 'En attente' },
-  { value: 'termine', label: 'Terminé' },
-];
-
-const PLANNING_TYPE_LABELS: Record<string, string> = {
-  project: 'Projet',
-  congé: 'Congé',
-  indisponibilite: 'Indisponible',
-};
-
 type Tab = 'commandes' | 'planning';
 
 function PlombierCommandesContent() {
+  const t = useTranslations('plumber.commandes');
   const { plombier, loading: authLoading } = usePlombierAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -169,7 +158,7 @@ function PlombierCommandesContent() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-lg font-semibold text-gray-900">Mes commandes</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t('title')}</h1>
           <div className="flex gap-2 mt-3">
             <button
               onClick={() => setActiveTab('commandes')}
@@ -180,7 +169,7 @@ function PlombierCommandesContent() {
               }`}
             >
               <FolderKanban size={18} />
-              Commandes
+              {t('tabCommandes')}
             </button>
             <button
               onClick={() => setActiveTab('planning')}
@@ -191,7 +180,7 @@ function PlombierCommandesContent() {
               }`}
             >
               <Calendar size={18} />
-              Planning
+              {t('tabPlanning')}
             </button>
           </div>
         </div>
@@ -208,7 +197,12 @@ function PlombierCommandesContent() {
           ) : (
             <>
               <div className="flex gap-2 flex-wrap mb-6">
-                {FILTER_OPTIONS.map((opt) => (
+                {[
+                  { value: 'all', label: t('all') },
+                  { value: 'en_cours', label: t('inProgress') },
+                  { value: 'en_attente', label: t('pending') },
+                  { value: 'termine', label: t('completed') },
+                ].map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => setFilterStatus(opt.value)}
@@ -226,7 +220,7 @@ function PlombierCommandesContent() {
                 <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
                   <FolderKanban className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">
-                    {filterStatus === 'all' ? 'Aucune commande pour le moment' : 'Aucune commande pour ce filtre'}
+                    {filterStatus === 'all' ? t('noOrders') : t('noOrdersFilter')}
                   </p>
                 </div>
               ) : (
@@ -259,7 +253,7 @@ function PlombierCommandesContent() {
                                 : 'bg-gray-100 text-gray-700'
                             }`}
                           >
-                            {STATUS_LABELS[p.status] || p.status}
+                            {p.status === 'termine' ? t('completed') : p.status === 'en_cours' ? t('inProgress') : p.status === 'en_attente' ? t('pending') : p.status === 'annule' ? t('cancelled') : p.status}
                           </span>
                         </div>
                         {p.description && (
@@ -267,10 +261,10 @@ function PlombierCommandesContent() {
                         )}
                         <div className="flex gap-4 mt-2 text-sm">
                           {p.amount > 0 && (
-                            <span className="text-gray-700">Montant: {formatCurrency(p.amount)}</span>
+                            <span className="text-gray-700">{t('amount')}: {formatCurrency(p.amount)}</span>
                           )}
                           {share > 0 && (
-                            <span className="font-medium text-primary-600">Ma part: {formatCurrency(share)}</span>
+                            <span className="font-medium text-primary-600">{t('myShare')}: {formatCurrency(share)}</span>
                           )}
                         </div>
                       </div>
@@ -316,7 +310,7 @@ function PlombierCommandesContent() {
                       {format(day, 'EEEE d MMMM', { locale: fr })}
                     </h3>
                     {dayEntries.length === 0 ? (
-                      <p className="text-sm text-gray-500">Aucune intervention</p>
+                      <p className="text-sm text-gray-500">{t('noIntervention')}</p>
                     ) : (
                       <div className="space-y-2">
                         {dayEntries.map((e) => (
@@ -333,11 +327,11 @@ function PlombierCommandesContent() {
                                   : 'bg-gray-200 text-gray-700'
                               }`}
                             >
-                              {PLANNING_TYPE_LABELS[e.type] || e.type}
+                              {e.type === 'project' ? t('project') : e.type === 'congé' ? t('conge') : e.type === 'indisponibilite' ? t('indisponibilite') : e.type}
                             </span>
                             <div>
                               {e.projectId && (
-                                <p className="font-medium text-gray-900">{planningProjects[e.projectId] || 'Projet'}</p>
+                                <p className="font-medium text-gray-900">{planningProjects[e.projectId] || t('project')}</p>
                               )}
                               {(e.startTime || e.endTime) && (
                                 <p className="text-sm text-gray-600">

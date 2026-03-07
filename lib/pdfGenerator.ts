@@ -1,8 +1,10 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Document, Client, Project } from '@/types';
+import type { Country } from '@/types';
 import { formatDate } from './utils';
-import { CompanyInfo } from './companyConfig';
+import { CompanyInfo, getActiveCountry, COUNTRY_CONFIG } from './companyConfig';
+import { getPDFLabels } from './pdfLabels';
 
 export async function generatePDFFromHTML(
   elementId: string = 'document-content',
@@ -36,8 +38,9 @@ export async function generatePDFFromHTML(
   pdf.save(finalFileName);
 }
 
-export function formatNumber(num: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+export function formatNumber(num: number, country: Country = 'MA'): string {
+  const locale = country === 'ES' ? 'es-ES' : 'fr-FR';
+  return new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(num);
@@ -47,8 +50,11 @@ export function generatePDFFromData(
   document: Document,
   client: Client | null,
   project: Project | null,
-  companyInfo: CompanyInfo
+  companyInfo: CompanyInfo,
+  country: Country = getActiveCountry()
 ): void {
+  const labels = getPDFLabels(country);
+  const { currency } = COUNTRY_CONFIG[country];
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const margin = 20;
@@ -65,15 +71,15 @@ export function generatePDFFromData(
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(0, 102, 204); // Bleu
-  const docTitle = document.type === 'facture' ? 'FACTURE' : 
-                   document.type === 'devis' ? 'DEVIS' : 'BON DE COMMANDE';
+  const docTitle = document.type === 'facture' ? labels.facture :
+                   document.type === 'devis' ? labels.devis : labels.bonCommande;
   pdf.text(`${docTitle} N° :`, margin, yPos);
   pdf.setTextColor(0, 0, 0); // Noir
   pdf.text(document.number, margin + 35, yPos);
   
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`Date : ${formatDate(document.date)}`, pageWidth - margin, yPos, { align: 'right' });
+  pdf.text(`${labels.date} : ${formatDate(document.date)}`, pageWidth - margin, yPos, { align: 'right' });
   yPos += 10;
 
   // Ligne de séparation
@@ -84,7 +90,7 @@ export function generatePDFFromData(
   // Informations client
   pdf.setFontSize(11);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Client :', margin, yPos);
+  pdf.text(`${labels.client} :`, margin, yPos);
   yPos += 6;
   
   pdf.setFont('helvetica', 'normal');
@@ -113,7 +119,7 @@ export function generatePDFFromData(
   // Projet si applicable
   if (project) {
     pdf.setFontSize(10);
-    pdf.text(`Projet: ${project.title}`, margin, yPos);
+    pdf.text(`${labels.projet}: ${project.title}`, margin, yPos);
     yPos += 8;
   }
 
@@ -129,10 +135,10 @@ export function generatePDFFromData(
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Description', colX[0] + 2, tableTop - 2);
-  pdf.text('Quantité', colX[1] + 2, tableTop - 2);
-  pdf.text('Prix Unitaire', colX[2] + 2, tableTop - 2);
-  pdf.text('Total', colX[3] + 2, tableTop - 2);
+  pdf.text(labels.description, colX[0] + 2, tableTop - 2);
+  pdf.text(labels.quantite, colX[1] + 2, tableTop - 2);
+  pdf.text(labels.prixUnitaire, colX[2] + 2, tableTop - 2);
+  pdf.text(labels.total, colX[3] + 2, tableTop - 2);
   
   yPos = tableTop + 2;
   pdf.setTextColor(0, 0, 0);
@@ -152,8 +158,8 @@ export function generatePDFFromData(
     const descriptionLines = pdf.splitTextToSize(item.description, colWidths[0] - 4);
     pdf.text(descriptionLines[0], colX[0] + 2, yPos - 2);
     pdf.text(isDescOnly ? '—' : item.quantity.toString(), colX[1] + 2, yPos - 2);
-    pdf.text(isDescOnly ? '—' : formatNumber(item.unitPrice), colX[2] + 2, yPos - 2);
-    pdf.text(isDescOnly ? '—' : formatNumber(item.total), colX[3] + 2, yPos - 2);
+    pdf.text(isDescOnly ? '—' : formatNumber(item.unitPrice, country), colX[2] + 2, yPos - 2);
+    pdf.text(isDescOnly ? '—' : formatNumber(item.total, country), colX[3] + 2, yPos - 2);
     
     yPos += 8;
     if (descriptionLines.length > 1) {
@@ -185,38 +191,38 @@ export function generatePDFFromData(
   const displayTotal = document.manualTotal ?? document.total;
   pdf.setFontSize(10);
   if (document.manualTotal == null) {
-    pdf.text(`Total HT :`, totalsX, yPos);
-    pdf.text(`${formatNumber(document.subtotal)} MAD`, colX[3], yPos, { align: 'right' });
+    pdf.text(`${labels.totalHT} :`, totalsX, yPos);
+    pdf.text(`${formatNumber(document.subtotal, country)} ${currency}`, colX[3], yPos, { align: 'right' });
     yPos += 6;
-    pdf.text(`TVA (20%) :`, totalsX, yPos);
-    pdf.text(`${formatNumber(document.tax)} MAD`, colX[3], yPos, { align: 'right' });
+    pdf.text(`${labels.tva} :`, totalsX, yPos);
+    pdf.text(`${formatNumber(document.tax, country)} ${currency}`, colX[3], yPos, { align: 'right' });
     yPos += 6;
   }
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(12);
-  pdf.text(`Total TTC ${document.manualTotal != null ? '(saisi) ' : ''}:`, totalsX, yPos);
+  pdf.text(`${document.manualTotal != null ? labels.totalTTCManual : labels.totalTTC} :`, totalsX, yPos);
   pdf.setTextColor(0, 102, 204);
-  pdf.text(`${formatNumber(displayTotal)} MAD`, colX[3], yPos, { align: 'right' });
+  pdf.text(`${formatNumber(displayTotal, country)} ${currency}`, colX[3], yPos, { align: 'right' });
   pdf.setTextColor(0, 0, 0);
 
   // Signature et mentions légales
   yPos += 15;
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'normal');
-  pdf.text('Signature :', margin, yPos);
+  pdf.text(`${labels.signature} :`, margin, yPos);
   
   yPos += 20;
   pdf.setFontSize(8);
-  pdf.text('Mentions Légales :', margin, yPos);
+  pdf.text(`${labels.mentionsLegales} :`, margin, yPos);
   yPos += 4;
-  pdf.text('Art 89 – II – 1° - c, Code Général des Impôts.', margin, yPos);
+  pdf.text(labels.mentionsLegalesText, margin, yPos);
 
   // Notes
   if (document.notes) {
     yPos += 10;
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Notes :', margin, yPos);
+    pdf.text(`${labels.notes} :`, margin, yPos);
     yPos += 6;
     pdf.setFont('helvetica', 'normal');
     const notesLines = pdf.splitTextToSize(document.notes, pageWidth - 2 * margin);
@@ -243,7 +249,7 @@ export function generatePDFFromData(
   yPos += 4;
   
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`SIÈGE SOCIAL: ${companyInfo.address}`, (pageWidth - pdf.getTextWidth(`SIÈGE SOCIAL: ${companyInfo.address}`)) / 2, yPos);
+  pdf.text(`${labels.siegeSocial}: ${companyInfo.address}`, (pageWidth - pdf.getTextWidth(`${labels.siegeSocial}: ${companyInfo.address}`)) / 2, yPos);
   yPos += 4;
   
   let footerText = '';
@@ -255,9 +261,9 @@ export function generatePDFFromData(
   }
   
   footerText = '';
-  if (companyInfo.phone) footerText += `Tel : ${companyInfo.phone} `;
-  if (companyInfo.email) footerText += `Email : ${companyInfo.email} `;
-  if (companyInfo.website) footerText += `Site Web : ${companyInfo.website}`;
+  if (companyInfo.phone) footerText += `${labels.tel} : ${companyInfo.phone} `;
+  if (companyInfo.email) footerText += `${labels.email} : ${companyInfo.email} `;
+  if (companyInfo.website) footerText += `${labels.siteWeb} : ${companyInfo.website}`;
   if (footerText) {
     pdf.text(footerText.trim(), (pageWidth - pdf.getTextWidth(footerText.trim())) / 2, yPos);
   }

@@ -6,6 +6,7 @@ import { useClientAuth } from '@/hooks/useClientAuth';
 import { Zap, CheckCircle } from 'lucide-react';
 import AddressInput from '@/components/AddressInput';
 import DescriptionWithSuggestions from '@/components/DescriptionWithSuggestions';
+import { getWebsiteUrl } from '@/lib/companyConfig';
 
 const MIN_PHONE_DIGITS = 9;
 const ANIMATION_SEND_MS = 1800;
@@ -15,6 +16,11 @@ type CodeSentStatus = 'idle' | 'checking' | 'sent' | 'not_sent';
 
 function isEmbedMode(searchParams: URLSearchParams | null): boolean {
   return searchParams?.get('embed') === '1' || searchParams?.get('embed') === 'true';
+}
+
+function getActiveCountry(): 'MA' | 'ES' {
+  if (typeof window !== 'undefined' && window.location?.hostname?.includes('leplombier.es')) return 'ES';
+  return (process.env.NEXT_PUBLIC_ACTIVE_COUNTRY as 'MA' | 'ES') || 'MA';
 }
 
 function DemoContent() {
@@ -77,7 +83,7 @@ function DemoContent() {
       const res = await fetch('/api/espace-client/check-code-sent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneToCheck }),
+        body: JSON.stringify({ phone: phoneToCheck, country: getActiveCountry() }),
       });
       const data = await res.json();
       setCodeSentStatus(data.codeSent ? 'sent' : 'not_sent');
@@ -367,7 +373,7 @@ function DemoContent() {
                 {codeSentStatus === 'sent' && (
                   <p className="text-xs text-gray-600">
                     Consultez vos SMS pour retrouver le code envoyé.{' '}
-                    <a href="https://leplombier.ma/contact" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
+                    <a href={`${getWebsiteUrl()}/contact`} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
                       Code oublié ? Contactez-nous
                     </a>
                   </p>

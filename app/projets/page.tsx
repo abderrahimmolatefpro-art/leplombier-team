@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -13,6 +14,7 @@ import Link from 'next/link';
 
 export default function ProjetsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [projets, setProjets] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -49,14 +51,22 @@ export default function ProjetsPage() {
     if (user) {
       loadData();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   const loadData = async () => {
     try {
-      // Load projects
+      // Load clients du pays
+      const clientsSnapshot = await getDocs(
+        query(collection(db, 'clients'), where('country', 'in', countryFilter))
+      );
+      const clientIds = new Set(clientsSnapshot.docs.map((d) => d.id));
+
+      // Load projects (filtrés par clientIds)
       const projectsQuery = query(collection(db, 'projects'));
       const projectsSnapshot = await getDocs(projectsQuery);
-      const projectsData = projectsSnapshot.docs.map((doc) => ({
+      const projectsData = projectsSnapshot.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((doc) => ({
         id: doc.id,
         ...doc.data(),
         startDate: doc.data().startDate?.toDate() || new Date(),
@@ -71,8 +81,6 @@ export default function ProjetsPage() {
       })) as Project[];
       setProjets(projectsData);
 
-      // Load clients
-      const clientsSnapshot = await getDocs(collection(db, 'clients'));
       const clientsData = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -81,8 +89,12 @@ export default function ProjetsPage() {
       })) as Client[];
       setClients(clientsData);
 
-      // Load plombiers
-      const plombiersQuery = query(collection(db, 'users'), where('role', '==', 'plombier'));
+      // Load plombiers du pays
+      const plombiersQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'plombier'),
+        where('country', 'in', countryFilter)
+      );
       const plombiersSnapshot = await getDocs(plombiersQuery);
       const plombiersData = plombiersSnapshot.docs.map((doc) => ({
         id: doc.id,

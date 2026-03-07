@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import { collection, getDocs, addDoc, updateDoc, doc, Timestamp, query, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -15,6 +16,7 @@ type SortDirection = 'asc' | 'desc';
 
 export default function ClientsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [clients, setClients] = useState<(Client & { _stats?: { totalRevenue: number; totalProjects: number; totalInvoices: number; plombierRevenue: number; companyRevenue: number; clientPaid: boolean; plombierPaid: boolean; hasPrestation: boolean } })[]>([]);
   const [plombiers, setPlombiers] = useState<User[]>([]);
@@ -34,6 +36,7 @@ export default function ClientsPage() {
     clientType: 'particulier' as 'particulier' | 'professionnel',
     assignedPlombierId: '',
     referredByClientId: '',
+    country: 'MA' as 'MA' | 'ES',
   });
   
   // Action rapide lors de la création
@@ -56,7 +59,6 @@ export default function ClientsPage() {
   const [filterPlombier, setFilterPlombier] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'particulier' | 'professionnel'>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'plombier_paid' | 'plombier_unpaid'>('all');
-  const [filterReferredBy, setFilterReferredBy] = useState('');
   
   // Tri (par défaut : les plus récents en premier)
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -71,12 +73,16 @@ export default function ClientsPage() {
     if (user) {
       loadClients();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   const loadClients = async () => {
     try {
-      // Charger les plombiers
-      const plombiersQuery = query(collection(db, 'users'), where('role', '==', 'plombier'));
+      // Charger les plombiers (filtrés par pays)
+      const plombiersQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'plombier'),
+        where('country', 'in', countryFilter)
+      );
       const plombiersSnapshot = await getDocs(plombiersQuery);
       const plombiersData = plombiersSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -86,8 +92,12 @@ export default function ClientsPage() {
       })) as User[];
       setPlombiers(plombiersData);
 
-      // Charger les clients avec leurs statistiques
-      const querySnapshot = await getDocs(collection(db, 'clients'));
+      // Charger les clients avec leurs statistiques (filtrés par pays)
+      const clientsQuery = query(
+        collection(db, 'clients'),
+        where('country', 'in', countryFilter)
+      );
+      const querySnapshot = await getDocs(clientsQuery);
       const clientsData = await Promise.all(
         querySnapshot.docs.map(async (doc) => {
           try {
@@ -227,6 +237,7 @@ export default function ClientsPage() {
     try {
       const clientData = {
         ...formData,
+        country: formData.country || 'MA',
         createdAt: editingClient ? editingClient.createdAt : Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
@@ -338,6 +349,7 @@ export default function ClientsPage() {
       clientType: client.clientType || 'particulier',
       assignedPlombierId: client.assignedPlombierId || '',
       referredByClientId: client.referredByClientId || '',
+      country: (client.country || 'MA') as 'MA' | 'ES',
     });
     // Réinitialiser l'action lors de l'édition (on ne crée pas d'action en édition)
     setActionType('none');
@@ -370,6 +382,7 @@ export default function ClientsPage() {
       clientType: 'particulier',
       assignedPlombierId: '',
       referredByClientId: '',
+      country: 'MA',
     });
     
     setActionType('none');
@@ -412,9 +425,9 @@ export default function ClientsPage() {
     }
   };
 
-  // Filtrer et trier les clients
+  // Filtrer et trier les clients (exclure les clients parrainés - visibles uniquement dans Partenaires)
   const filteredAndSortedClients = useMemo(() => {
-    let filtered = [...clients];
+    let filtered = clients.filter((c) => !c.referredByClientId);
 
     // Recherche
     if (searchQuery) {
@@ -437,11 +450,6 @@ export default function ClientsPage() {
     // Filtre par type
     if (filterType !== 'all') {
       filtered = filtered.filter(client => client.clientType === filterType);
-    }
-
-    // Filtre par parrain (client PRO)
-    if (filterReferredBy) {
-      filtered = filtered.filter(client => client.referredByClientId === filterReferredBy);
     }
 
     // Filtre par paiement plombier (uniquement les clients avec revenus > 0 MAD)
@@ -491,7 +499,7 @@ export default function ClientsPage() {
     });
 
     return filtered;
-  }, [clients, searchQuery, filterPlombier, filterType, filterReferredBy, filterPayment, sortField, sortDirection]);
+  }, [clients, searchQuery, filterPlombier, filterType, filterPayment, sortField, sortDirection]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -545,6 +553,7 @@ export default function ClientsPage() {
                 clientType: 'particulier',
                 assignedPlombierId: '',
                 referredByClientId: '',
+                country: 'MA',
               });
               setActionType('none');
               setActionData({
@@ -612,24 +621,6 @@ export default function ClientsPage() {
               </select>
             </div>
 
-            {/* Filtre : ramené par (client PRO) */}
-            <div>
-              <select
-                value={filterReferredBy}
-                onChange={(e) => setFilterReferredBy(e.target.value)}
-                className="input"
-              >
-                <option value="">Ramené par : Tous</option>
-                {clients
-                  .filter((c) => c.clientType === 'professionnel')
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
             {/* Filtre : plombier a payé ou non */}
             <div>
               <select
@@ -645,13 +636,12 @@ export default function ClientsPage() {
           </div>
 
           {/* Reset filters */}
-          {(searchQuery || filterPlombier || filterType !== 'all' || filterReferredBy || filterPayment !== 'all') && (
+          {(searchQuery || filterPlombier || filterType !== 'all' || filterPayment !== 'all') && (
             <button
               onClick={() => {
                 setSearchQuery('');
                 setFilterPlombier('');
                 setFilterType('all');
-                setFilterReferredBy('');
                 setFilterPayment('all');
               }}
               className="mt-3 text-sm text-primary-600 hover:underline"
@@ -953,18 +943,33 @@ export default function ClientsPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Type de client
-                    </label>
-                    <select
-                      value={formData.clientType}
-                      onChange={(e) => setFormData({ ...formData, clientType: e.target.value as 'particulier' | 'professionnel' })}
-                      className="input"
-                    >
-                      <option value="particulier">Particulier</option>
-                      <option value="professionnel">Professionnel</option>
-                    </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Type de client
+                      </label>
+                      <select
+                        value={formData.clientType}
+                        onChange={(e) => setFormData({ ...formData, clientType: e.target.value as 'particulier' | 'professionnel' })}
+                        className="input"
+                      >
+                        <option value="particulier">Particulier</option>
+                        <option value="professionnel">Professionnel</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pays
+                      </label>
+                      <select
+                        value={formData.country}
+                        onChange={(e) => setFormData({ ...formData, country: e.target.value as 'MA' | 'ES' })}
+                        className="input"
+                      >
+                        <option value="MA">Maroc</option>
+                        <option value="ES">Espagne</option>
+                      </select>
+                    </div>
                   </div>
 
                   {formData.clientType === 'professionnel' && (
@@ -1006,7 +1011,8 @@ export default function ClientsPage() {
                     >
                       <option value="">Aucun</option>
                       {(() => {
-                        const assignable = plombiers.filter(isPlombierAssignable);
+                        const byCountry = plombiers.filter((p) => (p.country || 'MA') === formData.country);
+                        const assignable = byCountry.filter(isPlombierAssignable);
                         const assigned = formData.assignedPlombierId ? plombiers.find(p => p.id === formData.assignedPlombierId) : null;
                         const list = assigned && !assignable.some(p => p.id === assigned.id) ? [...assignable, assigned] : assignable;
                         return list.map((plombier) => (
@@ -1029,7 +1035,7 @@ export default function ClientsPage() {
                     >
                       <option value="">Aucun</option>
                       {clients
-                        .filter((c) => c.clientType === 'professionnel' && c.id !== editingClient?.id)
+                        .filter((c) => c.clientType === 'professionnel' && c.id !== editingClient?.id && (c.country || 'MA') === formData.country)
                         .map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.companyName || c.name}
@@ -1087,7 +1093,10 @@ export default function ClientsPage() {
                                 required
                               >
                                 <option value="">Sélectionner un plombier</option>
-                                {plombiers.filter(isPlombierAssignable).map((plombier) => (
+                                {plombiers
+                                  .filter((p) => (p.country || 'MA') === formData.country)
+                                  .filter(isPlombierAssignable)
+                                  .map((plombier) => (
                                   <option key={plombier.id} value={plombier.id}>
                                     {plombier.name}
                                   </option>

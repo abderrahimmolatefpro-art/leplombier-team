@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 
 export default function PlombierLoginPage() {
+  const t = useTranslations('plumber.login');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -29,7 +31,7 @@ export default function PlombierLoginPage() {
       await login(identifier, password);
       router.push('/espace-plombier/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Erreur de connexion');
+      setError(err.message || t('errorConnection'));
     } finally {
       setLoading(false);
     }
@@ -62,9 +64,9 @@ export default function PlombierLoginPage() {
                 priority
               />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Espace Plombier</h1>
+            <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Connectez-vous avec votre téléphone ou email et mot de passe
+              {t('subtitle')}
             </p>
           </div>
 
@@ -77,7 +79,7 @@ export default function PlombierLoginPage() {
 
             <div>
               <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-2">
-                Téléphone ou email
+                {t('identifier')}
               </label>
               <input
                 id="identifier"
@@ -86,13 +88,13 @@ export default function PlombierLoginPage() {
                 onChange={(e) => setIdentifier(e.target.value)}
                 required
                 className="input"
-                placeholder="06 12 34 56 78 ou email@example.com"
+                placeholder={t('identifierPlaceholder')}
               />
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Mot de passe
+                {t('password')}
               </label>
               <input
                 id="password"
@@ -101,7 +103,7 @@ export default function PlombierLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="input"
-                placeholder="••••••••"
+                placeholder={t('passwordPlaceholder')}
               />
             </div>
 
@@ -110,13 +112,13 @@ export default function PlombierLoginPage() {
               disabled={loading}
               className="btn btn-primary w-full"
             >
-              {loading ? 'Connexion...' : 'Se connecter'}
+              {loading ? t('connecting') : t('connect')}
             </button>
           </form>
 
           <p className="text-center text-xs text-gray-500 mt-6">
             <Link href="/login" className="text-primary-600 hover:text-primary-700">
-              Espace admin
+              {t('adminLink')}
             </Link>
           </p>
         </div>

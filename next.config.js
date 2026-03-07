@@ -16,7 +16,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://leplombier.ma https://www.leplombier.ma",
+            value: "frame-ancestors 'self' https://leplombier.ma https://www.leplombier.ma https://leplombier.es https://www.leplombier.es",
           },
         ],
       },

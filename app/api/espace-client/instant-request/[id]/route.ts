@@ -125,6 +125,7 @@ export async function GET(
       status: data.status,
       address: data.address,
       description: data.description,
+      country: data.country || 'MA',
       clientProposedAmount: data.clientProposedAmount ?? undefined,
       photoRequested: !!data.photoRequested,
       photos: data.photos || [],

@@ -4,15 +4,18 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { Menu, User, Settings, LogOut } from 'lucide-react';
 
-const menuItems = [
-  { href: '/espace-client/profil', label: 'Profil', icon: User },
-  { href: '/espace-client/parametres', label: 'Paramètres du compte', icon: Settings },
+const menuKeys = [
+  { href: '/espace-client/profil', key: 'profil', icon: User },
+  { href: '/espace-client/parametres', key: 'parametres', icon: Settings },
 ];
 
 export default function ClientHeader() {
+  const t = useTranslations('client.menu');
+  const tCommon = useTranslations('common');
   const pathname = usePathname();
   const router = useRouter();
   const { client, logout } = useClientAuth();
@@ -42,8 +45,8 @@ export default function ClientHeader() {
               router.replace('/espace-client/login');
             }}
             className="p-2 -mr-2 rounded-lg hover:bg-red-50 text-red-600"
-            aria-label="Déconnexion"
-            title="Déconnexion"
+            aria-label={tCommon('logout')}
+            title={tCommon('logout')}
           >
             <LogOut size={22} />
           </button>
@@ -60,13 +63,13 @@ export default function ClientHeader() {
           />
           <div className="fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] bg-white shadow-xl z-50 flex flex-col">
             <div className="p-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-900">Menu</h2>
+              <h2 className="font-semibold text-gray-900">{t('title')}</h2>
               {client && (
                 <p className="text-sm text-gray-500 mt-0.5">{client.name}</p>
               )}
             </div>
             <nav className="flex-1 py-4">
-              {menuItems.map(({ href, label, icon: Icon }) => (
+              {menuKeys.map(({ href, key, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
@@ -76,7 +79,7 @@ export default function ClientHeader() {
                   }`}
                 >
                   <Icon size={20} />
-                  {label}
+                  {t(key)}
                 </Link>
               ))}
             </nav>
@@ -91,7 +94,7 @@ export default function ClientHeader() {
                 className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg text-left font-medium"
               >
                 <LogOut size={20} />
-                Déconnexion
+                {tCommon('logout')}
               </button>
             </div>
           </div>

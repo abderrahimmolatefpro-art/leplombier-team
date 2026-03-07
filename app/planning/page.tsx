@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import {
   collection,
@@ -42,6 +43,7 @@ import {
 
 export default function PlanningPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [planningEntries, setPlanningEntries] = useState<PlanningEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -74,7 +76,7 @@ export default function PlanningPage() {
     if (user) {
       loadData();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   useEffect(() => {
     detectConflicts();
@@ -82,10 +84,28 @@ export default function PlanningPage() {
 
   const loadData = async () => {
     try {
-      // Load planning entries (toujours global)
+      // Load clients du pays (pour filtrer projets et planning)
+      const clientsQuery = query(
+        collection(db, 'clients'),
+        where('country', 'in', countryFilter)
+      );
+      const clientsSnapshot = await getDocs(clientsQuery);
+      const clientIds = new Set(clientsSnapshot.docs.map((d) => d.id));
+
+      // Load planning entries (filtrer par plombiers du pays)
+      const plombiersQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'plombier'),
+        where('country', 'in', countryFilter)
+      );
+      const plombiersSnapshot = await getDocs(plombiersQuery);
+      const plombierIds = new Set(plombiersSnapshot.docs.map((d) => d.id));
+
       const entriesQuery = query(collection(db, 'planning'));
       const entriesSnapshot = await getDocs(entriesQuery);
-      const entriesData = entriesSnapshot.docs.map((doc) => ({
+      const entriesData = entriesSnapshot.docs
+        .filter((d) => plombierIds.has(d.data().plombierId))
+        .map((doc) => ({
         id: doc.id,
         ...doc.data(),
         date: doc.data().date?.toDate() || new Date(),
@@ -93,10 +113,12 @@ export default function PlanningPage() {
       })) as PlanningEntry[];
       setPlanningEntries(entriesData);
 
-      // Load projects
+      // Load projects (filtrés par clientIds du pays)
       const projectsQuery = query(collection(db, 'projects'));
       const projectsSnapshot = await getDocs(projectsQuery);
-      const projectsData = projectsSnapshot.docs.map((doc) => ({
+      const projectsData = projectsSnapshot.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((doc) => ({
         id: doc.id,
         ...doc.data(),
         startDate: doc.data().startDate?.toDate() || new Date(),
@@ -105,9 +127,6 @@ export default function PlanningPage() {
       })) as Project[];
       setProjects(projectsData);
 
-      // Load clients
-      const clientsQuery = query(collection(db, 'clients'));
-      const clientsSnapshot = await getDocs(clientsQuery);
       const clientsData = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -116,9 +135,6 @@ export default function PlanningPage() {
       })) as Client[];
       setClients(clientsData);
 
-      // Load plombiers
-      const plombiersQuery = query(collection(db, 'users'), where('role', '==', 'plombier'));
-      const plombiersSnapshot = await getDocs(plombiersQuery);
       const plombiersData = plombiersSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),

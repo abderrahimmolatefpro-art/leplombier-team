@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import {
   collection,
@@ -22,6 +23,7 @@ import Link from 'next/link';
 
 function DocumentsContent() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -105,14 +107,24 @@ function DocumentsContent() {
         router.replace('/documents');
       }
     }
-  }, [user, authLoading, router, searchParams]);
+  }, [user, authLoading, router, searchParams, countryFilter]);
 
   const loadData = async () => {
     try {
-      // Load documents
+      // Load clients du pays
+      const clientsQuery = query(
+        collection(db, 'clients'),
+        where('country', 'in', countryFilter)
+      );
+      const clientsSnapshot = await getDocs(clientsQuery);
+      const clientIds = new Set(clientsSnapshot.docs.map((d) => d.id));
+
+      // Load documents (filtrés par clientIds)
       const documentsQuery = query(collection(db, 'documents'));
       const documentsSnapshot = await getDocs(documentsQuery);
-      const documentsData = documentsSnapshot.docs.map((doc) => ({
+      const documentsData = documentsSnapshot.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((doc) => ({
         id: doc.id,
         ...doc.data(),
         date: doc.data().date?.toDate() || new Date(),
@@ -122,8 +134,6 @@ function DocumentsContent() {
       })) as Document[];
       setDocuments(documentsData);
 
-      // Load clients
-      const clientsSnapshot = await getDocs(collection(db, 'clients'));
       const clientsData = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -132,10 +142,12 @@ function DocumentsContent() {
       })) as Client[];
       setClients(clientsData);
 
-      // Load projects
+      // Load projects (filtrés par clientIds)
       const projectsQuery = query(collection(db, 'projects'));
       const projectsSnapshot = await getDocs(projectsQuery);
-      const projectsData = projectsSnapshot.docs.map((doc) => ({
+      const projectsData = projectsSnapshot.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((doc) => ({
         id: doc.id,
         ...doc.data(),
         startDate: doc.data().startDate?.toDate() || new Date(),
@@ -144,11 +156,11 @@ function DocumentsContent() {
       })) as Project[];
       setProjects(projectsData);
 
-      // Load manual revenues
+      // Load manual revenues (filtrés par clientIds)
       const revenuesQuery = query(collection(db, 'manualRevenues'));
       const revenuesSnapshot = await getDocs(revenuesQuery);
       const revenuesData = revenuesSnapshot.docs
-        .filter((doc) => !doc.data().deleted)
+        .filter((doc) => !doc.data().deleted && clientIds.has(doc.data().clientId))
         .map((doc) => ({
           id: doc.id,
           ...doc.data(),

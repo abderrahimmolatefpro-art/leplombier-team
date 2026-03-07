@@ -3,7 +3,9 @@
 import { useState, Suspense, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { useClientAuth } from '@/hooks/useClientAuth';
+import { getWebsiteUrl } from '@/lib/companyConfig';
 
 const MIN_PHONE_DIGITS = 9;
 
@@ -28,9 +30,15 @@ function isEmbedMode(searchParams: URLSearchParams | null): boolean {
   return searchParams?.get('embed') === '1' || searchParams?.get('embed') === 'true';
 }
 
+function getActiveCountry(): 'MA' | 'ES' {
+  if (typeof window !== 'undefined' && window.location?.hostname?.includes('leplombier.es')) return 'ES';
+  return (process.env.NEXT_PUBLIC_ACTIVE_COUNTRY as 'MA' | 'ES') || 'MA';
+}
+
 type CodeSentStatus = 'idle' | 'checking' | 'sent' | 'not_sent';
 
 function ClientLoginContent() {
+  const t = useTranslations('client.login');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -54,7 +62,7 @@ function ClientLoginContent() {
       const res = await fetch('/api/espace-client/check-code-sent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneToCheck }),
+        body: JSON.stringify({ phone: phoneToCheck, country: getActiveCountry() }),
       });
       const data = await res.json();
       setCodeSentStatus(data.codeSent ? 'sent' : 'not_sent');
@@ -96,21 +104,21 @@ function ClientLoginContent() {
       const res = await fetch('/api/espace-client/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone, country: getActiveCountry() }),
       });
       const data = await res.json();
       if (!data.success) {
         if (data.codeAlreadySent) {
           setCodeSentStatus('sent');
         } else {
-          setError(data.error || 'Erreur lors de l\'envoi du code');
+          setError(data.error || t('errorSend'));
         }
       } else {
         setError('');
         setCodeSentStatus('sent');
       }
     } catch {
-      setError('Erreur de connexion');
+      setError(t('errorConnection'));
     } finally {
       setSendingCode(false);
     }
@@ -124,7 +132,7 @@ function ClientLoginContent() {
       const res = await fetch('/api/espace-client/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, code }),
+        body: JSON.stringify({ phone, code, country: getActiveCountry() }),
       });
       const data = await res.json();
       if (data.success) {
@@ -138,10 +146,10 @@ function ClientLoginContent() {
           router.push(redirectPath);
         }
       } else {
-        setError(data.error || 'Code incorrect');
+        setError(data.error || t('errorCode'));
       }
     } catch {
-      setError('Erreur de connexion');
+      setError(t('errorConnection'));
     } finally {
       setLoading(false);
     }
@@ -189,10 +197,10 @@ function ClientLoginContent() {
               </div>
             )}
             <h1 className={embed ? 'text-base font-semibold text-gray-800' : 'text-lg font-bold text-gray-900'}>
-              {embed ? 'Connexion' : 'Espace Client'}
+              {embed ? t('connexion') : t('title')}
             </h1>
             <p className="text-xs text-gray-500 mt-1">
-              Nouveau ? Votre compte sera créé automatiquement.
+              {t('newAccount')}
             </p>
           </div>
 
@@ -204,7 +212,7 @@ function ClientLoginContent() {
             )}
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Téléphone
+                {t('phone')}
               </label>
               <input
                 id="phone"
@@ -220,12 +228,12 @@ function ClientLoginContent() {
                     ? 'w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white/80 backdrop-blur-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500'
                     : 'input'
                 }
-                placeholder="06 12 34 56 78"
+                placeholder={t('phonePlaceholder')}
               />
             </div>
             <div>
               <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
-                Code SMS
+                {t('code')}
               </label>
               <input
                 id="code"
@@ -240,11 +248,11 @@ function ClientLoginContent() {
                     ? 'w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white/80 backdrop-blur-sm text-gray-900 text-center text-lg tracking-widest placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500'
                     : 'input text-center text-lg tracking-widest'
                 }
-                placeholder="123456"
+                placeholder={t('codePlaceholder')}
               />
               <div className="mt-1 min-h-[1.25rem]">
                 {codeSentStatus === 'checking' && (
-                  <span className="text-xs text-gray-500">Vérification...</span>
+                  <span className="text-xs text-gray-500">{t('verifying')}</span>
                 )}
                 {codeSentStatus === 'not_sent' && (
                   <button
@@ -253,14 +261,14 @@ function ClientLoginContent() {
                     disabled={sendingCode || !phone.trim()}
                     className="text-xs text-primary-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {sendingCode ? 'Envoi...' : 'Envoyer le code'}
+                    {sendingCode ? t('sending') : t('sendCode')}
                   </button>
                 )}
                 {codeSentStatus === 'sent' && (
                   <p className="text-xs text-gray-600">
-                    Consultez vos SMS pour retrouver le code envoyé.{' '}
-                    <a href="https://leplombier.ma/contact" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
-                      Code oublié ? Contactez-nous
+                    {t('checkSms')}{' '}
+                    <a href={`${getWebsiteUrl()}/contact`} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
+                      {t('contactUs')}
                     </a>
                   </p>
                 )}
@@ -275,7 +283,7 @@ function ClientLoginContent() {
                   : 'btn btn-primary w-full'
               }
             >
-              {loading ? 'Vérification...' : 'Se connecter'}
+              {loading ? t('verifying') : t('connect')}
             </button>
           </form>
         </div>

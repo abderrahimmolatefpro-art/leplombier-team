@@ -3,9 +3,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { FolderKanban, Zap } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatCurrency } from '@/lib/utils';
 import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -28,14 +29,9 @@ const STATUS_LABELS: Record<string, string> = {
   annule: 'Annulé',
 };
 
-const FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: 'Tous' },
-  { value: 'en_cours', label: 'En cours' },
-  { value: 'en_attente', label: 'En attente' },
-  { value: 'termine', label: 'Terminé' },
-];
 
 export default function ClientCommandesPage() {
+  const t = useTranslations('client.commandes');
   const { token, loading: authLoading } = useClientAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
@@ -74,7 +70,7 @@ export default function ClientCommandesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-gray-900 mb-6">Mes commandes</h1>
+        <h1 className="text-lg font-semibold text-gray-900 mb-6">{t('title')}</h1>
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
@@ -84,7 +80,12 @@ export default function ClientCommandesPage() {
         ) : (
           <>
             <div className="flex gap-2 flex-wrap mb-6">
-              {FILTER_OPTIONS.map((opt) => (
+              {[
+                { value: 'all', label: t('all') },
+                { value: 'en_cours', label: t('inProgress') },
+                { value: 'en_attente', label: t('pending') },
+                { value: 'termine', label: t('completed') },
+              ].map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setFilterStatus(opt.value)}
@@ -102,7 +103,7 @@ export default function ClientCommandesPage() {
               <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
                 <FolderKanban className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {filterStatus === 'all' ? 'Aucune commande pour le moment' : 'Aucune commande pour ce filtre'}
+                  {filterStatus === 'all' ? t('noOrders') : t('noOrdersFilter')}
                 </p>
               </div>
             ) : (
@@ -149,7 +150,7 @@ export default function ClientCommandesPage() {
                       )}
                       {order.amount && order.amount > 0 && (
                         <p className="text-sm font-medium text-gray-900 mt-2">
-                          {order.amount?.toLocaleString('fr-FR')} MAD
+                          {formatCurrency(order.amount ?? 0)}
                         </p>
                       )}
                       {canOpenInstant && (

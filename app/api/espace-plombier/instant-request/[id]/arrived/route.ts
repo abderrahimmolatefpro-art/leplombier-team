@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { notifyClient } from '@/lib/notify';
+import { getNotifMessage } from '@/lib/notificationMessages';
 
 export async function POST(
   request: NextRequest,
@@ -57,12 +58,13 @@ export async function POST(
     });
 
     const userDoc = await db.collection('users').doc(plombierId).get();
-    const plombierName = userDoc.exists ? (userDoc.data()?.name as string) || 'Le plombier' : 'Le plombier';
+    const country = (data.country as string) || 'MA';
+    const plombierName = userDoc.exists ? (userDoc.data()?.name as string) || (country === 'ES' ? 'El fontanero' : 'Le plombier') : (country === 'ES' ? 'El fontanero' : 'Le plombier');
 
     await notifyClient(
       data.clientId as string,
-      'Plombier arrivé',
-      `${plombierName} est devant chez vous`,
+      getNotifMessage('plombierArrived', country as 'MA' | 'ES'),
+      getNotifMessage('plombierArrivedBody', country as 'MA' | 'ES', plombierName),
       { name: 'plombier_arrive', params: [plombierName] }
     );
 

@@ -9,6 +9,7 @@ import { auth, db } from '@/lib/firebase';
 import { User } from '@/types';
 import { ArrowLeft, Save, Users, BadgeCheck, Check, XCircle } from 'lucide-react';
 import Link from 'next/link';
+import { getWebsiteDomain } from '@/lib/companyConfig';
 
 export default function PlombierDetailPage() {
   const { user: currentUser, loading: authLoading } = useAuth();
@@ -301,7 +302,7 @@ export default function PlombierDetailPage() {
               />
               <label htmlFor="certified" className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
                 <BadgeCheck className="w-4 h-4 text-primary-600" />
-                Plombier certifié leplombier.ma
+                Plombier certifié {getWebsiteDomain(plombier?.country ?? 'MA')}
               </label>
             </div>
             <p className="text-xs text-gray-500 -mt-2">

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { normalizePhoneNumber } from '@/lib/phone';
+import { getApiMessage, getSmsCodeMessage } from '@/lib/apiMessages';
 import { FieldValue } from 'firebase-admin/firestore';
 import * as crypto from 'crypto';
 
-async function sendSmsViaInfobip(phone: string, message: string): Promise<boolean> {
+async function sendSmsViaInfobip(phone: string, message: string, country: 'MA' | 'ES' = 'MA'): Promise<boolean> {
   if (!process.env.INFOBIP_API_KEY || !process.env.INFOBIP_BASE_URL) {
     console.error('[send-code] Infobip not configured');
     return false;
   }
 
-  const normalized = normalizePhoneNumber(phone);
+  const normalized = normalizePhoneNumber(phone, country);
   const baseUrl = process.env.INFOBIP_BASE_URL.startsWith('http')
     ? process.env.INFOBIP_BASE_URL
     : `https://${process.env.INFOBIP_BASE_URL}`;
@@ -48,19 +49,30 @@ function hashCode(code: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, forceResend } = body;
+    const { phone, forceResend, country: bodyCountry } = body;
+    const country = bodyCountry === 'ES' ? 'ES' : (request.headers.get('host')?.includes('leplombier.es') ? 'ES' : 'MA');
+
     if (!phone || typeof phone !== 'string') {
-      return NextResponse.json({ success: false, error: 'Numéro de téléphone requis' }, { status: 400 });
+      return NextResponse.json({ success: false, error: getApiMessage('PHONE_REQUIRED', country) }, { status: 400 });
     }
 
     const db = getAdminDb();
-    const normalizedInput = normalizePhoneNumber(phone);
+    const normalizedInput = normalizePhoneNumber(phone, country);
 
-    const snapshot = await db.collection('clients').get();
-    const clientDoc = snapshot.docs.find((d) => {
+    let snapshot = await db.collection('clients').where('country', '==', country).get();
+    let clientDoc = snapshot.docs.find((d) => {
       const p = (d.data().phone || '').toString().trim();
-      return normalizePhoneNumber(p) === normalizedInput;
+      return normalizePhoneNumber(p, country) === normalizedInput;
     });
+    if (!clientDoc && country === 'MA') {
+      snapshot = await db.collection('clients').get();
+      clientDoc = snapshot.docs.find((d) => {
+        const data = d.data();
+        if (data.country && data.country !== 'MA') return false;
+        const p = (data.phone || '').toString().trim();
+        return normalizePhoneNumber(p, 'MA') === normalizedInput;
+      });
+    }
 
     if (clientDoc && !forceResend) {
       const data = clientDoc.data();
@@ -68,7 +80,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: false,
           codeAlreadySent: true,
-          error: 'Un code vous a déjà été envoyé. Consultez vos SMS pour le retrouver.',
+          error: getApiMessage('CODE_ALREADY_SENT', country),
         });
       }
     }
@@ -89,6 +101,7 @@ export async function POST(request: NextRequest) {
         companyName: '',
         ice: '',
         source: 'espace-client',
+        country,
         accessCodeHash,
         accessCodeSentAt: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
@@ -102,12 +115,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const message = `Votre code d'accès Le Plombier: ${code}. Utilisez ce code pour vous connecter.`;
-    const sent = await sendSmsViaInfobip(phone, message);
+    const message = getSmsCodeMessage(country, code);
+    const sent = await sendSmsViaInfobip(phone, message, country);
 
     if (!sent) {
       return NextResponse.json(
-        { success: false, error: 'Erreur lors de l\'envoi du SMS' },
+        { success: false, error: getApiMessage('SMS_SEND_ERROR', country) },
         { status: 500 }
       );
     }
@@ -115,8 +128,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[send-code] Error:', error);
+    const country = request.headers.get('host')?.includes('leplombier.es') ? 'ES' : 'MA';
     return NextResponse.json(
-      { success: false, error: 'Erreur serveur' },
+      { success: false, error: getApiMessage('SERVER_ERROR', country) },
       { status: 500 }
     );
   }

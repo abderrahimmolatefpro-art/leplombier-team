@@ -1,7 +1,9 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { MapPin, MoreVertical } from 'lucide-react';
 import { formatTimeAndDistance } from '@/lib/geo';
+import { formatCurrency } from '@/lib/utils';
 
 interface InstantRequestCardProps {
   clientName: string;
@@ -32,6 +34,7 @@ export default function InstantRequestCard({
   onPress,
   itineraryUrl,
 }: InstantRequestCardProps) {
+  const t = useTranslations('plumber.instant');
   return (
     <div
       role="button"
@@ -58,15 +61,14 @@ export default function InstantRequestCard({
           <p className="text-sm text-gray-600 truncate">{address}</p>
         </div>
         {hasOffered && (
-          <p className="text-sm text-green-600 font-medium mt-2">Offre envoyée</p>
+          <p className="text-sm text-green-600 font-medium mt-2">{t('offerSent')}</p>
         )}
       </div>
       <div className="flex flex-col items-end justify-between flex-shrink-0 gap-2">
         <div className="bg-primary-50 border border-primary-200/60 rounded-lg px-3 py-2 text-center min-w-[72px]">
           <p className="text-xl font-bold text-primary-700 leading-tight">
-            {priceMad > 0 ? priceMad : '—'}
+            {priceMad > 0 ? formatCurrency(priceMad) : '—'}
           </p>
-          <p className="text-xs font-medium text-primary-600">{priceMad > 0 ? 'MAD' : ''}</p>
         </div>
         <div className="flex flex-col items-center gap-1">
           {itineraryUrl && (
@@ -77,7 +79,7 @@ export default function InstantRequestCard({
               onClick={(e) => e.stopPropagation()}
               className="text-xs text-primary-600 hover:underline font-medium"
             >
-              Itinéraire
+              {t('itinerary')}
             </a>
           )}
           <MoreVertical size={16} className="text-gray-400" />

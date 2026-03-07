@@ -2,16 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Zap, FolderKanban, ShoppingBag, Package } from 'lucide-react';
 
-const navItems = [
-  { href: '/espace-plombier/instant', label: 'Instant', icon: Zap },
-  { href: '/espace-plombier/projets', label: 'Projets', icon: FolderKanban },
-  { href: '/espace-plombier/demandes-pieces', label: 'Pièces', icon: Package },
-  { href: '/espace-plombier/commandes', label: 'Commandes', icon: ShoppingBag },
+const navKeys = [
+  { href: '/espace-plombier/instant', key: 'instant', icon: Zap },
+  { href: '/espace-plombier/projets', key: 'projets', icon: FolderKanban },
+  { href: '/espace-plombier/demandes-pieces', key: 'pieces', icon: Package },
+  { href: '/espace-plombier/commandes', key: 'commandes', icon: ShoppingBag },
 ];
 
 export default function PlombierNav() {
+  const t = useTranslations('plumber.nav');
   const pathname = usePathname();
 
   return (
@@ -20,7 +22,7 @@ export default function PlombierNav() {
       style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="flex items-center justify-around min-h-[56px]">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navKeys.map(({ href, key, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/');
           return (
             <Link
@@ -31,7 +33,7 @@ export default function PlombierNav() {
               }`}
             >
               <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-xs mt-0.5">{label}</span>
+              <span className="text-xs mt-0.5">{t(key)}</span>
             </Link>
           );
         })}

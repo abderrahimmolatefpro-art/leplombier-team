@@ -3,6 +3,8 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { verifyClientToken } from '@/lib/jwt';
 import { Timestamp } from 'firebase-admin/firestore';
 import { notifyPlombier } from '@/lib/notify';
+import { formatCurrency } from '@/lib/companyConfig';
+import { getNotifMessage } from '@/lib/notificationMessages';
 import { toCanonicalCity, citiesMatch } from '@/lib/cities';
 
 const EXPIRE_MINUTES = 15;
@@ -38,17 +40,18 @@ export async function POST(request: NextRequest) {
     // Récupérer la ville : client.city ou geocode
     let requestCity: string | null = null;
     const clientDoc = await db.collection('clients').doc(payload.clientId).get();
+    const clientCountry = (clientDoc.exists ? clientDoc.data()?.country : null) || 'MA';
     if (clientDoc.exists) {
       const clientCity = clientDoc.data()?.city;
       if (clientCity && typeof clientCity === 'string' && clientCity.trim()) {
-        requestCity = toCanonicalCity(clientCity.trim());
+        requestCity = toCanonicalCity(clientCity.trim(), clientCountry as 'MA' | 'ES');
       }
     }
     if (!requestCity && address.trim()) {
       try {
-        const geo = await import('@/lib/geocode').then((m) => m.geocodeAddress(address.trim()));
+        const geo = await import('@/lib/geocode').then((m) => m.geocodeAddress(address.trim(), clientCountry as 'MA' | 'ES'));
         if (geo?.city) {
-          requestCity = toCanonicalCity(geo.city);
+          requestCity = toCanonicalCity(geo.city, clientCountry as 'MA' | 'ES');
         }
       } catch (e) {
         console.warn('[instant-request] Geocode city failed:', e);
@@ -60,6 +63,7 @@ export async function POST(request: NextRequest) {
       address: address.trim(),
       description: description.trim(),
       status: 'en_attente',
+      country: clientCountry,
       createdAt: Timestamp.fromDate(now),
       expiresAt: Timestamp.fromDate(expiresAt),
       updatedAt: Timestamp.fromDate(now),
@@ -76,19 +80,20 @@ export async function POST(request: NextRequest) {
 
     const docRef = await db.collection('instantRequests').add(requestData);
 
-    // Push aux plombiers disponibles dans la même ville (style InDrive)
+    // Push aux plombiers disponibles dans la même ville et le même pays (style InDrive)
     const plombiersSnap = await db
       .collection('users')
       .where('role', '==', 'plombier')
+      .where('country', '==', clientCountry)
       .where('availableForInstant', '==', true)
       .get();
     const addr = address.trim().slice(0, 100);
     const amount = typeof clientProposedAmount === 'number' && clientProposedAmount >= 0 ? clientProposedAmount : null;
     const bodyParts: string[] = [];
-    if (amount != null) bodyParts.push(`${amount} MAD`);
+    if (amount != null) bodyParts.push(formatCurrency(amount, clientCountry as 'MA' | 'ES'));
     if (addr) bodyParts.push(addr);
-    const pushBody = bodyParts.length ? bodyParts.join(' · ') : 'Une nouvelle demande est disponible';
-    const pushTitle = 'Nouvelle demande — disponible maintenant';
+    const pushBody = bodyParts.length ? bodyParts.join(' · ') : getNotifMessage('newRequestBodyFallback', clientCountry as 'MA' | 'ES');
+    const pushTitle = getNotifMessage('newRequestTitle', clientCountry as 'MA' | 'ES');
     const assignablePlombiers = plombiersSnap.docs.filter((d) => {
       const data = d.data();
       const s = data.validationStatus;

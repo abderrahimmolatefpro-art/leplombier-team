@@ -2,11 +2,13 @@
 
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { Zap, Phone, CheckCircle, XCircle, BadgeCheck, Star, Camera } from 'lucide-react';
 import { compressImageToDataUrl } from '@/lib/compress-image';
 import AddressInput from '@/components/AddressInput';
 import DescriptionWithSuggestions from '@/components/DescriptionWithSuggestions';
+import { getWebsiteDomain, formatCurrency } from '@/lib/companyConfig';
 
 const POLL_INTERVAL_MS = 2500;
 const PLOMBIER_LOCATION_POLL_MS = 15000;
@@ -32,6 +34,7 @@ interface RequestData {
   status: string;
   address: string;
   description: string;
+  country?: 'MA' | 'ES';
   clientProposedAmount?: number;
   photoRequested?: boolean;
   photos?: string[];
@@ -47,6 +50,7 @@ interface RequestData {
 }
 
 function CommanderPageContent() {
+  const t = useTranslations('client.commander');
   const { client, loading: authLoading, token } = useClientAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -326,7 +330,7 @@ function CommanderPageContent() {
     e.preventDefault();
     setErrorMsg('');
     if (!address.trim() || !description.trim()) {
-      setErrorMsg('Adresse et description requises');
+      setErrorMsg(t('errorAddressRequired'));
       return;
     }
     if (!token) return;
@@ -349,7 +353,7 @@ function CommanderPageContent() {
 
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.error || 'Erreur lors de l\'envoi');
+        setErrorMsg(data.error || t('errorSend'));
         setState('idle');
         return;
       }
@@ -369,7 +373,7 @@ function CommanderPageContent() {
       setShowFallbackPhone(false);
       waitingStartedAtRef.current = Date.now();
     } catch {
-      setErrorMsg('Erreur de connexion');
+      setErrorMsg(t('errorConnection'));
       setState('idle');
     }
   };
@@ -400,12 +404,12 @@ function CommanderPageContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.error || 'Erreur');
+        setErrorMsg(data.error || t('errorGeneric'));
         return;
       }
       setState('cancelled');
     } catch {
-      setErrorMsg('Erreur de connexion');
+      setErrorMsg(t('errorConnection'));
     } finally {
       setCancelling(false);
     }
@@ -422,12 +426,12 @@ function CommanderPageContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.error || 'Erreur');
+        setErrorMsg(data.error || t('errorGeneric'));
         return;
       }
       setRequestData((prev) => (prev ? { ...prev, clientReadyAt: new Date().toISOString() } : prev));
     } catch {
-      setErrorMsg('Erreur de connexion');
+      setErrorMsg(t('errorConnection'));
     } finally {
       setClientReadySubmitting(false);
     }
@@ -454,12 +458,12 @@ function CommanderPageContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.error || 'Erreur');
+        setErrorMsg(data.error || t('errorGeneric'));
         return;
       }
       setRequestData((prev) => (prev ? { ...prev, clientHasReviewed: true } : prev));
     } catch {
-      setErrorMsg('Erreur de connexion');
+      setErrorMsg(t('errorConnection'));
     } finally {
       setReviewSubmitting(false);
     }
@@ -481,7 +485,7 @@ function CommanderPageContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.error || 'Erreur lors de l\'envoi');
+        setErrorMsg(data.error || t('errorSend'));
         return;
       }
       setPhotoFiles([]);
@@ -510,7 +514,7 @@ function CommanderPageContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.error || 'Erreur');
+        setErrorMsg(data.error || t('errorGeneric'));
         return;
       }
       if (data.plombier && requestData) {
@@ -523,7 +527,7 @@ function CommanderPageContent() {
         setState('accepted');
       }
     } catch {
-      setErrorMsg('Erreur de connexion');
+      setErrorMsg(t('errorConnection'));
     } finally {
       setAcceptingOfferId(null);
     }
@@ -559,9 +563,9 @@ function CommanderPageContent() {
                 <Zap className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Intervention immédiate</h2>
+                <h2 className="text-lg font-bold text-slate-900">{t('title')}</h2>
                 <p className="text-sm text-slate-500 mt-0.5">
-                  Décrivez votre urgence. Les plombiers disponibles acceptent en temps réel.
+                  {t('subtitle')}
                 </p>
               </div>
             </div>
@@ -570,7 +574,7 @@ function CommanderPageContent() {
               <AddressInput
                 value={address}
                 onChange={setAddress}
-                placeholder="Commencez à taper une adresse..."
+                placeholder={t('addressPlaceholder')}
                 required
                 active={state === 'idle' || state === 'submitting'}
               />
@@ -578,12 +582,12 @@ function CommanderPageContent() {
                 value={description}
                 onChange={setDescription}
                 onServiceSelect={handleServiceSelect}
-                placeholder="Ex: Fuite sous l'évier, robinet qui goutte..."
+                placeholder={t('descriptionPlaceholder')}
                 required
               />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Budget proposé (MAD) <span className="text-slate-400 font-normal">optionnel</span>
+                  {t('budget')} <span className="text-slate-400 font-normal">{t('budgetOptional')}</span>
                 </label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {[200, 300, 400, 500].map((amt) => (
@@ -597,7 +601,7 @@ function CommanderPageContent() {
                           : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
-                      {amt} MAD
+                      {formatCurrency(amt, (client?.country ?? 'MA') as 'MA' | 'ES')}
                     </button>
                   ))}
                 </div>
@@ -608,7 +612,7 @@ function CommanderPageContent() {
                   value={clientProposedAmount}
                   onChange={(e) => setClientProposedAmount(e.target.value)}
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Ex: 500"
+                  placeholder={t('budgetPlaceholder')}
                 />
               </div>
               {errorMsg && (
@@ -622,10 +626,10 @@ function CommanderPageContent() {
                 {state === 'submitting' ? (
                   <span className="inline-flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Envoi en cours...
+                    {t('submitting')}
                   </span>
                 ) : (
-                  'Envoyer ma demande'
+                  t('sendRequest')
                 )}
               </button>
             </form>
@@ -640,13 +644,13 @@ function CommanderPageContent() {
                   <Zap className="w-6 h-6 text-primary-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 mb-1">En attente d&apos;offres</h2>
+                  <h2 className="text-lg font-bold text-slate-900 mb-1">{t('waitingOffers')}</h2>
                   <p className="text-slate-600 text-sm leading-relaxed">
-                    Les plombiers disponibles peuvent accepter votre tarif ou vous faire une contre-offre. Choisissez l&apos;offre qui vous convient.
+                    {t('waitingOffersDesc')}
                   </p>
                   {requestData?.clientProposedAmount != null && requestData.clientProposedAmount > 0 && (
                     <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium">
-                      Votre budget : {requestData.clientProposedAmount} MAD
+                      {t('yourBudget')} : {formatCurrency(requestData.clientProposedAmount, (requestData?.country ?? client?.country ?? 'MA') as 'MA' | 'ES')}
                     </div>
                   )}
                 </div>
@@ -657,10 +661,10 @@ function CommanderPageContent() {
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
                 <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
                   <Camera className="w-5 h-5 text-primary-600" />
-                  Un plombier demande des photos
+                  {t('requestPhotos')}
                 </h3>
                 <p className="text-sm text-slate-600 mb-4">
-                  Envoyez des photos pour aider le plombier à mieux estimer le prix.
+                  {t('requestPhotosDesc')}
                 </p>
                 {(requestData.photos?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -688,18 +692,18 @@ function CommanderPageContent() {
                         e.target.value = '';
                       }}
                     />
-                    Ajouter des photos
+                    {t('addPhotos')}
                   </label>
                   {photoFiles.length > 0 && (
                     <>
-                      <span className="text-sm text-slate-500">{photoFiles.length} fichier(s) sélectionné(s)</span>
+                      <span className="text-sm text-slate-500">{photoFiles.length} {t('filesSelected')}</span>
                       <button
                         type="button"
                         onClick={handleAddPhotos}
                         disabled={addingPhotos}
                         className="px-4 py-2.5 rounded-xl bg-primary-600 text-white font-medium text-sm hover:bg-primary-700 disabled:opacity-50"
                       >
-                        {addingPhotos ? 'Envoi...' : 'Envoyer'}
+                        {addingPhotos ? t('sending') : t('send')}
                       </button>
                     </>
                   )}
@@ -710,8 +714,8 @@ function CommanderPageContent() {
             {sortedOffers.length > 0 ? (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-slate-900">Choisir un plombier</h3>
-                  <span className="text-sm text-slate-500">{sortedOffers.length} offre{sortedOffers.length > 1 ? 's' : ''}</span>
+                  <h3 className="font-bold text-slate-900">{t('choosePlombier')}</h3>
+                  <span className="text-sm text-slate-500">{sortedOffers.length} {sortedOffers.length > 1 ? t('offers') : t('offer')}</span>
                 </div>
                 <div className="space-y-4">
                   {sortedOffers.map((offer) => (
@@ -732,19 +736,19 @@ function CommanderPageContent() {
                               {offer.reviewCount != null && offer.reviewCount > 0 && offer.averageRating != null ? (
                                 <span className="inline-flex items-center gap-1.5 text-sm text-amber-600 font-medium">
                                   <Star className="w-4 h-4 fill-amber-400" />
-                                  {offer.averageRating.toFixed(1).replace('.', ',')} ({offer.reviewCount} avis)
+                                  {offer.averageRating.toFixed(1).replace('.', ',')} ({offer.reviewCount} {t('reviews')})
                                 </span>
                               ) : (
-                                <span className="text-sm text-slate-400 font-medium">Nouveau · Aucun avis</span>
+                                <span className="text-sm text-slate-400 font-medium">{t('newNoReviews')}</span>
                               )}
                               {offer.certified ? (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary-100 text-primary-700">
                                   <BadgeCheck className="w-4 h-4" />
-                                  Plombier certifié leplombier.ma
+                                  {t('certified')} {getWebsiteDomain()}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200/80">
-                                  Plombier partenaire
+                                  {t('partner')}
                                 </span>
                               )}
                             </div>
@@ -755,8 +759,7 @@ function CommanderPageContent() {
                         </div>
                         <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                           <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-bold text-primary-600">{offer.proposedAmount}</span>
-                            <span className="text-sm font-medium text-slate-500">MAD</span>
+                            <span className="text-3xl font-bold text-primary-600">{formatCurrency(offer.proposedAmount, (requestData?.country ?? client?.country ?? 'MA') as 'MA' | 'ES')}</span>
                           </div>
                           <button
                             type="button"
@@ -767,10 +770,10 @@ function CommanderPageContent() {
                             {acceptingOfferId === offer.id ? (
                               <span className="inline-flex items-center justify-center gap-2">
                                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                En cours...
+                                {t('inProgress')}
                               </span>
                             ) : (
-                              'Choisir ce plombier'
+                              t('chooseThisPlombier')
                             )}
                           </button>
                         </div>
@@ -784,23 +787,23 @@ function CommanderPageContent() {
                 <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
                   <Zap className="w-8 h-8 text-slate-400" />
                 </div>
-                <p className="font-medium text-slate-700 mb-1">Aucune offre pour le moment</p>
+                <p className="font-medium text-slate-700 mb-1">{t('noOffersYet')}</p>
                 <p className="text-sm text-slate-500 max-w-xs mx-auto">
-                  Les offres des plombiers disponibles apparaîtront ici. Restez sur cette page.
+                  {t('noOffersDesc')}
                 </p>
                 <div className="mt-4 flex justify-center">
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
                     <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-                    En attente...
+                    {t('waiting')}
                   </span>
                 </div>
               </div>
             )}
             {showFallbackPhone && (
               <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-5">
-                <p className="text-sm font-semibold text-amber-800 mb-1">Aucun plombier disponible ?</p>
+                <p className="text-sm font-semibold text-amber-800 mb-1">{t('noPlombierAvailable')}</p>
                 <p className="text-sm text-amber-700 mb-4">
-                  Appelez le standard pour une prise en charge immédiate.
+                  {t('callStandard')}
                 </p>
                 <a
                   href={`tel:${FALLBACK_PHONE.replace(/\s/g, '')}`}
@@ -818,7 +821,7 @@ function CommanderPageContent() {
                 disabled={cancelling}
                 className="text-sm text-slate-500 hover:text-red-600 disabled:opacity-50 transition-colors"
               >
-                {cancelling ? 'Annulation...' : 'Annuler la demande'}
+                {cancelling ? t('cancelling') : t('cancelRequest')}
               </button>
             </div>
           </div>
@@ -832,8 +835,8 @@ function CommanderPageContent() {
                   <CheckCircle className="w-8 h-8 text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Un plombier arrive</h2>
-                  <p className="text-sm text-slate-600 mt-0.5">Votre demande a été acceptée. Le plombier se déplace.</p>
+                  <h2 className="text-lg font-bold text-slate-900">{t('plombierArriving')}</h2>
+                  <p className="text-sm text-slate-600 mt-0.5">{t('requestAccepted')}</p>
                 </div>
               </div>
               <div className="mt-6 bg-slate-50 rounded-xl p-5 space-y-3">
@@ -848,11 +851,11 @@ function CommanderPageContent() {
                     {requestData.plombier.certified ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-primary-100 text-primary-700">
                         <BadgeCheck className="w-3.5 h-3.5" />
-                        Certifié
+                        {t('certifiedShort')}
                       </span>
                     ) : (
                       <span className="inline-flex px-2 py-0.5 rounded-lg text-xs font-medium bg-slate-200 text-slate-600">
-                        Standard
+                        {t('standard')}
                       </span>
                     )}
                   </div>
@@ -866,7 +869,7 @@ function CommanderPageContent() {
                     {requestData.plombier.phone}
                   </a>
                 )}
-                <p className="text-sm text-slate-500">Adresse : {requestData.address}</p>
+                <p className="text-sm text-slate-500">{t('addressLabel')} : {requestData.address}</p>
                 {requestData.etaMinutes && !requestData.arrivedAt && (
                   <div className={`mt-3 py-2.5 px-4 rounded-xl border ${
                     requestData.etaAt && new Date(requestData.etaAt).getTime() < Date.now()
@@ -875,13 +878,13 @@ function CommanderPageContent() {
                   }`}>
                     <p className="text-sm font-semibold text-amber-800">
                       {requestData.etaAt && new Date(requestData.etaAt).getTime() < Date.now() ? (
-                        <>L&apos;heure indiquée est dépassée. Le plombier est peut-être en retard.</>
+                        <>{t('etaPassed')}</>
                       ) : (
                         <>
-                          Arrivée estimée : dans {requestData.etaMinutes} min
+                          {t('etaMinutes', { minutes: requestData.etaMinutes ?? 0 })}
                           {requestData.etaAt && (
                             <span className="font-normal text-amber-700 ml-1">
-                              (vers {new Date(requestData.etaAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})
+                              ({new Date(requestData.etaAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })})
                             </span>
                           )}
                         </>
@@ -893,7 +896,7 @@ function CommanderPageContent() {
                   <div className="mt-3 py-2.5 px-4 rounded-xl bg-green-50 border border-green-200/80">
                     <p className="text-sm font-semibold text-green-800 flex items-center gap-2">
                       <CheckCircle size={18} />
-                      Le plombier est devant chez vous
+                      {t('plombierArrived')}
                     </p>
                   </div>
                 )}
@@ -904,18 +907,18 @@ function CommanderPageContent() {
                     disabled={clientReadySubmitting}
                     className="mt-3 inline-flex items-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-primary-300 bg-primary-50/50 text-primary-700 font-medium text-sm hover:bg-primary-100 disabled:opacity-50"
                   >
-                    {clientReadySubmitting ? 'Envoi...' : 'Je suis chez moi'}
+                    {clientReadySubmitting ? t('sending') : t('imHome')}
                   </button>
                 )}
                 {requestData.clientReadyAt && (
-                  <p className="mt-3 text-sm text-slate-500">✓ Vous avez indiqué être chez vous</p>
+                  <p className="mt-3 text-sm text-slate-500">✓ {t('youIndicatedHome')}</p>
                 )}
               </div>
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
-              <h3 className="font-bold text-slate-900 mb-2">Suivi du trajet</h3>
+              <h3 className="font-bold text-slate-900 mb-2">{t('trackTrip')}</h3>
               <p className="text-sm text-slate-500 mb-3">
-                Vous : adresse d&apos;intervention. Le plombier partage sa position.
+                {t('trackTripDesc')}
               </p>
               {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
                 <div ref={mapRef} className="w-full h-[280px] sm:h-[320px] rounded-xl bg-slate-100 overflow-hidden" />
@@ -923,8 +926,8 @@ function CommanderPageContent() {
                 <div className="rounded-lg bg-gray-100 p-4 space-y-2">
                   <p className="text-sm text-gray-600">
                     {plombierCoords
-                      ? 'Position du plombier reçue. Ajoutez NEXT_PUBLIC_GOOGLE_MAPS_API_KEY pour afficher la carte.'
-                      : 'En attente de la position du plombier (il doit rester sur la page Interventions instantanées).'}
+                      ? t('mapPlombierReceived')
+                      : t('mapWaitingPlombier')}
                   </p>
                   {requestData?.address && (
                     <a
@@ -933,7 +936,7 @@ function CommanderPageContent() {
                       rel="noopener noreferrer"
                       className="text-sm text-primary-600 hover:underline"
                     >
-                      Ouvrir mon adresse dans Google Maps
+                      {t('openInMaps')}
                     </a>
                   )}
                 </div>
@@ -950,16 +953,16 @@ function CommanderPageContent() {
                   <CheckCircle className="w-8 h-8 text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Intervention terminée</h2>
-                  <p className="text-sm text-slate-600 mt-0.5">Merci pour votre confiance.</p>
+                  <h2 className="text-lg font-bold text-slate-900">{t('interventionComplete')}</h2>
+                  <p className="text-sm text-slate-600 mt-0.5">{t('thankYou')}</p>
                 </div>
               </div>
             </div>
 
             {!requestData.clientHasReviewed && (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
-                <h3 className="font-bold text-slate-900 mb-2">Noter {requestData.plombier.name}</h3>
-                <p className="text-sm text-slate-500 mb-4">Comment s&apos;est passée l&apos;intervention ?</p>
+                <h3 className="font-bold text-slate-900 mb-2">{t('rateName', { name: requestData.plombier.name })}</h3>
+                <p className="text-sm text-slate-500 mb-4">{t('howWasIntervention')}</p>
                 <form onSubmit={handleSubmitReview} className="space-y-4">
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((n) => (
@@ -979,7 +982,7 @@ function CommanderPageContent() {
                   <textarea
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Votre avis (optionnel)"
+                    placeholder={t('yourReviewOptional')}
                     rows={3}
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
@@ -989,7 +992,7 @@ function CommanderPageContent() {
                     disabled={reviewSubmitting || reviewRating < 1}
                     className="w-full py-3 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 disabled:opacity-50"
                   >
-                    {reviewSubmitting ? 'Envoi...' : 'Envoyer mon avis'}
+                    {reviewSubmitting ? t('sending') : t('sendReview')}
                   </button>
                 </form>
               </div>
@@ -999,7 +1002,7 @@ function CommanderPageContent() {
               onClick={handleNewRequest}
               className="block text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline"
             >
-              Faire une nouvelle demande
+              {t('newRequest')}
             </button>
           </div>
         )}
@@ -1012,12 +1015,12 @@ function CommanderPageContent() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  {state === 'expired' ? 'Aucun plombier disponible' : 'Demande annulée'}
+                  {state === 'expired' ? t('noPlombierAvailableTitle') : t('requestCancelled')}
                 </h2>
                 <p className="text-sm text-slate-600 mt-0.5">
                   {state === 'expired'
-                    ? 'Aucun plombier n\'a pu accepter dans le délai. Prenez rendez-vous en nous appelant :'
-                    : 'Votre demande a été annulée.'}
+                    ? t('noPlombierInTime')
+                    : t('yourRequestCancelled')}
                 </p>
               </div>
             </div>
@@ -1034,19 +1037,19 @@ function CommanderPageContent() {
               onClick={handleNewRequest}
               className="block mt-6 text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline"
             >
-              Faire une nouvelle demande
+              {t('newRequest')}
             </button>
           </div>
         )}
 
         {state === 'error' && (
           <div className="bg-white rounded-2xl shadow-sm border border-red-200/80 p-8 text-center">
-            <p className="text-red-600 font-medium mb-6">{errorMsg || 'Une erreur est survenue.'}</p>
+            <p className="text-red-600 font-medium mb-6">{errorMsg || t('errorOccurred')}</p>
             <button
               onClick={handleNewRequest}
               className="py-3 px-6 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700"
             >
-              Réessayer
+              {t('retry')}
             </button>
           </div>
         )}

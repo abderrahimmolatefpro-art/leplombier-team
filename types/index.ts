@@ -1,5 +1,8 @@
 export type UserRole = 'admin' | 'plombier';
 
+/** Pays pour isolation multi-région (Maroc / Espagne) */
+export type Country = 'MA' | 'ES';
+
 /** Statut de validation du plombier (documents) */
 export type PlombierValidationStatus =
   | 'pending_documents'
@@ -29,6 +32,8 @@ export interface User {
   validatedAt?: Date;
   /** Ville d'intervention du plombier (filtrage demandes instantanées, style inDrive) */
   city?: string;
+  /** Pays du plombier (MA/ES) — filtrer plombiers par pays. Admins n'ont pas besoin de country. */
+  country?: Country;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +53,8 @@ export interface InstantRequest {
   plombierId?: string;
   /** Ville de l'intervention (filtrage plombiers par zone) */
   city?: string;
+  /** Pays de la demande (hérité du client ou du formulaire) */
+  country?: Country;
   createdAt: Date;
   acceptedAt?: Date;
   expiresAt: Date;
@@ -97,6 +104,8 @@ export interface Client {
   referredByClientId?: string; // ID du client PRO parrain (si ramené par un client pro)
   accessCodeHash?: string; // Hash du code d'accès espace client (SHA-256)
   accessCodeSentAt?: Date; // Date d'envoi du dernier code
+  /** Pays du client (MA/ES) — défaut MA pour rétrocompatibilité */
+  country?: Country;
   createdAt: Date;
   updatedAt: Date;
 }

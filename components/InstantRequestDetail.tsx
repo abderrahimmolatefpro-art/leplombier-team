@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { MapPin, X, Camera, ImageIcon, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 import { formatTimeAndDistance } from '@/lib/geo';
 
 interface InstantRequestDetailProps {
@@ -57,6 +59,7 @@ export default function InstantRequestDetail({
   onCounterOffer,
   onClose,
 }: InstantRequestDetailProps) {
+  const t = useTranslations('plumber.instant');
   const baseAmount = priceMad > 0 ? priceMad : 300;
   const [counterAmount, setCounterAmount] = useState(String(baseAmount));
   const [counterMessage, setCounterMessage] = useState('');
@@ -271,12 +274,12 @@ export default function InstantRequestDetail({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white h-dvh">
       <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
-        <span className="text-sm font-medium text-gray-600">Détail de la demande</span>
+        <span className="text-sm font-medium text-gray-600">{t('detailTitle')}</span>
         <button
           type="button"
           onClick={onClose}
           className="p-2 -m-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-          aria-label="Fermer"
+          aria-label={t('close')}
         >
           <X size={22} />
         </button>
@@ -294,7 +297,7 @@ export default function InstantRequestDetail({
                 rel="noopener noreferrer"
                 className="text-primary-600 hover:underline text-sm"
               >
-                Ouvrir dans Google Maps
+                {t('openInMaps')}
               </a>
             </div>
           )}
@@ -304,7 +307,7 @@ export default function InstantRequestDetail({
           <div className="flex flex-col gap-3">
             {(routeInfo || distanceKm != null) && (
               <div className="p-2.5 rounded-lg bg-primary-50 border border-primary-100 flex-shrink-0">
-                <p className="text-xs text-primary-600 font-medium">Distance jusqu&apos;au client</p>
+                <p className="text-xs text-primary-600 font-medium">{t('distanceToClient')}</p>
                 <p className="text-base font-bold text-primary-800">
                   {routeInfo
                     ? `${routeInfo.durationMin} min · ${routeInfo.distanceKm < 0.1 ? `${Math.round(routeInfo.distanceKm * 1000)} m` : `${routeInfo.distanceKm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`}`
@@ -322,7 +325,7 @@ export default function InstantRequestDetail({
                 <p className="text-xs text-gray-500">{timeAgo}</p>
               </div>
               <p className="text-xl font-bold text-gray-900 flex-shrink-0">
-                {priceMad > 0 ? `${priceMad} MAD` : '—'}
+                {priceMad > 0 ? formatCurrency(priceMad) : '—'}
               </p>
             </div>
 
@@ -333,14 +336,14 @@ export default function InstantRequestDetail({
 
             {description ? (
               <div className="flex-shrink-0">
-                <p className="text-xs font-medium text-gray-500 mb-0.5">Description</p>
+                <p className="text-xs font-medium text-gray-500 mb-0.5">{t('description')}</p>
                 <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
               </div>
             ) : null}
 
             {photos.length > 0 && (
               <div className="flex-shrink-0">
-                <p className="text-xs font-medium text-gray-500 mb-1">Photos du client</p>
+                <p className="text-xs font-medium text-gray-500 mb-1">{t('clientPhotos')}</p>
                 <div className="flex gap-2 flex-wrap">
                   {photos.map((url, i) => (
                     <button
@@ -443,18 +446,18 @@ export default function InstantRequestDetail({
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-primary-300 bg-primary-50/50 text-primary-700 text-sm font-medium hover:bg-primary-50 disabled:opacity-50"
               >
                 <Camera size={18} />
-                {requestingPhotos ? 'Envoi...' : 'Demander des photos au client'}
+                {requestingPhotos ? t('sending') : t('requestPhotos')}
               </button>
             )}
             {photoRequested && photos.length === 0 && (
               <p className="text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg flex items-center gap-2">
                 <ImageIcon size={16} />
-                Photos demandées – en attente du client
+                {t('photosRequested')}
               </p>
             )}
 
             {hasOffered ? (
-              <p className="text-green-600 font-medium text-sm py-2">Offre envoyée</p>
+              <p className="text-green-600 font-medium text-sm py-2">{t('offerSent')}</p>
             ) : (
               <div className="flex flex-col gap-3 flex-shrink-0">
                 {priceMad > 0 && (
@@ -464,12 +467,12 @@ export default function InstantRequestDetail({
                     disabled={sendingOffer}
                     className="w-full py-3.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 text-sm"
                   >
-                    {sendingOffer ? 'Envoi...' : `Accepter pour ${priceMad} MAD`}
+                    {sendingOffer ? t('sending') : t('acceptFor', { amount: formatCurrency(priceMad) })}
                   </button>
                 )}
 
                 <div>
-                  <p className="text-xs font-medium text-gray-600 mb-2">Proposez votre prix</p>
+                  <p className="text-xs font-medium text-gray-600 mb-2">{t('proposeYourPrice')}</p>
                   <div className="flex gap-2 overflow-x-auto pb-1 -mx-1">
                     {quickAmounts.map((amt) => (
                       <button
@@ -479,7 +482,7 @@ export default function InstantRequestDetail({
                         disabled={sendingOffer}
                         className="flex-shrink-0 py-2 px-3.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
                       >
-                        {amt} MAD
+                        {formatCurrency(amt)}
                       </button>
                     ))}
                   </div>
@@ -489,7 +492,7 @@ export default function InstantRequestDetail({
                       onClick={() => setShowCustomOffer(true)}
                       className="mt-2 text-sm text-primary-600 hover:underline"
                     >
-                      Proposer un autre montant
+                      {t('proposeOtherAmount')}
                     </button>
                   ) : (
                     <form onSubmit={handleCounterSubmit} className="mt-2 flex flex-col gap-2">
@@ -500,14 +503,14 @@ export default function InstantRequestDetail({
                           value={counterAmount}
                           onChange={(e) => setCounterAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
                           className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                          placeholder="Ex: 350"
+                          placeholder={t('amountPlaceholder')}
                         />
                         <button
                           type="submit"
                           disabled={sendingOffer}
                           className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50"
                         >
-                          Envoyer
+                          {t('send')}
                         </button>
                       </div>
                       <input
@@ -515,7 +518,7 @@ export default function InstantRequestDetail({
                         value={counterMessage}
                         onChange={(e) => setCounterMessage(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                        placeholder="Message (optionnel)"
+                        placeholder={t('messageOptional')}
                       />
                     </form>
                   )}

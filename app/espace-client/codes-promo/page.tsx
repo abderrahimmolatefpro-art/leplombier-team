@@ -3,11 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useClientAuth } from '@/hooks/useClientAuth';
+import { formatCurrency } from '@/lib/utils';
 import { Tag } from 'lucide-react';
 import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
 
 export default function ClientCodesPromoPage() {
+  const t = useTranslations('client.codesPromo');
   const { token, loading: authLoading } = useClientAuth();
   const router = useRouter();
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
@@ -38,14 +41,14 @@ export default function ClientCodesPromoPage() {
   }
 
   const formatDiscount = (p: any) => {
-    if (p.discountType === 'percent') return `${p.discountValue}% de réduction`;
-    return `${p.discountValue} MAD de réduction`;
+    if (p.discountType === 'percent') return t('discountPercent', { value: p.discountValue });
+    return t('discountFixed', { value: formatCurrency(p.discountValue) });
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-gray-900 mb-6">Mes codes promo</h1>
+        <h1 className="text-lg font-semibold text-gray-900 mb-6">{t('title')}</h1>
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
@@ -55,7 +58,7 @@ export default function ClientCodesPromoPage() {
         ) : promoCodes.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
             <Tag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Aucun code promo actif pour le moment</p>
+            <p className="text-gray-500">{t('noCodes')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -73,7 +76,7 @@ export default function ClientCodesPromoPage() {
                     <p className="text-sm text-gray-600 mt-1">{formatDiscount(p)}</p>
                     {p.expiresAt && (
                       <p className="text-xs text-gray-500 mt-2">
-                        Valable jusqu&apos;au {new Date(p.expiresAt).toLocaleDateString('fr-FR')}
+                        {t('validUntil', { date: new Date(p.expiresAt).toLocaleDateString() })}
                       </p>
                     )}
                   </div>

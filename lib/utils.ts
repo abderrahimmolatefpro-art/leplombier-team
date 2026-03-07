@@ -1,22 +1,24 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { Country } from '@/types';
+import { getActiveCountry, COUNTRY_CONFIG } from '@/lib/companyConfig';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: Date | string): string {
+export function formatDate(date: Date | string, locale?: string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(locale || 'fr-FR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   }).format(d);
 }
 
-export function formatDateTime(date: Date | string): string {
+export function formatDateTime(date: Date | string, locale?: string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(locale || 'fr-FR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -25,10 +27,13 @@ export function formatDateTime(date: Date | string): string {
   }).format(d);
 }
 
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+/** Format montant selon le pays (MA → MAD, ES → EUR). Par défaut : getActiveCountry(). */
+export function formatCurrency(amount: number, country?: Country): string {
+  const c = country ?? getActiveCountry();
+  const { currency, locale } = COUNTRY_CONFIG[c];
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'MAD',
+    currency,
   }).format(amount);
 }
 

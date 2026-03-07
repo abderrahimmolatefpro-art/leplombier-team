@@ -3,10 +3,12 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { User, FileText, BadgeCheck } from 'lucide-react';
 
 export default function PlombierProfilPage() {
+  const t = useTranslations('plumber.profil');
   const { plombier, loading } = usePlombierAuth();
   const router = useRouter();
 
@@ -33,15 +35,15 @@ export default function PlombierProfilPage() {
 
   const statusLabel =
     plombier.validationStatus === 'validated'
-      ? 'Compte validé'
+      ? t('validated')
       : plombier.validationStatus === 'documents_submitted'
-      ? 'Documents en attente'
-      : 'En attente';
+      ? t('documentsPending')
+      : t('pending');
 
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-gray-900 mb-6">Mon profil</h1>
+        <h1 className="text-lg font-semibold text-gray-900 mb-6">{t('title')}</h1>
 
         <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
           <div className="flex items-center gap-4">
@@ -60,7 +62,7 @@ export default function PlombierProfilPage() {
                 {plombier.certified ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-primary-100 text-primary-700">
                     <BadgeCheck size={14} />
-                    Certifié
+                    {t('certified')}
                   </span>
                 ) : (
                   <span className="text-xs text-gray-500">{statusLabel}</span>
@@ -76,8 +78,8 @@ export default function PlombierProfilPage() {
         >
           <FileText className="w-6 h-6 text-primary-600" />
           <div className="flex-1">
-            <p className="font-medium text-gray-900">Documents de validation</p>
-            <p className="text-sm text-gray-500">Carte d&apos;identité, selfie</p>
+            <p className="font-medium text-gray-900">{t('documentsValidation')}</p>
+            <p className="text-sm text-gray-500">{t('documentsDesc')}</p>
           </div>
           <span className="text-gray-400">→</span>
         </Link>

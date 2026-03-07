@@ -16,10 +16,11 @@ function extractCity(result: { address_components?: Array<{ types: string[]; lon
   return null;
 }
 
-/** Geocode une adresse et retourne lat, lng, city */
-export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; city: string | null } | null> {
+/** Geocode une adresse et retourne lat, lng, city. region: ma ou es selon le pays. */
+export async function geocodeAddress(address: string, country: 'MA' | 'ES' = 'MA'): Promise<{ lat: number; lng: number; city: string | null } | null> {
   if (!GOOGLE_MAPS_API_KEY) return null;
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=ma&key=${GOOGLE_MAPS_API_KEY}`;
+  const region = country === 'ES' ? 'es' : 'ma';
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=${region}&key=${GOOGLE_MAPS_API_KEY}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.status !== 'OK' || !data.results?.[0]) return null;

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -52,6 +53,7 @@ interface DateRange {
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -78,7 +80,7 @@ export default function DashboardPage() {
     if (user) {
       loadDashboardData();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   // Détecter la taille de l'écran pour le pie chart
   useEffect(() => {
@@ -107,10 +109,17 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      // Charger tous les projets
+      // Charger les clients du pays
+      const clientsQuery = query(collection(db, 'clients'), where('country', 'in', countryFilter));
+      const clientsSnapshot = await getDocs(clientsQuery);
+      const clientIds = new Set(clientsSnapshot.docs.map((d) => d.id));
+
+      // Charger les projets (filtrés par clientIds)
       const projectsQuery = query(collection(db, 'projects'));
       const projectsSnapshot = await getDocs(projectsQuery);
-      const projectsData = projectsSnapshot.docs.map((doc) => ({
+      const projectsData = projectsSnapshot.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((doc) => ({
         id: doc.id,
         ...doc.data(),
         startDate: doc.data().startDate?.toDate() || new Date(),
@@ -123,9 +132,6 @@ export default function DashboardPage() {
       })) as Project[];
       setProjects(projectsData);
 
-      // Charger tous les clients
-      const clientsQuery = query(collection(db, 'clients'));
-      const clientsSnapshot = await getDocs(clientsQuery);
       const clientsData = clientsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -134,10 +140,12 @@ export default function DashboardPage() {
       })) as Client[];
       setClients(clientsData);
 
-      // Charger tous les documents
+      // Charger les documents (filtrés par clientIds)
       const documentsQuery = query(collection(db, 'documents'));
       const documentsSnapshot = await getDocs(documentsQuery);
-      const documentsData = documentsSnapshot.docs.map((doc) => ({
+      const documentsData = documentsSnapshot.docs
+        .filter((d) => clientIds.has(d.data().clientId))
+        .map((doc) => ({
         id: doc.id,
         ...doc.data(),
         date: doc.data().date?.toDate() || new Date(),
@@ -147,11 +155,11 @@ export default function DashboardPage() {
       })) as Document[];
       setDocuments(documentsData);
 
-      // Charger les revenus manuels
+      // Charger les revenus manuels (filtrés par clientIds)
       const revenuesQuery = query(collection(db, 'manualRevenues'));
       const revenuesSnapshot = await getDocs(revenuesQuery);
       const revenuesData = revenuesSnapshot.docs
-        .filter((doc) => !doc.data().deleted)
+        .filter((doc) => !doc.data().deleted && clientIds.has(doc.data().clientId))
         .map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -162,8 +170,8 @@ export default function DashboardPage() {
         })) as ManualRevenue[];
       setManualRevenues(revenuesData);
 
-      // Charger les commandes instantanées
-      const instantQuery = query(collection(db, 'instantRequests'));
+      // Charger les commandes instantanées (filtrées par pays)
+      const instantQuery = query(collection(db, 'instantRequests'), where('country', 'in', countryFilter));
       const instantSnapshot = await getDocs(instantQuery);
       const instantData = instantSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -175,8 +183,8 @@ export default function DashboardPage() {
       })) as InstantRequest[];
       setInstantRequests(instantData);
 
-      // Charger les plombiers
-      const plombiersQuery = query(collection(db, 'users'), where('role', '==', 'plombier'));
+      // Charger les plombiers (filtrés par pays)
+      const plombiersQuery = query(collection(db, 'users'), where('role', '==', 'plombier'), where('country', 'in', countryFilter));
       const plombiersSnapshot = await getDocs(plombiersQuery);
       const plombiersData = plombiersSnapshot.docs.map((doc) => ({
         id: doc.id,

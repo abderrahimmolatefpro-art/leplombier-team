@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { usePlombierAuth } from '@/hooks/usePlombierAuth';
 import { Package, Plus, X } from 'lucide-react';
 import PlombierCardSkeleton from '@/components/PlombierCardSkeleton';
@@ -41,6 +42,8 @@ interface InterventionOption {
 }
 
 export default function PlombierDemandesPiecesPage() {
+  const t = useTranslations('plumber.demandesPieces');
+  const tCommon = useTranslations('common');
   const { plombier, loading: authLoading } = usePlombierAuth();
   const router = useRouter();
   const [requests, setRequests] = useState<PartRequest[]>([]);
@@ -199,11 +202,11 @@ export default function PlombierDemandesPiecesPage() {
     e.preventDefault();
     if (!plombier?.id) return;
     if (!formData.interventionType || !formData.interventionId || !formData.clientId) {
-      alert('Veuillez sélectionner une intervention.');
+      alert(t('selectIntervention'));
       return;
     }
     if (!formData.description.trim()) {
-      alert('Veuillez décrire les pièces demandées.');
+      alert(t('describeParts'));
       return;
     }
 
@@ -248,7 +251,7 @@ export default function PlombierDemandesPiecesPage() {
       setRequests(requestsData);
     } catch (err) {
       console.error(err);
-      alert('Erreur lors de la création de la demande');
+      alert(t('errorCreate'));
     } finally {
       setSubmitting(false);
       setLoading(false);
@@ -267,10 +270,10 @@ export default function PlombierDemandesPiecesPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">Demandes de pièces</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t('title')}</h1>
           <button onClick={openModal} className="btn btn-primary flex items-center gap-2 text-sm py-2">
             <Plus size={18} />
-            Nouvelle demande
+            {t('newRequest')}
           </button>
         </div>
       </header>
@@ -285,9 +288,9 @@ export default function PlombierDemandesPiecesPage() {
         ) : requests.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">Aucune demande de pièces</p>
+            <p className="text-gray-500 mb-4">{t('noRequests')}</p>
             <button onClick={openModal} className="btn btn-primary">
-              Créer une demande
+              {t('createRequest')}
             </button>
           </div>
         ) : (
@@ -304,7 +307,7 @@ export default function PlombierDemandesPiecesPage() {
                       {clients[r.clientId] || '—'} • {formatDate(r.createdAt)}
                     </p>
                     {r.quantity && (
-                      <p className="text-sm text-gray-600 mt-0.5">Quantité: {r.quantity}</p>
+                      <p className="text-sm text-gray-600 mt-0.5">{t('quantity')}: {r.quantity}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -317,7 +320,7 @@ export default function PlombierDemandesPiecesPage() {
                           : 'bg-gray-100 text-gray-600'
                       }`}
                     >
-                      {URGENCY_LABELS[r.urgency]}
+                      {r.urgency === 'normal' ? t('normal') : r.urgency === 'urgent' ? t('urgent') : t('tresUrgent')}
                     </span>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -330,7 +333,7 @@ export default function PlombierDemandesPiecesPage() {
                           : 'bg-red-100 text-red-700'
                       }`}
                     >
-                      {STATUS_LABELS[r.status] || r.status}
+                      {r.status === 'en_attente' ? t('en_attente') : r.status === 'envoye' ? t('envoye') : r.status === 'recupere' || r.status === 'facture' ? t('recupere') : r.status === 'rejete' ? t('rejete') : r.status}
                     </span>
                   </div>
                 </div>
@@ -344,14 +347,14 @@ export default function PlombierDemandesPiecesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Nouvelle demande de pièces</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('modalTitle')}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Intervention *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('intervention')} *</label>
                 <select
                   required
                   value={
@@ -371,7 +374,7 @@ export default function PlombierDemandesPiecesPage() {
                   }}
                   className="input w-full"
                 >
-                  <option value="">Sélectionner une intervention</option>
+                  <option value="">{t('selectInterventionOption')}</option>
                   {interventions.map((opt) => (
                     <option key={`${opt.type}-${opt.id}`} value={`${opt.type}:${opt.id}`}>
                       {opt.label}
@@ -380,49 +383,49 @@ export default function PlombierDemandesPiecesPage() {
                 </select>
                 {interventions.length === 0 && (
                   <p className="text-xs text-amber-600 mt-1">
-                    Aucun projet ou dépannage. Créez d&apos;abord une intervention.
+                    {t('noInterventions')}
                   </p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pièces demandées *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('partsRequested')} *</label>
                 <textarea
                   required
                   value={formData.description}
                   onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
                   className="input w-full"
                   rows={3}
-                  placeholder="Décrivez les pièces nécessaires (ex: 2 robinets mélangeurs, 1 joint...)"
+                  placeholder={t('partsPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Quantité (optionnel)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('quantityOptional')}</label>
                 <input
                   type="text"
                   value={formData.quantity}
                   onChange={(e) => setFormData((p) => ({ ...p, quantity: e.target.value }))}
                   className="input w-full"
-                  placeholder="Ex: 2, 3 mètres..."
+                  placeholder={t('quantityPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Urgence</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('urgency')}</label>
                 <select
                   value={formData.urgency}
                   onChange={(e) => setFormData((p) => ({ ...p, urgency: e.target.value as PartRequestUrgency }))}
                   className="input w-full"
                 >
-                  <option value="normal">Normal</option>
-                  <option value="urgent">Urgent</option>
-                  <option value="tres_urgent">Très urgent</option>
+                  <option value="normal">{t('normal')}</option>
+                  <option value="urgent">{t('urgent')}</option>
+                  <option value="tres_urgent">{t('tresUrgent')}</option>
                 </select>
               </div>
               <div className="flex gap-2 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary flex-1">
-                  Annuler
+                  {tCommon('cancel')}
                 </button>
                 <button type="submit" disabled={submitting || interventions.length === 0} className="btn btn-primary flex-1">
-                  {submitting ? 'Envoi...' : 'Envoyer la demande'}
+                  {submitting ? t('sending') : t('sendRequest')}
                 </button>
               </div>
             </form>

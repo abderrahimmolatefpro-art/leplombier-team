@@ -3,10 +3,12 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { FileText } from 'lucide-react';
 
 export default function ClientProfilPage() {
+  const t = useTranslations('client.profil');
   const { client, loading } = useClientAuth();
   const router = useRouter();
 
@@ -33,7 +35,7 @@ export default function ClientProfilPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-gray-900 mb-6">Mon profil</h1>
+        <h1 className="text-lg font-semibold text-gray-900 mb-6">{t('title')}</h1>
 
         <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
           <div className="flex items-center gap-4">
@@ -58,8 +60,8 @@ export default function ClientProfilPage() {
         >
           <FileText className="w-6 h-6 text-primary-600" />
           <div className="flex-1">
-            <p className="font-medium text-gray-900">Mes documents</p>
-            <p className="text-sm text-gray-500">Factures, devis, bons de commande</p>
+            <p className="font-medium text-gray-900">{t('myDocuments')}</p>
+            <p className="text-sm text-gray-500">{t('documentsDesc')}</p>
           </div>
           <span className="text-gray-400">→</span>
         </Link>

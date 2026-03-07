@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     const address = request.nextUrl.searchParams.get('address');
     const lat = request.nextUrl.searchParams.get('lat');
     const lng = request.nextUrl.searchParams.get('lng');
+    const country = request.nextUrl.searchParams.get('country');
+    const region = country === 'ES' ? 'es' : 'ma';
 
     // Reverse geocode: lat/lng → address
     if (lat != null && lng != null) {
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
       if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
         return NextResponse.json({ error: 'lat et lng doivent être des nombres' }, { status: 400 });
       }
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latNum},${lngNum}&region=ma&key=${GOOGLE_MAPS_API_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latNum},${lngNum}&region=${region}&key=${GOOGLE_MAPS_API_KEY}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.status !== 'OK' || !data.results?.[0]) {
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Paramètre address ou lat+lng requis' }, { status: 400 });
     }
 
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=${region}&key=${GOOGLE_MAPS_API_KEY}`;
     const res = await fetch(url);
     const data = await res.json();
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry } from '@/contexts/CountryContext';
 import Layout from '@/components/Layout';
 import { collection, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -58,6 +59,7 @@ const FAMILY_SITUATION_LABELS: Record<string, string> = {
 
 export default function RecruitmentsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { countryFilter } = useCountry();
   const router = useRouter();
   const [recruitments, setRecruitments] = useState<Recruitment[]>([]);
   const [pendingValidationPlombiers, setPendingValidationPlombiers] = useState<User[]>([]);
@@ -94,7 +96,7 @@ export default function RecruitmentsPage() {
       };
       init();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, countryFilter]);
 
   const loadData = async () => {
     await Promise.all([loadRecruitments(), loadPendingValidationPlombiers()]);
@@ -103,7 +105,11 @@ export default function RecruitmentsPage() {
   const loadPendingValidationPlombiers = async () => {
     try {
       const snap = await getDocs(
-        query(collection(db, 'users'), where('role', '==', 'plombier'))
+        query(
+          collection(db, 'users'),
+          where('role', '==', 'plombier'),
+          where('country', 'in', countryFilter)
+        )
       );
       const list = snap.docs
         .map((d) => {
@@ -129,12 +135,17 @@ export default function RecruitmentsPage() {
       try {
         const recruitmentsQuery = query(
           collection(db, 'recruitments'),
+          where('country', 'in', countryFilter),
           orderBy('createdAt', 'desc')
         );
         snapshot = await getDocs(recruitmentsQuery);
       } catch (orderByError: any) {
         // Fallback: try without orderBy (in case index is missing)
-        snapshot = await getDocs(collection(db, 'recruitments'));
+        const fallbackQuery = query(
+          collection(db, 'recruitments'),
+          where('country', 'in', countryFilter)
+        );
+        snapshot = await getDocs(fallbackQuery);
       }
       const recruitmentsData = snapshot.docs.map((doc) => {
         const data = doc.data();

@@ -4,12 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3002",
+    "dev:clean": "rm -rf .next node_modules/.cache && next dev -p 3002",
+    "dev:webpack": "next dev -p 3002 --webpack",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3002",
     "lint": "next lint",
     "mobile:plombier": "cd mobile-plombier && npx cap sync",
     "mobile:client": "cd mobile-client && npx cap sync",
-    "mobile:icon": "node scripts/generate-app-icon.js"
+    "mobile:icon": "node scripts/generate-app-icon.js",
+    "migrate:country": "node scripts/migrate-country.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -25,6 +28,7 @@
     "lucide-react": "^0.303.0",
     "mailparser": "^3.9.3",
     "next": "^14.0.4",
+    "next-intl": "^4.8.3",
     "nodemailer": "^7.0.13",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

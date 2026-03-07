@@ -104,6 +104,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Déterminer le pays (host ou body)
+    const country = (body.country === 'ES' ? 'ES' : null) || (request.headers.get('host')?.includes('leplombier.es') ? 'ES' : 'MA');
+
     // Create recruitment document
     const recruitmentData: Record<string, unknown> = {
       firstName: firstName.trim(),
@@ -113,6 +116,7 @@ export async function POST(request: NextRequest) {
       zones: zones,
       address: address.trim(),
       status: 'pending',
+      country,
       createdAt: admin.firestore.Timestamp.now(),
       updatedAt: admin.firestore.Timestamp.now(),
     };

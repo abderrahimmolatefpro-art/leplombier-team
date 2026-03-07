@@ -6,6 +6,8 @@ import { getAuth } from 'firebase-admin/auth';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { notifyClient } from '@/lib/notify';
+import { formatCurrency } from '@/lib/companyConfig';
+import { getNotifMessage } from '@/lib/notificationMessages';
 
 const DEBUG_LOG = join(process.cwd(), '.cursor', 'debug.log');
 function agentLog(p: { location: string; message: string; data?: Record<string, unknown>; hypothesisId?: string }) {
@@ -77,6 +79,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cette demande n\'est plus disponible' }, { status: 400 });
     }
 
+    // Vérifier que le plombier a le même pays que la demande
+    const requestCountry = requestData.country || 'MA';
+    const plombierCountry = (userDoc.data()?.country as string) || 'MA';
+    if (requestCountry !== plombierCountry) {
+      return NextResponse.json({ error: 'Cette demande n\'est pas disponible dans votre zone' }, { status: 403 });
+    }
+
     const expiresAt = requestData.expiresAt?.toDate?.();
     if (expiresAt && expiresAt <= new Date()) {
       return NextResponse.json({ error: 'La demande a expiré' }, { status: 400 });
@@ -115,13 +124,15 @@ export async function POST(request: NextRequest) {
     agentLog({ location: 'instant-offer/route.ts:after_add', message: 'Offer created', data: { id: docRef.id }, hypothesisId: 'H4' });
     // #endregion
 
-    const plombierName = (userDoc.data()?.name as string) || 'Un plombier';
+    const plombierName = (userDoc.data()?.name as string) || (requestCountry === 'ES' ? 'Un fontanero' : 'Un plombier');
     const clientId = requestData.clientId as string;
+    const amountStr = formatCurrency(amount, requestCountry as 'MA' | 'ES');
+    const notifBody = getNotifMessage('newOfferBody', requestCountry as 'MA' | 'ES', plombierName, amountStr);
     await notifyClient(
       clientId,
-      'Nouvelle offre',
-      `${plombierName} propose ${amount} MAD`,
-      { name: 'nouvelle_offre', params: [plombierName, String(amount)] }
+      getNotifMessage('newOfferTitle', requestCountry as 'MA' | 'ES'),
+      notifBody,
+      { name: 'nouvelle_offre', params: [plombierName, amountStr] }
     );
 
     return NextResponse.json({

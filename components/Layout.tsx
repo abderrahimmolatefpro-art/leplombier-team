@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useCountry, type CountryFilter } from '@/contexts/CountryContext';
 import { 
   Home, 
   Users, 
@@ -20,7 +21,8 @@ import {
   X as XIcon,
   ShoppingCart,
   Package,
-  Wrench
+  Wrench,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
@@ -31,17 +33,19 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-export default function Layout({ children }: LayoutProps) {
+function LayoutInner({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newClientNotification, setNewClientNotification] = useState<Client | null>(null);
   const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, loading: authLoading } = useAuth();
+  const { selectedCountry, setSelectedCountry, countryFilter } = useCountry();
 
   const menuItems = [
     { href: '/dashboard', label: 'Tableau de bord', icon: Home },
     { href: '/clients', label: 'Clients', icon: Users },
+    { href: '/partenaires', label: 'Partenaires', icon: Briefcase },
     { href: '/projets', label: 'Projets', icon: FolderKanban },
     { href: '/commandes', label: 'Commandes', icon: ShoppingCart },
     { href: '/planning', label: 'Planning', icon: Calendar },
@@ -72,6 +76,7 @@ export default function Layout({ children }: LayoutProps) {
     if (authLoading || !user) return;
 
     // Écouter les 10 derniers clients créés (pour filtrer côté client)
+    // Note: le filtre country sera appliqué côté composant via useCountry
     const clientsQuery = query(
       collection(db, 'clients'),
       orderBy('createdAt', 'desc'),
@@ -85,6 +90,10 @@ export default function Layout({ children }: LayoutProps) {
           
           // Filtrer uniquement les clients créés via formulaire
           if (clientData.source !== 'form') return;
+
+          // Filtrer par pays sélectionné
+          const clientCountry = clientData.country || 'MA';
+          if (!countryFilter.includes(clientCountry)) return;
 
           const client = {
             id: change.doc.id,
@@ -108,7 +117,7 @@ export default function Layout({ children }: LayoutProps) {
     });
 
     return () => unsubscribe();
-  }, [user, authLoading, dismissedNotifications]);
+  }, [user, authLoading, dismissedNotifications, countryFilter]);
 
   const handleDismissNotification = () => {
     if (newClientNotification) {
@@ -197,6 +206,19 @@ export default function Layout({ children }: LayoutProps) {
           {/* Bloc utilisateur - zone fixe en bas, hauteur réservée pour éviter le décalage au chargement */}
           <div className="flex-shrink-0 p-4 pt-3 border-t border-gray-100 bg-gray-50/50">
             <div className="min-h-[88px]">
+              {/* Sélecteur pays MA / ES / Tous */}
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Pays</label>
+                <select
+                  value={selectedCountry}
+                  onChange={(e) => setSelectedCountry(e.target.value as CountryFilter)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="MA">Maroc</option>
+                  <option value="ES">Espagne</option>
+                  <option value="ALL">Tous</option>
+                </select>
+              </div>
               {authLoading ? (
                 <div className="space-y-2 animate-pulse">
                   <div className="h-4 bg-gray-200 rounded w-3/4" />
@@ -275,4 +297,8 @@ export default function Layout({ children }: LayoutProps) {
       </div>
     </div>
   );
+}
+
+export default function Layout({ children }: LayoutProps) {
+  return <LayoutInner>{children}</LayoutInner>;
 }
