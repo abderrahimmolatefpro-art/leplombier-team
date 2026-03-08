@@ -29,6 +29,12 @@ import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 
 import { db } from '@/lib/firebase';
 import { Client } from '@/types';
 
+/** Domaines dashboard par pays */
+const DASH_DOMAINS: Record<string, string> = {
+  MA: 'dash.leplombier.ma',
+  ES: 'dash.leplombier.es',
+};
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -61,6 +67,16 @@ function LayoutInner({ children }: LayoutProps) {
     await logout();
     router.push('/login');
   };
+
+  // Synchroniser le pays avec le domaine au chargement
+  useEffect(() => {
+    const host = window.location.hostname;
+    if (host === DASH_DOMAINS.ES && selectedCountry !== 'ES') {
+      setSelectedCountry('ES');
+    } else if (host === DASH_DOMAINS.MA && selectedCountry !== 'MA') {
+      setSelectedCountry('MA');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Rediriger les plombiers vers leur espace (éviter accès admin)
   useEffect(() => {
@@ -211,7 +227,19 @@ function LayoutInner({ children }: LayoutProps) {
                 <label className="block text-xs font-medium text-gray-500 mb-1">Pays</label>
                 <select
                   value={selectedCountry}
-                  onChange={(e) => setSelectedCountry(e.target.value as CountryFilter)}
+                  onChange={(e) => {
+                    const val = e.target.value as CountryFilter;
+                    setSelectedCountry(val);
+                    // Rediriger vers le bon domaine en production
+                    const host = window.location.hostname;
+                    const isProduction = host.includes('leplombier.');
+                    if (isProduction && val !== 'ALL') {
+                      const targetDomain = DASH_DOMAINS[val];
+                      if (targetDomain && host !== targetDomain) {
+                        window.location.href = `${window.location.protocol}//${targetDomain}${window.location.pathname}`;
+                      }
+                    }
+                  }}
                   className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="MA">Maroc</option>
