@@ -24,13 +24,13 @@ export async function POST(request: NextRequest) {
       const p = (d.data().phone || '').toString().trim();
       return normalizePhoneNumber(p, country) === normalizedInput;
     });
-    if (!clientDoc && country === 'MA') {
+    if (!clientDoc) {
       snapshot = await db.collection('clients').get();
       clientDoc = snapshot.docs.find((d) => {
         const data = d.data();
-        if (data.country && data.country !== 'MA') return false;
+        if (data.country && data.country !== country) return false;
         const p = (data.phone || '').toString().trim();
-        return normalizePhoneNumber(p, 'MA') === normalizedInput;
+        return normalizePhoneNumber(p, country) === normalizedInput;
       });
     }
 

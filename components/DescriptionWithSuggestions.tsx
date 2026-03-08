@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { SERVICE_DETAILS, QUICK_SERVICES } from '@/lib/services';
+import { SERVICE_DETAILS, QUICK_SERVICES, formatServicePrice } from '@/lib/services';
 import type { ServiceDetail } from '@/lib/services';
+import { useCountry } from '@/contexts/CountryContext';
+import { COUNTRY_CONFIG } from '@/lib/companyConfig';
 
 interface DescriptionWithSuggestionsProps {
   value: string;
@@ -25,6 +27,8 @@ export default function DescriptionWithSuggestions({
   minRows = 4,
   label = 'Description du problème',
 }: DescriptionWithSuggestionsProps) {
+  const { selectedCountry } = useCountry();
+  const currency = COUNTRY_CONFIG[selectedCountry === 'ALL' ? 'MA' : selectedCountry].currency;
   const [focused, setFocused] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -122,9 +126,9 @@ export default function DescriptionWithSuggestions({
               }}
             >
               <span className="font-medium">{svc.label}</span>
-              {svc.priceLabel && (
+              {svc.priceMin && (
                 <span className="ml-2 text-xs text-slate-500">
-                  {svc.priceType === 'fixe' ? svc.priceLabel : `≥${svc.priceLabel}`}
+                  {svc.priceType === 'fixe' ? formatServicePrice(svc, currency) : `≥${formatServicePrice(svc, currency)}`}
                 </span>
               )}
             </li>

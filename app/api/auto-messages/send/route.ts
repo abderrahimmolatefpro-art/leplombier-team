@@ -71,10 +71,11 @@ function substituteVariables(
   project?: Project | null,
   revenue?: ManualRevenue | null
 ): string {
+  const currency = client.country === 'ES' ? 'EUR' : 'MAD';
   return text
     .replace(/\{\{clientName\}\}/g, client.name || 'Client')
     .replace(/\{\{projectTitle\}\}/g, project?.title || 'Intervention')
-    .replace(/\{\{amount\}\}/g, project?.amount ? `${project.amount} MAD` : revenue?.amount ? `${revenue.amount} MAD` : '');
+    .replace(/\{\{amount\}\}/g, project?.amount ? `${project.amount} ${currency}` : revenue?.amount ? `${revenue.amount} ${currency}` : '');
 }
 
 export async function POST(request: NextRequest) {
@@ -212,10 +213,10 @@ export async function POST(request: NextRequest) {
       failed: totalFailed,
       details,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error sending messages:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Erreur lors de l\'envoi des messages' },
+      { success: false, error: error instanceof Error ? error.message : 'Erreur lors de l\'envoi des messages' },
       { status: 500 }
     );
   }

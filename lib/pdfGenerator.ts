@@ -106,11 +106,11 @@ export function generatePDFFromData(
       yPos += 6;
     }
     if (client.phone) {
-      pdf.text(`Tél: ${client.phone}`, margin + 5, yPos);
+      pdf.text(`${labels.tel}: ${client.phone}`, margin + 5, yPos);
       yPos += 6;
     }
     if (client.email) {
-      pdf.text(`Email: ${client.email}`, margin + 5, yPos);
+      pdf.text(`${labels.email}: ${client.email}`, margin + 5, yPos);
       yPos += 6;
     }
   }
@@ -253,8 +253,12 @@ export function generatePDFFromData(
   yPos += 4;
   
   let footerText = '';
-  if (companyInfo.rc) footerText += `RC: ${companyInfo.rc} `;
-  if (companyInfo.patente) footerText += `Patente: ${companyInfo.patente}`;
+  if (country === 'ES') {
+    if (companyInfo.cif) footerText += `CIF: ${companyInfo.cif}`;
+  } else {
+    if (companyInfo.rc) footerText += `RC: ${companyInfo.rc} `;
+    if (companyInfo.patente) footerText += `Patente: ${companyInfo.patente}`;
+  }
   if (footerText) {
     pdf.text(footerText.trim(), (pageWidth - pdf.getTextWidth(footerText.trim())) / 2, yPos);
     yPos += 4;

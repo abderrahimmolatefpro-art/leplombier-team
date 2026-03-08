@@ -10,6 +10,8 @@ export interface CompanyInfo {
   rc?: string;
   ice?: string;
   patente?: string;
+  /** Espagne : CIF (Código de Identificación Fiscal) */
+  cif?: string;
   logo?: string;
   stamp?: {
     name: string;
@@ -70,19 +72,17 @@ export const companyInfoByCountry: Record<Country, CompanyInfo> = {
     },
   },
   ES: {
-    name: 'GROUPE OGINCE',
-    address: 'Rue Essanaoubre - Immeuble 2 - 4ème Etage - Appt N°12 - Casablanca',
-    phone: '+212 706 404 147',
+    name: 'GROUPE OGINCE ESPAÑA',
+    address: 'Calle Ejemplo, 1 - 28001 Madrid',
+    phone: '+34 600 000 000',
     email: 'contact@leplombier.es',
     website: 'www.leplombier.es',
-    rc: '681785',
-    ice: '003755962000004',
-    patente: '34214522',
+    cif: 'B00000000',
     logo: '/logo.png',
     stamp: {
-      name: 'GROUPE OGINCE',
-      address: '2, Rue Essanaouber N°12',
-      city: '4ème Etage - Casablanca',
+      name: 'GROUPE OGINCE ESPAÑA',
+      address: 'Calle Ejemplo, 1',
+      city: 'Madrid',
       image: '/stamp.png',
     },
   },

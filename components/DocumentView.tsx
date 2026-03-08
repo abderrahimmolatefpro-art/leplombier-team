@@ -1,10 +1,10 @@
 'use client';
 
-import { Document, Client, Project } from '@/types';
+import { Document, Client, Project, Country } from '@/types';
 import { formatDate, formatCurrency, formatNumberFR } from '@/lib/utils';
 import { useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { CompanyInfo } from '@/lib/companyConfig';
+import { CompanyInfo, COUNTRY_CONFIG } from '@/lib/companyConfig';
 import { Download, Printer } from 'lucide-react';
 import { generatePDFFromHTML } from '@/lib/pdfGenerator';
 
@@ -13,10 +13,13 @@ interface DocumentViewProps {
   client: Client | null;
   project: Project | null;
   companyInfo: CompanyInfo;
+  country?: Country;
 }
 
-export default function DocumentView({ document, client, project, companyInfo }: DocumentViewProps) {
+export default function DocumentView({ document, client, project, companyInfo, country = 'MA' }: DocumentViewProps) {
   const componentRef = useRef<HTMLDivElement>(null);
+  const { currency } = COUNTRY_CONFIG[country];
+  const isES = country === 'ES';
 
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
@@ -45,15 +48,19 @@ export default function DocumentView({ document, client, project, companyInfo }:
   };
 
   const getDocumentTitle = () => {
+    if (isES) {
+      switch (document.type) {
+        case 'facture': return 'FACTURA';
+        case 'devis': return 'PRESUPUESTO';
+        case 'bon_commande': return 'PEDIDO';
+        default: return 'DOCUMENTO';
+      }
+    }
     switch (document.type) {
-      case 'facture':
-        return 'FACTURE';
-      case 'devis':
-        return 'DEVIS';
-      case 'bon_commande':
-        return 'BON DE COMMANDE';
-      default:
-        return 'DOCUMENT';
+      case 'facture': return 'FACTURE';
+      case 'devis': return 'DEVIS';
+      case 'bon_commande': return 'BON DE COMMANDE';
+      default: return 'DOCUMENT';
     }
   };
 
@@ -95,7 +102,7 @@ export default function DocumentView({ document, client, project, companyInfo }:
           ) : (
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               <span className="text-gray-700">Le Plombier</span>
-              <span className="text-primary-600">.MA</span>
+              <span className="text-primary-600">.{isES ? 'ES' : 'MA'}</span>
             </h1>
           )}
         </div>
@@ -159,10 +166,10 @@ export default function DocumentView({ document, client, project, companyInfo }:
                   Quantité
                 </th>
                 <th className="border border-primary-600 px-4 py-3 text-right text-sm font-semibold w-32">
-                  Prix Unitaire (MAD)
+                  {isES ? 'Precio Unit.' : 'Prix Unitaire'} ({currency})
                 </th>
                 <th className="border border-primary-600 px-4 py-3 text-right text-sm font-semibold w-32">
-                  Total (MAD)
+                  Total ({currency})
                 </th>
               </tr>
             </thead>
@@ -205,10 +212,10 @@ export default function DocumentView({ document, client, project, companyInfo }:
                       {getQuantityDisplay()}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-right text-sm text-gray-600">
-                      {item.descriptionOnly ? '—' : `${formatNumberFR(item.unitPrice)} MAD`}
+                      {item.descriptionOnly ? '—' : `${formatNumberFR(item.unitPrice)} ${currency}`}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-right text-sm font-medium text-gray-900">
-                      {item.descriptionOnly ? '—' : `${formatNumberFR(item.total)} MAD`}
+                      {item.descriptionOnly ? '—' : `${formatNumberFR(item.total)} ${currency}`}
                     </td>
                   </tr>
                 );
@@ -233,7 +240,7 @@ export default function DocumentView({ document, client, project, companyInfo }:
               <>
                 <div className="flex justify-between py-3 border-t-2 border-gray-400 mt-2">
                   <span className="text-lg font-bold text-gray-900">Total TTC :</span>
-                  <span className="text-lg font-bold text-primary-600">{formatNumberFR(document.total)} MAD</span>
+                  <span className="text-lg font-bold text-primary-600">{formatNumberFR(document.total)} {currency}</span>
                 </div>
               </>
             ) : (
@@ -242,11 +249,11 @@ export default function DocumentView({ document, client, project, companyInfo }:
                   <>
                     <div className="flex justify-between py-2 border-b border-gray-300">
                       <span className="text-sm text-gray-700 font-medium">Total HT :</span>
-                      <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.subtotal)} MAD</span>
+                      <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.subtotal)} {currency}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-gray-300">
-                      <span className="text-sm text-gray-700 font-medium">TVA (20%) :</span>
-                      <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.tax)} MAD</span>
+                      <span className="text-sm text-gray-700 font-medium">{isES ? 'IVA (21%)' : 'TVA (20%)'} :</span>
+                      <span className="text-sm font-medium text-gray-900">{formatNumberFR(document.tax)} {currency}</span>
                     </div>
                   </>
                 )}
@@ -255,7 +262,7 @@ export default function DocumentView({ document, client, project, companyInfo }:
                     Total TTC {document.manualTotal != null ? '(saisi)' : ''} :
                   </span>
                   <span className="text-lg font-bold text-primary-600">
-                    {formatNumberFR(document.manualTotal ?? document.total)} MAD
+                    {formatNumberFR(document.manualTotal ?? document.total)} {currency}
                   </span>
                 </div>
               </>
@@ -267,9 +274,9 @@ export default function DocumentView({ document, client, project, companyInfo }:
         <div className="mb-6">
           <div className="flex justify-between items-end">
             <div className="flex-1">
-              <p className="text-sm text-gray-700 mb-8">Signature :</p>
-              <p className="text-xs text-gray-500 mt-4">Mentions Légales :</p>
-              <p className="text-xs text-gray-500">Art 89 – II – 1° - c, Code Général des Impôts.</p>
+              <p className="text-sm text-gray-700 mb-8">{isES ? 'Firma' : 'Signature'} :</p>
+              <p className="text-xs text-gray-500 mt-4">{isES ? 'Información legal' : 'Mentions Légales'} :</p>
+              <p className="text-xs text-gray-500">{isES ? 'Ley 37/1992 del Impuesto sobre el Valor Añadido.' : 'Art 89 – II – 1° - c, Code Général des Impôts.'}</p>
             </div>
             {/* Tampon - Uniquement pour les factures */}
             {document.type === 'facture' && (
@@ -298,14 +305,16 @@ export default function DocumentView({ document, client, project, companyInfo }:
           <div className="text-center text-xs text-gray-600 space-y-1">
             <p className="font-semibold text-gray-900">{companyInfo.name}</p>
             <p>
-              <span className="font-semibold">SIÈGE SOCIAL:</span> {companyInfo.address}
+              <span className="font-semibold">{isES ? 'DOMICILIO SOCIAL:' : 'SIÈGE SOCIAL:'}</span> {companyInfo.address}
             </p>
             <div className="flex justify-center items-center gap-4 flex-wrap mt-2">
-              {companyInfo.rc && (
-                <span>RC: {companyInfo.rc}</span>
-              )}
-              {companyInfo.patente && (
-                <span>Patente: {companyInfo.patente}</span>
+              {isES ? (
+                companyInfo.cif && <span>CIF: {companyInfo.cif}</span>
+              ) : (
+                <>
+                  {companyInfo.rc && <span>RC: {companyInfo.rc}</span>}
+                  {companyInfo.patente && <span>Patente: {companyInfo.patente}</span>}
+                </>
               )}
             </div>
             <div className="flex justify-center items-center gap-4 flex-wrap mt-2">

@@ -12,7 +12,8 @@
     "mobile:plombier": "cd mobile-plombier && npx cap sync",
     "mobile:client": "cd mobile-client && npx cap sync",
     "mobile:icon": "node scripts/generate-app-icon.js",
-    "migrate:country": "node scripts/migrate-country.js"
+    "migrate:country": "node scripts/migrate-country.js",
+    "claude": "npx claude"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -39,6 +40,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-code": "^2.1.71",
     "@types/google.maps": "^3.58.1",
     "@types/mailparser": "^3.4.6",
     "@types/node": "^20.10.6",

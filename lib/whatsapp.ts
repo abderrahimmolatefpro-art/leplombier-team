@@ -1,15 +1,15 @@
-import { normalizePhoneNumber } from './phone';
+import { normalizePhoneNumber, type PhoneCountry } from './phone';
 
 /**
  * Envoie un message WhatsApp texte via Infobip (fenêtre 24h).
  */
-export async function sendWhatsApp(phone: string, message: string): Promise<boolean> {
+export async function sendWhatsApp(phone: string, message: string, country: PhoneCountry = 'MA'): Promise<boolean> {
   if (!process.env.INFOBIP_API_KEY || !process.env.INFOBIP_BASE_URL) {
     console.error('[whatsapp] Infobip non configuré');
     return false;
   }
 
-  const normalized = normalizePhoneNumber(phone);
+  const normalized = normalizePhoneNumber(phone, country);
   const baseUrl = process.env.INFOBIP_BASE_URL.startsWith('http')
     ? process.env.INFOBIP_BASE_URL
     : `https://${process.env.INFOBIP_BASE_URL}`;
@@ -52,14 +52,15 @@ export async function sendWhatsApp(phone: string, message: string): Promise<bool
 export async function sendWhatsAppTemplate(
   phone: string,
   templateName: string,
-  placeholders: string[] = []
+  placeholders: string[] = [],
+  country: PhoneCountry = 'MA'
 ): Promise<boolean> {
   if (!process.env.INFOBIP_API_KEY || !process.env.INFOBIP_BASE_URL) {
     console.error('[whatsapp] Infobip non configuré');
     return false;
   }
 
-  const normalized = normalizePhoneNumber(phone);
+  const normalized = normalizePhoneNumber(phone, country);
   const baseUrl = process.env.INFOBIP_BASE_URL.startsWith('http')
     ? process.env.INFOBIP_BASE_URL
     : `https://${process.env.INFOBIP_BASE_URL}`;
@@ -71,7 +72,7 @@ export async function sendWhatsAppTemplate(
   try {
     const content: Record<string, unknown> = {
       templateName,
-      language: 'fr',
+      language: country === 'ES' ? 'es' : 'fr',
     };
     if (placeholders.length > 0) {
       content.templateData = {

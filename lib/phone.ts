@@ -34,7 +34,7 @@ export function normalizePhoneNumber(phone: string, country: PhoneCountry = 'MA'
 }
 
 /** Retourne le numéro au format E.164 (+212612345678) pour affichage */
-export function toE164(phone: string): string {
-  const normalized = normalizePhoneNumber(phone);
+export function toE164(phone: string, country: PhoneCountry = 'MA'): string {
+  const normalized = normalizePhoneNumber(phone, country);
   return normalized ? '+' + normalized : phone;
 }

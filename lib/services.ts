@@ -10,7 +10,6 @@ export interface ServiceDetail {
   categoryId: string;
   priceType?: ServicePriceType;
   priceMin?: number;
-  priceLabel?: string;
   visitRequired?: boolean;
 }
 
@@ -29,7 +28,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
 
 export const SERVICE_DETAILS: ServiceDetail[] = [
   // Fuite
-  { id: 'detection', label: 'Recherche de fuite', categoryId: 'fuite', priceType: 'fixe', priceMin: 700, priceLabel: '700 DH fixe', visitRequired: true },
+  { id: 'detection', label: 'Recherche de fuite', categoryId: 'fuite', priceType: 'fixe', priceMin: 700, visitRequired: true },
   { id: 'reparation-visible', label: 'Réparation de fuite visible', categoryId: 'fuite' },
   { id: 'reparation-cachee', label: 'Réparation de fuite cachée', categoryId: 'fuite', visitRequired: true },
   { id: 'robinet', label: 'Réparation de robinet qui fuit', categoryId: 'fuite' },
@@ -47,7 +46,7 @@ export const SERVICE_DETAILS: ServiceDetail[] = [
   { id: 'hamam', label: 'Construction de hamam traditionnel', categoryId: 'installation', visitRequired: true },
   { id: 'renovation', label: 'Rénovation complète de plomberie', categoryId: 'installation', visitRequired: true },
   // Réparation
-  { id: 'depannage-rapide', label: 'Dépannage rapide', categoryId: 'reparation', priceType: 'a_partir_de', priceMin: 150, priceLabel: '150 DH' },
+  { id: 'depannage-rapide', label: 'Dépannage rapide', categoryId: 'reparation', priceType: 'a_partir_de', priceMin: 150 },
   { id: 'chauffage-panne', label: 'Chauffage en panne', categoryId: 'reparation' },
   { id: 'eau-chaude-panne', label: 'Eau chaude en panne', categoryId: 'reparation' },
   { id: 'canalisation', label: 'Canalisation bouchée', categoryId: 'reparation' },
@@ -62,7 +61,7 @@ export const SERVICE_DETAILS: ServiceDetail[] = [
   { id: 'entretien-climatisation', label: 'Entretien climatisation', categoryId: 'entretien' },
   { id: 'entretien-eau', label: "Entretien traitement d'eau", categoryId: 'entretien' },
   // Visite
-  { id: 'visite-expert', label: "Visite d'un expert plombier", categoryId: 'visite', priceType: 'a_partir_de', priceMin: 250, priceLabel: '250 DH', visitRequired: true },
+  { id: 'visite-expert', label: "Visite d'un expert plombier", categoryId: 'visite', priceType: 'a_partir_de', priceMin: 250, visitRequired: true },
 ];
 
 export function getServiceById(id: string): ServiceDetail | undefined {
@@ -79,10 +78,17 @@ export function getCategoryById(id: string): ServiceCategory | undefined {
 
 /** Services essentiels pour sélection rapide (commander / demo) - UX fluide */
 export const QUICK_SERVICES: ServiceDetail[] = [
-  { id: 'depannage-rapide', label: 'Dépannage rapide', categoryId: 'reparation', priceType: 'a_partir_de', priceMin: 150, priceLabel: '150 DH' },
+  { id: 'depannage-rapide', label: 'Dépannage rapide', categoryId: 'reparation', priceType: 'a_partir_de', priceMin: 150 },
   { id: 'robinet', label: 'Fuite robinet / toilette', categoryId: 'fuite' },
   { id: 'eau-chaude-panne', label: 'Eau chaude en panne', categoryId: 'reparation' },
   { id: 'canalisation', label: 'Canalisation bouchée', categoryId: 'reparation' },
   { id: 'chauffe-eau', label: 'Chauffe-eau', categoryId: 'installation' },
-  { id: 'visite-expert', label: 'Visite expert', categoryId: 'visite', priceType: 'a_partir_de', priceMin: 250, priceLabel: '250 DH', visitRequired: true },
+  { id: 'visite-expert', label: 'Visite expert', categoryId: 'visite', priceType: 'a_partir_de', priceMin: 250, visitRequired: true },
 ];
+
+/** Formate le prix d'un service selon le pays */
+export function formatServicePrice(service: ServiceDetail, currency: string = 'MAD'): string {
+  if (!service.priceMin) return '';
+  const suffix = service.priceType === 'fixe' ? ` ${currency} fixe` : ` ${currency}`;
+  return `${service.priceMin}${suffix}`;
+}

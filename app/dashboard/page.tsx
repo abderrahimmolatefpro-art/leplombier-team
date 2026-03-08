@@ -9,6 +9,7 @@ import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore
 import { db } from '@/lib/firebase';
 import { Project, Client, Document, ManualRevenue, User, InstantRequest } from '@/types';
 import { formatDate, formatCurrency, isPlombierAssignable } from '@/lib/utils';
+import { COUNTRY_CONFIG } from '@/lib/companyConfig';
 import { 
   FolderKanban, 
   Users, 
@@ -53,7 +54,8 @@ interface DateRange {
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const { countryFilter } = useCountry();
+  const { countryFilter, selectedCountry } = useCountry();
+  const currencyLabel = selectedCountry === 'ES' ? COUNTRY_CONFIG.ES.currency : selectedCountry === 'MA' ? COUNTRY_CONFIG.MA.currency : 'MAD/EUR';
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -1320,7 +1322,7 @@ export default function DashboardPage() {
                 <YAxis width={50} tick={{ fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${v / 1000}k` : v} />
                 <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
                 <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Line type="monotone" dataKey="revenus" stroke="#3B82F6" strokeWidth={2} name="Revenus (MAD)" dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="revenus" stroke="#3B82F6" strokeWidth={2} name={`Revenus (${currencyLabel})`} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -1337,7 +1339,7 @@ export default function DashboardPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                   <YAxis width={50} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
-                  <Bar dataKey="revenus" fill="#3B82F6" name="Revenus (MAD)" />
+                  <Bar dataKey="revenus" fill="#3B82F6" name={`Revenus (${currencyLabel})`} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1355,8 +1357,8 @@ export default function DashboardPage() {
                   <YAxis width={50} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="partPlombier" stackId="a" fill="#10B981" name="Part plombier (MAD)" />
-                  <Bar dataKey="partSociete" stackId="a" fill="#3B82F6" name="Part société (MAD)" />
+                  <Bar dataKey="partPlombier" stackId="a" fill="#10B981" name={`Part plombier (${currencyLabel})`} />
+                  <Bar dataKey="partSociete" stackId="a" fill="#3B82F6" name={`Part société (${currencyLabel})`} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1374,8 +1376,8 @@ export default function DashboardPage() {
                   <YAxis width={50} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(value: number | undefined) => value ? formatCurrency(value) : ''} />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="avecFacture" stackId="b" fill="#10B981" name="Avec facture (MAD)" />
-                  <Bar dataKey="sansFacture" stackId="b" fill="#F59E0B" name="Sans facture (MAD)" />
+                  <Bar dataKey="avecFacture" stackId="b" fill="#10B981" name={`Avec facture (${currencyLabel})`} />
+                  <Bar dataKey="sansFacture" stackId="b" fill="#F59E0B" name={`Sans facture (${currencyLabel})`} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -23,7 +23,7 @@ import Link from 'next/link';
 
 function DocumentsContent() {
   const { user, loading: authLoading } = useAuth();
-  const { countryFilter } = useCountry();
+  const { countryFilter, selectedCountry } = useCountry();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -1139,7 +1139,7 @@ function DocumentsContent() {
                           {!currentItem.descriptionOnly && (
                             <div>
                               <label className="block text-xs text-gray-600 mb-1">
-                                Prix unitaire (MAD)
+                                Prix unitaire ({selectedCountry === 'ES' ? 'EUR' : 'MAD'})
                               </label>
                               <input
                                 type="number"
