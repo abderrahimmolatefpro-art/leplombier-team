@@ -32,8 +32,8 @@ export interface User {
   validatedAt?: Date;
   /** Ville d'intervention du plombier (filtrage demandes instantanées, style inDrive) */
   city?: string;
-  /** Pays du plombier (MA/ES) — filtrer plombiers par pays. Admins n'ont pas besoin de country. */
-  country?: Country;
+  /** Pays du plombier (MA/ES) — filtrer plombiers par pays. */
+  country: Country;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,7 +45,7 @@ export interface InstantRequest {
   clientId: string;
   address: string;
   description: string;
-  /** Budget en MAD proposé par le client (optionnel, style inDrive) */
+  /** Budget proposé par le client (optionnel, style inDrive) */
   clientProposedAmount?: number;
   /** Service sélectionné (recherche_fuite, visite_expert, depannage_rapide) */
   serviceId?: string;
@@ -104,8 +104,8 @@ export interface Client {
   referredByClientId?: string; // ID du client PRO parrain (si ramené par un client pro)
   accessCodeHash?: string; // Hash du code d'accès espace client (SHA-256)
   accessCodeSentAt?: Date; // Date d'envoi du dernier code
-  /** Pays du client (MA/ES) — défaut MA pour rétrocompatibilité */
-  country?: Country;
+  /** Pays du client (MA/ES) */
+  country: Country;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -159,11 +159,11 @@ export interface Project {
   progress: number; // 0-100
   progressStatus: ProgressStatus;
   address: string;
-  amount?: number; // Montant du projet en DH (peut être saisi manuellement)
+  amount?: number; // Montant du projet (peut être saisi manuellement)
   hasInvoice?: boolean; // Avec facture (pour calcul revenus avec/sans facture au dashboard)
   paidByPlombierIds?: string[]; // Liste des IDs des plombiers qui ont payé leur part à la société pour ce projet
   plombierPercentage?: number; // Pourcentage pour le plombier (par défaut 60, le reste va à la société)
-  companyAmount?: number; // Montant en MAD que la société reçoit (saisi manuellement)
+  companyAmount?: number; // Montant que la société reçoit (saisi manuellement)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -173,7 +173,7 @@ export interface ManualRevenue {
   id: string;
   clientId: string;
   projectId?: string; // Optionnel : peut être lié à un projet
-  amount: number; // Montant en DH
+  amount: number; // Montant (devise selon le pays du client)
   date: Date;
   description: string;
   plombierId?: string; // Plombier associé
@@ -207,7 +207,7 @@ export interface Recruitment {
   lastName: string;
   phone: string;
   specialty: string;
-  zones: 'casa' | 'rabat' | 'tanger' | 'marrakech' | 'agadir' | 'tetouan' | 'fes';
+  zones: 'casa' | 'rabat' | 'tanger' | 'marrakech' | 'agadir' | 'tetouan' | 'fes' | 'madrid' | 'barcelona' | 'valencia' | 'sevilla' | 'malaga';
   address: string;
   /** Ville / المدينة */
   city?: string;
@@ -217,6 +217,8 @@ export interface Recruitment {
   hasTransport?: boolean;
   /** Années d'expérience en plomberie / سنوات الخبرة */
   experienceYears?: number;
+  /** Pays de la candidature */
+  country?: Country;
   status: 'pending' | 'contacted' | 'accepted' | 'rejected';
   createdAt: Date;
   updatedAt: Date;

@@ -16,7 +16,8 @@ type SortDirection = 'asc' | 'desc';
 
 export default function ClientsPage() {
   const { user, loading: authLoading } = useAuth();
-  const { countryFilter } = useCountry();
+  const { countryFilter, selectedCountry } = useCountry();
+  const currencyLabel = selectedCountry === 'ES' ? 'EUR' : selectedCountry === 'MA' ? 'MAD' : 'MAD/EUR';
   const router = useRouter();
   const [clients, setClients] = useState<(Client & { _stats?: { totalRevenue: number; totalProjects: number; totalInvoices: number; plombierRevenue: number; companyRevenue: number; clientPaid: boolean; plombierPaid: boolean; hasPrestation: boolean } })[]>([]);
   const [plombiers, setPlombiers] = useState<User[]>([]);
@@ -452,10 +453,10 @@ export default function ClientsPage() {
       filtered = filtered.filter(client => client.clientType === filterType);
     }
 
-    // Filtre par paiement plombier (uniquement les clients avec revenus > 0 MAD)
+    // Filtre par paiement plombier (uniquement les clients avec revenus > 0)
     if (filterPayment !== 'all') {
       filtered = filtered.filter(client => {
-        if ((client._stats?.totalRevenue ?? 0) <= 0) return false; // 0 MAD = on exclut du filtre
+        if ((client._stats?.totalRevenue ?? 0) <= 0) return false; // 0 = on exclut du filtre
         const plombierPaid = client._stats?.plombierPaid ?? true;
         if (filterPayment === 'plombier_paid') return plombierPaid;
         if (filterPayment === 'plombier_unpaid') return !plombierPaid;
@@ -1147,7 +1148,7 @@ export default function ClientsPage() {
                               <>
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Montant (DH) *
+                                    Montant ({currencyLabel}) *
                                   </label>
                                   <input
                                     type="number"
@@ -1229,7 +1230,7 @@ export default function ClientsPage() {
                                 </div>
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Montant estimé (DH)
+                                    Montant estimé ({currencyLabel})
                                   </label>
                                   <input
                                     type="number"

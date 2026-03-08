@@ -1,16 +1,22 @@
-import { normalizePhoneNumber } from './phone';
+import { normalizePhoneNumber, type PhoneCountry } from './phone';
+
+/** Retourne le sender SMS adapté au pays */
+export function getSmsSender(country: PhoneCountry = 'MA'): string {
+  if (country === 'ES') return process.env.INFOBIP_SENDER_ES || process.env.INFOBIP_SENDER || 'El Fontanero';
+  return process.env.INFOBIP_SENDER || 'Le Plombier';
+}
 
 /**
  * Envoie un SMS via Infobip.
  * Retourne true si envoyé, false sinon (ne lance pas d'erreur).
  */
-export async function sendSms(phone: string, message: string): Promise<boolean> {
+export async function sendSms(phone: string, message: string, country: PhoneCountry = 'MA'): Promise<boolean> {
   if (!process.env.INFOBIP_API_KEY || !process.env.INFOBIP_BASE_URL) {
     console.error('[sms] Infobip non configuré');
     return false;
   }
 
-  const normalized = normalizePhoneNumber(phone);
+  const normalized = normalizePhoneNumber(phone, country);
   const baseUrl = process.env.INFOBIP_BASE_URL.startsWith('http')
     ? process.env.INFOBIP_BASE_URL
     : `https://${process.env.INFOBIP_BASE_URL}`;
@@ -28,7 +34,7 @@ export async function sendSms(phone: string, message: string): Promise<boolean> 
         messages: [
           {
             destinations: [{ to: normalized }],
-            from: process.env.INFOBIP_SENDER || 'Le Plombier',
+            from: getSmsSender(country),
             text: message,
           },
         ],

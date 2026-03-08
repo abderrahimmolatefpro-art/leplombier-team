@@ -14,7 +14,8 @@ import Link from 'next/link';
 
 export default function ProjetsPage() {
   const { user, loading: authLoading } = useAuth();
-  const { countryFilter } = useCountry();
+  const { countryFilter, selectedCountry } = useCountry();
+  const currencyLabel = selectedCountry === 'ES' ? 'EUR' : selectedCountry === 'MA' ? 'MAD' : 'MAD/EUR';
   const router = useRouter();
   const [projets, setProjets] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -39,7 +40,7 @@ export default function ProjetsPage() {
     amount: '',
     hasInvoice: false,
     plombierPercentage: 60, // Pourcentage par défaut 60%
-    companyAmount: '', // Montant société en MAD (saisi manuellement)
+    companyAmount: '', // Montant société (saisi manuellement)
   });
 
   useEffect(() => {
@@ -546,7 +547,7 @@ export default function ProjetsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Montant du projet (DH)
+                        Montant du projet ({currencyLabel})
                       </label>
                       <input
                         type="number"
@@ -608,7 +609,7 @@ export default function ProjetsPage() {
                   {/* Montant Société */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Montant Société (MAD)
+                      Montant Société ({currencyLabel})
                     </label>
                     <input
                       type="number"

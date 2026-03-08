@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { normalizePhoneNumber } from '@/lib/phone';
+import { getSmsSender } from '@/lib/sms';
 import { getApiMessage, getSmsCodeMessage } from '@/lib/apiMessages';
 import { FieldValue } from 'firebase-admin/firestore';
 import * as crypto from 'crypto';
@@ -28,7 +29,7 @@ async function sendSmsViaInfobip(phone: string, message: string, country: 'MA' |
       messages: [
         {
           destinations: [{ to: normalized }],
-          from: process.env.INFOBIP_SENDER || 'Le Plombier',
+          from: getSmsSender(country),
           text: message,
         },
       ],

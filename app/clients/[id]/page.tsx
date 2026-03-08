@@ -8,6 +8,7 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, dele
 import { db } from '@/lib/firebase';
 import { Client, Project, Document, DocumentItem, User, PlanningEntry, ClientStats, ManualRevenue, ClientPromoCode } from '@/types';
 import { formatDate, formatCurrency, isPlombierAssignable } from '@/lib/utils';
+import { COUNTRY_CONFIG } from '@/lib/companyConfig';
 import { 
   ArrowLeft, 
   DollarSign, 
@@ -34,6 +35,7 @@ export default function ClientDetailPage() {
   const clientId = params.id as string;
   
   const [client, setClient] = useState<Client | null>(null);
+  const currencyLabel = COUNTRY_CONFIG[client?.country || 'MA'].currency;
   const [stats, setStats] = useState<ClientStats | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -1018,7 +1020,7 @@ export default function ClientDetailPage() {
                       <p className="text-xs text-gray-500 mt-0.5">
                         {p.discountType === 'percent'
                           ? `${p.discountValue}% de réduction`
-                          : `${p.discountValue} MAD de réduction`}
+                          : `${p.discountValue} ${currencyLabel} de réduction`}
                         {p.used && ' • Utilisé'}
                         {p.expiresAt && !p.used && ` • Expire le ${formatDate(p.expiresAt)}`}
                       </p>
@@ -1045,6 +1047,7 @@ export default function ClientDetailPage() {
           editingRevenue={editingRevenue}
           onClose={() => { setShowRevenueModal(false); setEditingRevenue(null); }}
           onSave={loadClientData}
+          currencyLabel={currencyLabel}
         />
       )}
 
@@ -1443,6 +1446,7 @@ function RevenueModal({
   editingRevenue,
   onClose,
   onSave,
+  currencyLabel = 'MAD',
 }: {
   clientId: string;
   projects: Project[];
@@ -1450,6 +1454,7 @@ function RevenueModal({
   editingRevenue: ManualRevenue | null;
   onClose: () => void;
   onSave: () => void;
+  currencyLabel?: string;
 }) {
   const isEdit = !!editingRevenue;
   const [formData, setFormData] = useState({
@@ -1536,7 +1541,7 @@ function RevenueModal({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Montant (DH) *
+                Montant ({currencyLabel}) *
               </label>
               <input
                 type="number"

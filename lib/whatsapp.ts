@@ -13,7 +13,9 @@ export async function sendWhatsApp(phone: string, message: string, country: Phon
   const baseUrl = process.env.INFOBIP_BASE_URL.startsWith('http')
     ? process.env.INFOBIP_BASE_URL
     : `https://${process.env.INFOBIP_BASE_URL}`;
-  const sender = process.env.INFOBIP_WHATSAPP_SENDER || process.env.INFOBIP_SENDER || 'Le Plombier';
+  const sender = country === 'ES'
+    ? (process.env.INFOBIP_WHATSAPP_SENDER_ES || process.env.INFOBIP_WHATSAPP_SENDER || process.env.INFOBIP_SENDER || 'El Fontanero')
+    : (process.env.INFOBIP_WHATSAPP_SENDER || process.env.INFOBIP_SENDER || 'Le Plombier');
   const apiUrl = `${baseUrl}/whatsapp/1/message/text`;
 
   try {
@@ -64,7 +66,9 @@ export async function sendWhatsAppTemplate(
   const baseUrl = process.env.INFOBIP_BASE_URL.startsWith('http')
     ? process.env.INFOBIP_BASE_URL
     : `https://${process.env.INFOBIP_BASE_URL}`;
-  const sender = process.env.INFOBIP_WHATSAPP_SENDER || process.env.INFOBIP_SENDER || 'Le Plombier';
+  const sender = country === 'ES'
+    ? (process.env.INFOBIP_WHATSAPP_SENDER_ES || process.env.INFOBIP_WHATSAPP_SENDER || process.env.INFOBIP_SENDER || 'El Fontanero')
+    : (process.env.INFOBIP_WHATSAPP_SENDER || process.env.INFOBIP_SENDER || 'Le Plombier');
 
   // Infobip template endpoint (essayer les deux formats courants)
   const apiUrl = `${baseUrl}/whatsapp/1/message/template`;
