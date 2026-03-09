@@ -48,6 +48,7 @@ export async function sendEmail(
   options?: {
     html?: string;
     from?: string;
+    country?: 'MA' | 'ES';
   }
 ): Promise<{ success: boolean; error?: string; method?: string }> {
   // Option 1: Infobip Email API (si configuré)
@@ -59,7 +60,8 @@ export async function sendEmail(
       const apiUrl = `${baseUrl}/email/3/send`;
 
       const htmlContent = options?.html || createEmailTemplate(subject, message);
-      const fromEmail = options?.from || process.env.INFOBIP_EMAIL_FROM || process.env.INFOBIP_SENDER || 'noreply@leplombier.ma';
+      const defaultDomain = options?.country === 'ES' ? 'leplombier.es' : 'leplombier.ma';
+      const fromEmail = options?.from || process.env.INFOBIP_EMAIL_FROM || process.env.INFOBIP_SENDER || `noreply@${defaultDomain}`;
 
       const requestBody = {
         from: fromEmail,

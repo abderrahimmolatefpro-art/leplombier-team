@@ -29,6 +29,8 @@ export const COUNTRY_CONFIG: Record<
     googleMapsRegion: string;
     googlePlacesCountry: string;
     defaultPostalCode?: string;
+    taxRate: number;
+    taxLabel: string;
   }
 > = {
   MA: {
@@ -37,6 +39,8 @@ export const COUNTRY_CONFIG: Record<
     googleMapsRegion: 'ma',
     googlePlacesCountry: 'ma',
     defaultPostalCode: '20000',
+    taxRate: 0.2,
+    taxLabel: 'TVA (20%)',
   },
   ES: {
     currency: 'EUR',
@@ -44,6 +48,8 @@ export const COUNTRY_CONFIG: Record<
     googleMapsRegion: 'es',
     googlePlacesCountry: 'es',
     defaultPostalCode: '28001',
+    taxRate: 0.21,
+    taxLabel: 'IVA (21%)',
   },
 };
 

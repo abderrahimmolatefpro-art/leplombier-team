@@ -244,6 +244,8 @@ export interface Document {
   footerDescriptions?: string[];
   /** Total TTC saisi manuellement ; si défini, il remplace le total calculé */
   manualTotal?: number;
+  /** Pays du document (hérité du client) */
+  country?: Country;
   createdAt: Date;
   updatedAt: Date;
 }

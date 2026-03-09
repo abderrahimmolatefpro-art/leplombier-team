@@ -8,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Document, Client, Project } from '@/types';
 import DocumentView from '@/components/DocumentView';
-import { companyInfo } from '@/lib/companyConfig';
+import { getCompanyInfo } from '@/lib/companyConfig';
 import { generatePDFFromHTML } from '@/lib/pdfGenerator';
 
 export default function DocumentViewPage() {
@@ -114,7 +114,8 @@ export default function DocumentViewPage() {
         document={document}
         client={client}
         project={project}
-        companyInfo={companyInfo}
+        companyInfo={getCompanyInfo(client?.country || 'MA')}
+        country={client?.country || 'MA'}
       />
     </Layout>
   );

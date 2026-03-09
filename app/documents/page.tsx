@@ -18,6 +18,7 @@ import {
 import { auth, db } from '@/lib/firebase';
 import { Document, Client, Project, DocumentItem, ManualRevenue } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { COUNTRY_CONFIG } from '@/lib/companyConfig';
 import { Plus, Edit, Trash2, FileText, Download, Mail, Eye } from 'lucide-react';
 import Link from 'next/link';
 
@@ -209,8 +210,8 @@ function DocumentsContent() {
       const newItems = [...formData.items, item];
       const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
       const tax = formData.type === 'facture'
-        ? subtotal * 0.2
-        : ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax) ? subtotal * 0.2 : 0;
+        ? subtotal * getTaxRate()
+        : ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax) ? subtotal * getTaxRate() : 0;
       const total = formData.manualTotal ?? (subtotal + tax);
       setFormData({ ...formData, items: newItems, subtotal, tax, total });
       setCurrentItem({ ...currentItem, description: '', descriptionOnly: false });
@@ -291,9 +292,9 @@ function DocumentsContent() {
     const newItems = [...formData.items, item];
     const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
     const tax = formData.type === 'facture' 
-      ? subtotal * 0.2 
+      ? subtotal * getTaxRate() 
       : ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax) 
-        ? subtotal * 0.2 
+        ? subtotal * getTaxRate() 
         : 0;
     const total = formData.manualTotal ?? (subtotal + tax);
 
@@ -321,9 +322,9 @@ function DocumentsContent() {
     const newItems = formData.items.filter((_, i) => i !== index);
     const subtotal = newItems.reduce((sum, i) => sum + (i.descriptionOnly ? 0 : i.total), 0);
     const tax = formData.type === 'facture' 
-      ? subtotal * 0.2 
+      ? subtotal * getTaxRate() 
       : ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax) 
-        ? subtotal * 0.2 
+        ? subtotal * getTaxRate() 
         : 0;
     const total = formData.manualTotal ?? (subtotal + tax);
 
@@ -412,7 +413,7 @@ function DocumentsContent() {
     let tax = document.tax;
     // Si c'est une facture sans TVA, la recalculer à 20%
     if (document.type === 'facture' && tax === 0 && subtotal > 0) {
-      tax = subtotal * 0.2;
+      tax = subtotal * getTaxRate();
     }
     const total = subtotal + tax;
     
@@ -501,6 +502,20 @@ function DocumentsContent() {
 
   const getClientName = (clientId: string) => {
     return clients.find((c) => c.id === clientId)?.name || 'Client inconnu';
+  };
+
+  const getClientCountry = (clientId: string) => {
+    return clients.find((c) => c.id === clientId)?.country || 'MA';
+  };
+
+  const getTaxRate = () => {
+    const country = getClientCountry(formData.clientId);
+    return COUNTRY_CONFIG[country].taxRate;
+  };
+
+  const getTaxLabel = () => {
+    const country = getClientCountry(formData.clientId);
+    return COUNTRY_CONFIG[country].taxLabel;
   };
 
   const getProjectName = (projectId?: string) => {
@@ -705,9 +720,9 @@ function DocumentsContent() {
                           const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
                           // Recalculer la TVA : facture toujours 20%, devis et bon de commande selon includeTax
                           const tax = newType === 'facture' 
-                            ? subtotal * 0.2 
+                            ? subtotal * getTaxRate() 
                             : ((newType === 'devis' || newType === 'bon_commande') && formData.includeTax) 
-                              ? subtotal * 0.2 
+                              ? subtotal * getTaxRate() 
                               : 0;
                           const total = subtotal + tax;
                           setFormData({ 
@@ -888,7 +903,7 @@ function DocumentsContent() {
                         onChange={(e) => {
                           const includeTax = e.target.checked;
                           const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
-                          const tax = includeTax ? subtotal * 0.2 : 0;
+                          const tax = includeTax ? subtotal * getTaxRate() : 0;
                           const total = subtotal + tax;
                           setFormData({ 
                             ...formData, 
@@ -900,7 +915,7 @@ function DocumentsContent() {
                         className="rounded"
                       />
                       <label htmlFor="includeTax" className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Inclure la TVA (20%)
+                        Inclure la {getTaxLabel()}
                       </label>
                     </div>
                   )}
@@ -1262,7 +1277,7 @@ function DocumentsContent() {
                               {(formData.type === 'facture' || ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax)) && (
                                 <tr>
                                   <td colSpan={3} className="py-2 px-2 text-right font-medium text-gray-700">
-                                    TVA (20%)
+                                    {getTaxLabel()}
                                   </td>
                                   <td className="py-2 px-2 text-right font-medium text-gray-900">
                                     {formatCurrency(formData.tax)}

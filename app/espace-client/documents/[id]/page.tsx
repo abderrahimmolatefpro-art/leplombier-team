@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import DocumentView from '@/components/DocumentView';
-import { companyInfo } from '@/lib/companyConfig';
+import { getCompanyInfo } from '@/lib/companyConfig';
 import { Document, Client, Project } from '@/types';
 
 export default function ClientDocumentViewPage() {
@@ -116,7 +116,8 @@ export default function ClientDocumentViewPage() {
           document={document}
           client={client}
           project={project}
-          companyInfo={companyInfo}
+          companyInfo={getCompanyInfo(client?.country || 'MA')}
+          country={client?.country || 'MA'}
         />
       </main>
     </div>
