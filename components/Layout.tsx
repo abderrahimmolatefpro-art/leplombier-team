@@ -22,7 +22,8 @@ import {
   ShoppingCart,
   Package,
   Wrench,
-  Briefcase
+  Briefcase,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
@@ -56,6 +57,7 @@ function LayoutInner({ children }: LayoutProps) {
     { href: '/commandes', label: 'Commandes', icon: ShoppingCart },
     { href: '/planning', label: 'Planning', icon: Calendar },
     { href: '/documents', label: 'Documents', icon: FileText },
+    { href: '/tarifs', label: 'Liste de prix', icon: Tag },
     { href: '/demandes-pieces', label: 'Demandes de pièces', icon: Wrench },
     { href: '/fournisseurs', label: 'Fournisseurs', icon: Package },
     { href: '/plombiers', label: 'Plombiers', icon: Users },
