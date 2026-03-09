@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { useCountry } from '@/contexts/CountryContext';
-import Layout from '@/components/Layout';
 import {
   collection,
   getDocs,
@@ -48,7 +46,6 @@ const CATEGORY_COLORS = [
   { label: 'Gris', value: '#4B5563' },
 ];
 
-// Données initiales (pré-remplissage pour MA)
 const DEFAULT_CATEGORIES_MA: Omit<TarifCategory, 'id' | 'createdAt' | 'updatedAt'>[] = [
   {
     name: 'Installation Chauffe-Eau',
@@ -112,8 +109,7 @@ const DEFAULT_CATEGORIES_MA: Omit<TarifCategory, 'id' | 'createdAt' | 'updatedAt
   },
 ];
 
-export default function TarifsPage() {
-  const { user, loading: authLoading } = useAuth();
+export default function TarifsSection() {
   const { selectedCountry } = useCountry();
   const [categories, setCategories] = useState<TarifCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,8 +125,8 @@ export default function TarifsPage() {
   const currencyLabel = COUNTRY_CONFIG[country]?.currency === 'EUR' ? '€' : 'DH';
 
   useEffect(() => {
-    if (user) loadCategories();
-  }, [user, selectedCountry]);
+    loadCategories();
+  }, [selectedCountry]);
 
   const loadCategories = async () => {
     try {
@@ -256,17 +252,15 @@ export default function TarifsPage() {
     }
   };
 
-  // ─── Génération PDF ────────────────────────────────────
   const generatePDF = () => {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210;
     const ML = 15;
     const MR = 15;
     const TW = W - ML - MR;
-    const colW = (TW - 6) / 2; // 2 colonnes avec gap
+    const colW = (TW - 6) / 2;
     let y = 0;
 
-    // ─── Header ──────────────────────────────────────
     pdf.setFillColor(30, 64, 175);
     pdf.rect(0, 0, W, 32, 'F');
     pdf.setFont('helvetica', 'bold');
@@ -280,7 +274,6 @@ export default function TarifsPage() {
 
     y = 40;
 
-    // ─── Catégories en 2 colonnes ────────────────────
     const leftCats: TarifCategory[] = [];
     const rightCats: TarifCategory[] = [];
     let leftH = 0;
@@ -299,8 +292,6 @@ export default function TarifsPage() {
 
     const drawCategory = (cat: TarifCategory, x: number, startY: number): number => {
       let cy = startY;
-
-      // Header catégorie
       const hex = cat.color;
       const r = parseInt(hex.slice(1, 3), 16);
       const g = parseInt(hex.slice(3, 5), 16);
@@ -314,46 +305,30 @@ export default function TarifsPage() {
       pdf.text(cat.name, x + 4, cy + 5.5);
       cy += 10;
 
-      // Items
       pdf.setFontSize(9);
       for (let i = 0; i < cat.items.length; i++) {
         const item = cat.items[i];
-        const bgAlpha = i % 2 === 0;
-        if (bgAlpha) {
+        if (i % 2 === 0) {
           pdf.setFillColor(245, 245, 245);
           pdf.rect(x, cy, colW, 7, 'F');
         }
-
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(50, 50, 50);
         pdf.text(`• ${item.label}`, x + 3, cy + 5);
-
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(r, g, b);
-        const priceText = `${item.price} ${currencyLabel}`;
-        pdf.text(priceText, x + colW - 3, cy + 5, { align: 'right' });
+        pdf.text(`${item.price} ${currencyLabel}`, x + colW - 3, cy + 5, { align: 'right' });
         cy += 7;
       }
-
       return cy + 4;
     };
 
-    // Dessiner colonne gauche
     let leftY = y;
-    for (const cat of leftCats) {
-      leftY = drawCategory(cat, ML, leftY);
-    }
-
-    // Dessiner colonne droite
+    for (const cat of leftCats) leftY = drawCategory(cat, ML, leftY);
     let rightY = y;
-    for (const cat of rightCats) {
-      rightY = drawCategory(cat, ML + colW + 6, rightY);
-    }
+    for (const cat of rightCats) rightY = drawCategory(cat, ML + colW + 6, rightY);
 
-    // ─── Footer ──────────────────────────────────────
-    const footerY = Math.max(leftY, rightY) + 10;
-    const actualFooterY = Math.min(footerY, 270);
-
+    const actualFooterY = Math.min(Math.max(leftY, rightY) + 10, 270);
     pdf.setFillColor(30, 64, 175);
     pdf.roundedRect(ML, actualFooterY, TW, 16, 3, 3, 'F');
     pdf.setFont('helvetica', 'bold');
@@ -365,140 +340,100 @@ export default function TarifsPage() {
     const phone = country === 'ES' ? '+34 600 000 000' : '06 71 05 23 71';
     pdf.text(phone, W / 2, actualFooterY + 13, { align: 'center' });
 
-    // Date de génération
     pdf.setFontSize(7);
     pdf.setTextColor(150, 150, 150);
     const dateStr = new Date().toLocaleDateString(country === 'ES' ? 'es-ES' : 'fr-FR');
     pdf.text(`Généré le ${dateStr}`, W / 2, 293, { align: 'center' });
 
-    // Télécharger
     const filename = country === 'ES'
       ? `Tarifas-fontaneria-leplombier.es.pdf`
       : `Tarifs-plomberie-leplombier.ma.pdf`;
     pdf.save(filename);
   };
 
-  if (authLoading) {
+  if (loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Liste de prix</h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
-              Gérez vos tarifs par catégorie — {country === 'ES' ? 'Espagne' : 'Maroc'} ({currencyLabel})
-            </p>
-          </div>
-          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
-            <button
-              onClick={generatePDF}
-              disabled={categories.length === 0}
-              className="btn btn-secondary flex items-center space-x-2 text-sm sm:text-base flex-1 sm:flex-initial justify-center disabled:opacity-50"
-            >
-              <Download size={18} className="sm:w-5 sm:h-5" />
-              <span>Télécharger PDF</span>
-            </button>
-            <button
-              onClick={openAddModal}
-              className="btn btn-primary flex items-center space-x-2 text-sm sm:text-base flex-1 sm:flex-initial justify-center"
-            >
-              <Plus size={18} className="sm:w-5 sm:h-5" />
-              <span>Ajouter</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Contenu */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
-          </div>
-        ) : categories.length === 0 ? (
-          <div className="card text-center py-12 sm:py-16">
-            <p className="text-gray-500 mb-4">Aucun tarif configuré pour ce pays.</p>
-            <button
-              onClick={initWithDefaults}
-              className="btn btn-primary text-sm sm:text-base"
-            >
-              Initialiser avec les tarifs par défaut
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="card p-0 overflow-hidden"
-                >
-                  {/* Header catégorie */}
-                  <div
-                    className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between"
-                    style={{ backgroundColor: cat.color }}
-                  >
-                    <h3 className="font-bold text-white text-xs sm:text-sm">{cat.name}</h3>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => openEditModal(cat)}
-                        className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => deleteCategory(cat.id)}
-                        className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Items */}
-                  <div className="divide-y divide-gray-100">
-                    {cat.items.map((item, i) => (
-                      <div
-                        key={i}
-                        className="px-3 sm:px-4 py-2 sm:py-2.5 flex justify-between items-center hover:bg-gray-50 transition-colors"
-                      >
-                        <span className="text-xs sm:text-sm text-gray-700">{item.label}</span>
-                        <span
-                          className="text-xs sm:text-sm font-bold whitespace-nowrap ml-2"
-                          style={{ color: cat.color }}
-                        >
-                          {item.price} {currencyLabel}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Bouton PDF en bas */}
-            <div className="text-center pt-2 sm:pt-4">
-              <button
-                onClick={generatePDF}
-                className="btn btn-primary flex items-center space-x-2 mx-auto text-sm sm:text-base"
-              >
-                <Download size={18} className="sm:w-5 sm:h-5" />
-                <span>Télécharger la liste de prix en PDF</span>
-              </button>
-            </div>
-          </>
-        )}
+    <>
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2 sm:gap-3 justify-end">
+        <button
+          onClick={generatePDF}
+          disabled={categories.length === 0}
+          className="btn btn-secondary flex items-center space-x-2 text-sm sm:text-base disabled:opacity-50"
+        >
+          <Download size={18} className="sm:w-5 sm:h-5" />
+          <span>Télécharger PDF</span>
+        </button>
+        <button
+          onClick={openAddModal}
+          className="btn btn-primary flex items-center space-x-2 text-sm sm:text-base"
+        >
+          <Plus size={18} className="sm:w-5 sm:h-5" />
+          <span>Ajouter une catégorie</span>
+        </button>
       </div>
 
-      {/* ─── Modal ajout/édition ──────────────────────── */}
+      {/* Contenu */}
+      {categories.length === 0 ? (
+        <div className="card text-center py-12 sm:py-16">
+          <p className="text-gray-500 mb-4">Aucun tarif configuré pour ce pays.</p>
+          <button onClick={initWithDefaults} className="btn btn-primary text-sm sm:text-base">
+            Initialiser avec les tarifs par défaut
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {categories.map((cat) => (
+            <div key={cat.id} className="card p-0 overflow-hidden">
+              <div
+                className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between"
+                style={{ backgroundColor: cat.color }}
+              >
+                <h3 className="font-bold text-white text-xs sm:text-sm">{cat.name}</h3>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => openEditModal(cat)}
+                    className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                  >
+                    <Edit size={14} />
+                  </button>
+                  <button
+                    onClick={() => deleteCategory(cat.id)}
+                    className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {cat.items.map((item, i) => (
+                  <div
+                    key={i}
+                    className="px-3 sm:px-4 py-2 sm:py-2.5 flex justify-between items-center hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="text-xs sm:text-sm text-gray-700">{item.label}</span>
+                    <span
+                      className="text-xs sm:text-sm font-bold whitespace-nowrap ml-2"
+                      style={{ color: cat.color }}
+                    >
+                      {item.price} {currencyLabel}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal ajout/édition */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
@@ -512,11 +447,8 @@ export default function TarifsPage() {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Nom */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom de la catégorie *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la catégorie *</label>
                 <input
                   type="text"
                   value={formData.name}
@@ -526,7 +458,6 @@ export default function TarifsPage() {
                 />
               </div>
 
-              {/* Couleur */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Couleur</label>
                 <div className="flex gap-2 flex-wrap">
@@ -535,9 +466,7 @@ export default function TarifsPage() {
                       key={c.value}
                       onClick={() => setFormData({ ...formData, color: c.value })}
                       className={`w-8 h-8 rounded-full border-2 transition-transform ${
-                        formData.color === c.value
-                          ? 'border-gray-900 scale-110'
-                          : 'border-transparent hover:scale-105'
+                        formData.color === c.value ? 'border-gray-900 scale-110' : 'border-transparent hover:scale-105'
                       }`}
                       style={{ backgroundColor: c.value }}
                       title={c.label}
@@ -546,11 +475,8 @@ export default function TarifsPage() {
                 </div>
               </div>
 
-              {/* Items */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Éléments ({currencyLabel})
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Éléments ({currencyLabel})</label>
                 <div className="space-y-2">
                   {formData.items.map((item, i) => (
                     <div key={i} className="flex gap-2 items-center">
@@ -591,18 +517,9 @@ export default function TarifsPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 sticky bottom-0 bg-white rounded-b-xl">
-              <button
-                onClick={() => setShowModal(false)}
-                className="btn btn-secondary"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={saveCategory}
-                className="btn btn-primary flex items-center gap-2"
-              >
+              <button onClick={() => setShowModal(false)} className="btn btn-secondary">Annuler</button>
+              <button onClick={saveCategory} className="btn btn-primary flex items-center gap-2">
                 <Save size={16} />
                 {editingCategory ? 'Enregistrer' : 'Créer'}
               </button>
@@ -610,6 +527,6 @@ export default function TarifsPage() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

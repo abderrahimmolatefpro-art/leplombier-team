@@ -19,8 +19,9 @@ import { auth, db } from '@/lib/firebase';
 import { Document, Client, Project, DocumentItem, ManualRevenue } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { COUNTRY_CONFIG } from '@/lib/companyConfig';
-import { Plus, Edit, Trash2, FileText, Download, Mail, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, FileText, Download, Mail, Eye, Tag } from 'lucide-react';
 import Link from 'next/link';
+import TarifsSection from '@/components/TarifsSection';
 
 function DocumentsContent() {
   const { user, loading: authLoading } = useAuth();
@@ -602,8 +603,24 @@ function DocumentsContent() {
           >
             Bons de commande
           </button>
+          <button
+            onClick={() => setFilterType('tarifs')}
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              filterType === 'tarifs'
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Tag size={14} />
+            Liste de prix
+          </button>
         </div>
 
+        {/* Liste de prix (onglet tarifs) */}
+        {filterType === 'tarifs' ? (
+          <TarifsSection />
+        ) : (
+        <>
         {/* Documents List */}
         <div className="card overflow-x-auto -mx-2 sm:mx-0">
           <div className="inline-block min-w-full align-middle px-2 sm:px-0">
@@ -1392,6 +1409,8 @@ function DocumentsContent() {
               </div>
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
     </Layout>

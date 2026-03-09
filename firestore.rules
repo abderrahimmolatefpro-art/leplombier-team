@@ -140,6 +140,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Collection tarifCategories (liste de prix par pays)
+    match /tarifCategories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated() && isAdmin();
+    }
+
     // Collection partRequests (demandes de pièces)
     // Lecture : plombier (ses demandes) ou admin (toutes). Création : plombier (ses demandes). Mise à jour : admin uniquement.
     match /partRequests/{requestId} {
