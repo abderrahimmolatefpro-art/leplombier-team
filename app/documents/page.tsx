@@ -199,13 +199,17 @@ function DocumentsContent() {
       return;
     }
 
-    // Ligne descriptive sans prix : afficher "—" pour qté, prix unitaire, total
+    // Ligne descriptive : conserver qté/prix si renseignés, mais ne pas compter dans le subtotal
     if (currentItem.descriptionOnly) {
+      const qty = typeof currentItem.quantity === 'string'
+        ? parseFloat(currentItem.quantity) || 0
+        : currentItem.quantity;
+      const price = currentItem.unitPrice || 0;
       const item: DocumentItem = {
         description: currentItem.description.trim(),
-        quantity: 0,
-        unitPrice: 0,
-        total: 0,
+        quantity: qty,
+        unitPrice: price,
+        total: qty > 0 && price > 0 ? qty * price : 0,
         descriptionOnly: true,
       };
       const newItems = [...formData.items, item];
@@ -215,7 +219,7 @@ function DocumentsContent() {
         : ((formData.type === 'devis' || formData.type === 'bon_commande') && formData.includeTax) ? subtotal * getTaxRate() : 0;
       const total = formData.manualTotal ?? (subtotal + tax);
       setFormData({ ...formData, items: newItems, subtotal, tax, total });
-      setCurrentItem({ ...currentItem, description: '', descriptionOnly: false });
+      setCurrentItem({ ...currentItem, description: '', descriptionOnly: false, quantity: '', unitPrice: 0 });
       return;
     }
 
@@ -983,7 +987,7 @@ function DocumentsContent() {
                             className="rounded border-gray-300"
                           />
                           <label htmlFor="descOnly" className="text-sm text-gray-700">
-                            Ligne descriptive sans prix (afficher — pour qté, prix unit., total)
+                            Ligne descriptive (ne compte pas dans le total)
                           </label>
                         </div>
                         {/* Ligne 1: Description et Unité */}
@@ -1012,7 +1016,7 @@ function DocumentsContent() {
                                 })
                               }
                               className="input"
-                              disabled={currentItem.descriptionOnly}
+                              disabled={false}
                             >
                               <option value="piece">Pièce</option>
                               <option value="m2">m²</option>
@@ -1027,7 +1031,7 @@ function DocumentsContent() {
                         </div>
 
                         {/* Ligne 2: Dimensions selon l'unité (masqué si ligne descriptive) */}
-                        {!currentItem.descriptionOnly && currentItem.unit === 'm2' && (
+                        {currentItem.unit === 'm2' && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-xs text-gray-600 mb-1">
@@ -1051,7 +1055,7 @@ function DocumentsContent() {
                           </div>
                         )}
 
-                        {!currentItem.descriptionOnly && currentItem.unit === 'm' && (
+                        {currentItem.unit === 'm' && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-xs text-gray-600 mb-1">Longueur (m)</label>
@@ -1077,7 +1081,7 @@ function DocumentsContent() {
                           </div>
                         )}
 
-                        {!currentItem.descriptionOnly && currentItem.unit === 'm3' && (
+                        {currentItem.unit === 'm3' && (
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                               <label className="block text-xs text-gray-600 mb-1">Longueur (m)</label>
@@ -1135,7 +1139,7 @@ function DocumentsContent() {
                           </div>
                         )}
 
-                        {!currentItem.descriptionOnly && (currentItem.unit === 'piece' || currentItem.unit === 'kg' ||
+                        {(currentItem.unit === 'piece' || currentItem.unit === 'kg' ||
                           currentItem.unit === 'heure' || currentItem.unit === 'jour' ||
                           currentItem.unit === 'unite') && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1168,10 +1172,9 @@ function DocumentsContent() {
 
                         {/* Ligne 3: Prix unitaire et bouton (masqué si ligne descriptive) */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {!currentItem.descriptionOnly && (
-                            <div>
+                          <div>
                               <label className="block text-xs text-gray-600 mb-1">
-                                Prix unitaire ({selectedCountry === 'ES' ? 'EUR' : 'MAD'})
+                                Prix unitaire ({selectedCountry === 'ES' ? 'EUR' : 'MAD'}){currentItem.descriptionOnly ? ' (optionnel)' : ''}
                               </label>
                               <input
                                 type="number"
@@ -1188,8 +1191,7 @@ function DocumentsContent() {
                                 className="input"
                               />
                             </div>
-                          )}
-                          <div className={currentItem.descriptionOnly ? 'flex items-end' : 'md:col-span-2 flex items-end'}>
+                          <div className="md:col-span-2 flex items-end">
                             <button
                               type="button"
                               onClick={addItem}
@@ -1240,7 +1242,7 @@ function DocumentsContent() {
                                 };
 
                                 const getQuantityDisplay = () => {
-                                  if (item.descriptionOnly) return '—';
+                                  if (item.descriptionOnly && item.quantity <= 0) return '—';
                                   let qty = item.quantity.toFixed(2);
                                   if (item.unit === 'm2') {
                                     return `${qty} m²`;
@@ -1262,10 +1264,10 @@ function DocumentsContent() {
                                       {getQuantityDisplay()}
                                     </td>
                                     <td className="py-2 px-2 text-sm text-gray-600 text-right">
-                                      {item.descriptionOnly ? '—' : formatCurrency(item.unitPrice)}
+                                      {item.descriptionOnly && item.unitPrice <= 0 ? '—' : formatCurrency(item.unitPrice)}
                                     </td>
                                     <td className="py-2 px-2 text-sm font-medium text-gray-900 text-right">
-                                      {item.descriptionOnly ? '—' : formatCurrency(item.total)}
+                                      {item.descriptionOnly && item.total <= 0 ? '—' : formatCurrency(item.total)}
                                     </td>
                                     <td className="py-2 px-2 text-right">
                                       <button

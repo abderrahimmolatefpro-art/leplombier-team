@@ -190,7 +190,7 @@ export default function DocumentView({ document, client, project, companyInfo, c
                 };
 
                 const getQuantityDisplay = () => {
-                  if (item.descriptionOnly) return '—';
+                  if (item.descriptionOnly && item.quantity <= 0) return '—';
                   let qty = formatNumberFR(item.quantity);
                   if (item.unit === 'm2') {
                     return `${qty} m²`;
@@ -212,10 +212,10 @@ export default function DocumentView({ document, client, project, companyInfo, c
                       {getQuantityDisplay()}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-right text-sm text-gray-600">
-                      {item.descriptionOnly ? '—' : `${formatNumberFR(item.unitPrice)} ${currency}`}
+                      {item.descriptionOnly && item.unitPrice <= 0 ? '—' : `${formatNumberFR(item.unitPrice)} ${currency}`}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-right text-sm font-medium text-gray-900">
-                      {item.descriptionOnly ? '—' : `${formatNumberFR(item.total)} ${currency}`}
+                      {item.descriptionOnly && item.total <= 0 ? '—' : `${formatNumberFR(item.total)} ${currency}`}
                     </td>
                   </tr>
                 );
@@ -239,7 +239,7 @@ export default function DocumentView({ document, client, project, companyInfo, c
             {((document.type === 'devis' || document.type === 'bon_commande') && document.includeTax === false && document.manualTotal == null) ? (
               <>
                 <div className="flex justify-between py-3 border-t-2 border-gray-400 mt-2">
-                  <span className="text-lg font-bold text-gray-900">Total TTC :</span>
+                  <span className="text-lg font-bold text-gray-900">Total :</span>
                   <span className="text-lg font-bold text-primary-600">{formatNumberFR(document.total)} {currency}</span>
                 </div>
               </>

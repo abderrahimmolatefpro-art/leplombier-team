@@ -157,9 +157,9 @@ export function generatePDFFromData(
     
     const descriptionLines = pdf.splitTextToSize(item.description, colWidths[0] - 4);
     pdf.text(descriptionLines[0], colX[0] + 2, yPos - 2);
-    pdf.text(isDescOnly ? '—' : item.quantity.toString(), colX[1] + 2, yPos - 2);
-    pdf.text(isDescOnly ? '—' : formatNumber(item.unitPrice, country), colX[2] + 2, yPos - 2);
-    pdf.text(isDescOnly ? '—' : formatNumber(item.total, country), colX[3] + 2, yPos - 2);
+    pdf.text(isDescOnly && item.quantity <= 0 ? '—' : item.quantity.toString(), colX[1] + 2, yPos - 2);
+    pdf.text(isDescOnly && item.unitPrice <= 0 ? '—' : formatNumber(item.unitPrice, country), colX[2] + 2, yPos - 2);
+    pdf.text(isDescOnly && item.total <= 0 ? '—' : formatNumber(item.total, country), colX[3] + 2, yPos - 2);
     
     yPos += 8;
     if (descriptionLines.length > 1) {
@@ -189,8 +189,9 @@ export function generatePDFFromData(
   yPos += 5;
   const totalsX = colX[2];
   const displayTotal = document.manualTotal ?? document.total;
+  const noTax = (document.type === 'devis' || document.type === 'bon_commande') && document.includeTax === false && document.manualTotal == null;
   pdf.setFontSize(10);
-  if (document.manualTotal == null) {
+  if (!noTax && document.manualTotal == null) {
     pdf.text(`${labels.totalHT} :`, totalsX, yPos);
     pdf.text(`${formatNumber(document.subtotal, country)} ${currency}`, colX[3], yPos, { align: 'right' });
     yPos += 6;
@@ -200,7 +201,8 @@ export function generatePDFFromData(
   }
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(12);
-  pdf.text(`${document.manualTotal != null ? labels.totalTTCManual : labels.totalTTC} :`, totalsX, yPos);
+  const totalLabel = noTax ? `${labels.total} :` : `${document.manualTotal != null ? labels.totalTTCManual : labels.totalTTC} :`;
+  pdf.text(totalLabel, totalsX, yPos);
   pdf.setTextColor(0, 102, 204);
   pdf.text(`${formatNumber(displayTotal, country)} ${currency}`, colX[3], yPos, { align: 'right' });
   pdf.setTextColor(0, 0, 0);
